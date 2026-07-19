@@ -1,0 +1,313 @@
+.home-root {
+    flex-grow: 1;
+    flex-direction: column;
+    background-color: rgb(245, 248, 253);
+    color: rgb(21, 38, 76);
+    -unity-font-definition: resource("Fonts/Inter_24pt-Regular");
+}
+
+.page-scroll {
+    flex-grow: 1;
+}
+
+.page-scroll .unity-scroll-view__content-container {
+    flex-grow: 1;
+}
+
+/* Ẩn scrollbar nhưng vẫn cho phép cuộn bằng chuột/touch */
+.page-scroll .unity-scroller,
+.model-scroll .unity-scroller,
+.page-scroll .unity-scroll-view__vertical-scroller,
+.page-scroll .unity-scroll-view__horizontal-scroller,
+.model-scroll .unity-scroll-view__vertical-scroller,
+.model-scroll .unity-scroll-view__horizontal-scroller {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.page-scroll .unity-scroll-view__content-viewport,
+.model-scroll .unity-scroll-view__content-viewport {
+    margin-right: 0;
+    margin-bottom: 0;
+}
+
+/* ICON FILES */
+.icon-graduation-white { background-image: url("project://database/Assets/UI/Images/Icons/graduation-cap-white.png"); }
+.icon-cube-white { background-image: url("project://database/Assets/UI/Images/Icons/cube-white.png"); }
+.icon-vr-white { background-image: url("project://database/Assets/UI/Images/Icons/vr-glasses-white.png"); }
+.icon-ai-white { background-image: url("project://database/Assets/UI/Images/Icons/ai-sparkle-white.png"); }
+.icon-trophy-white { background-image: url("project://database/Assets/UI/Images/Icons/trophy-white.png"); }
+.icon-book { background-image: url("project://database/Assets/UI/Images/Icons/book.png"); }
+.icon-vr-purple { background-image: url("project://database/Assets/UI/Images/Icons/vr-glasses.png"); }
+.icon-trophy-orange { background-image: url("project://database/Assets/UI/Images/Icons/trophy.png"); }
+.icon-lock-white { background-image: url("project://database/Assets/UI/Images/Icons/lock-white.png"); }
+.icon-cube-blue { background-image: url("project://database/Assets/UI/Images/Icons/cube.png"); }
+
+.brand-icon-image,
+.chip-icon,
+.benefit-image,
+.button-icon,
+.model-image-icon {
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* HERO */
+.hero-section {
+    position: relative;
+    min-height: 420px;
+    padding-top: 42px;
+    padding-right: 24px;
+    padding-bottom: 75px;
+    padding-left: 24px;
+    background-color: rgb(5, 73, 186);
+    overflow: hidden;
+}
+
+.hero-ring {
+    position: absolute;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.14);
+    border-radius: 1000px;
+}
+
+.hero-ring-large { width: 440px; height: 440px; top: -55px; left: 7px; }
+.hero-ring-medium { width: 330px; height: 330px; top: 20px; left: 63px; }
+.hero-ring-small { width: 220px; height: 220px; top: 91px; left: 119px; }
+
+.top-header {
+    position: relative;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 35px;
+}
+
+.brand-area { flex-direction: row; align-items: center; }
+
+.brand-icon {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    margin-right: 6px;
+    background-color: rgba(255, 255, 255, 0.16);
+    border-radius: 20px;
+}
+
+/* Đặt icon thành phần tử con để kiểm soát kích thước thật sự. */
+.brand-icon-image {
+    width: 25px;
+    height: 25px;
+    flex-shrink: 0;
+}
+
+.brand-text-area { flex-direction: column; }
+.brand-title { font-size: 17px; -unity-font-style: bold; color: white; }
+.brand-subtitle { margin-top: 1px; font-size: 12px; color: rgba(255, 255, 255, 0.82); }
+
+.header-login-button {
+    height: 40px;
+    padding-right: 17px;
+    padding-left: 17px;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.30);
+    border-radius: 20px;
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: white;
+}
+
+.university-badge {
+    position: relative;
+    align-self: flex-start;
+    flex-direction: row;
+    align-items: center;
+    height: 29px;
+    padding-right: 14px;
+    padding-left: 12px;
+    margin-bottom: 17px;
+    background-color: rgba(255, 255, 255, 0.14);
+    border-radius: 15px;
+}
+
+.badge-dot { width: 8px; height: 8px; margin-right: 8px; background-color: rgb(244, 177, 46); border-radius: 4px; }
+.university-badge-text { font-size: 11px; -unity-font-style: bold; color: rgba(255, 255, 255, 0.85); }
+.hero-title { position: relative; margin-bottom: 12px; font-size: 31px; -unity-font-style: bold; color: white; white-space: normal; }
+.hero-description { position: relative; max-width: 370px; margin-bottom: 20px; font-size: 16px; color: rgba(255, 255, 255, 0.90); white-space: normal; }
+
+.feature-chip-container { position: relative; flex-direction: row; flex-wrap: wrap; }
+
+.feature-chip {
+    height: 35px;
+    flex-direction: row;
+    align-items: center;
+    padding-right: 13px;
+    padding-left: 11px;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    background-color: rgba(255, 255, 255, 0.14);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.28);
+    border-radius: 18px;
+}
+
+.chip-icon {
+    width: 15px;
+    height: 15px;
+    margin-right: 7px;
+}
+.feature-chip-text { font-size: 12px; -unity-font-style: bold; color: white; }
+
+/* STATISTICS */
+.statistics-card {
+    position: relative;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    height: 102px;
+    margin-top: -51px;
+    margin-right: 24px;
+    margin-left: 24px;
+    background-color: white;
+    border-radius: 18px;
+}
+
+.statistic-item { flex-grow: 1; align-items: center; justify-content: center; }
+.statistic-number { margin-bottom: 6px; font-size: 23px; -unity-font-style: bold; color: rgb(8, 65, 156); }
+.statistic-label { font-size: 12px; color: rgb(96, 112, 150); }
+.statistic-divider { width: 1px; height: 64px; background-color: rgb(220, 227, 241); }
+
+/* CONTENT */
+.content-section { padding-top: 26px; padding-right: 24px; padding-bottom: 0; padding-left: 24px; }
+.section-heading-row { flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+.section-title { font-size: 17px; -unity-font-style: bold; color: rgb(25, 42, 79); }
+.text-button { padding: 5px 0 5px 10px; background-color: rgba(255,255,255,0); border-width: 0; font-size: 13px; color: rgb(0, 71, 184); }
+
+/* MODEL CARDS */
+.model-scroll { height: 174px; margin-bottom: 25px; overflow: hidden; }
+.model-scroll .unity-scroll-view__content-container { flex-direction: row; }
+
+.model-card {
+    width: 160px;
+    height: 164px;
+    flex-shrink: 0;
+    margin-right: 14px;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(219, 227, 242);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.model-preview { position: relative; height: 112px; align-items: center; justify-content: center; }
+.engine-preview { background-color: rgb(239, 245, 254); }
+.dna-preview { background-color: rgb(248, 242, 255); }
+.robot-preview { background-color: rgb(255, 248, 234); }
+.model-symbol { font-size: 43px; color: rgb(2, 73, 179); }
+.purple-symbol { color: rgb(131, 84, 239); }
+.model-image-icon { width: 46px; height: 46px; }
+
+.view-count {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 6px 9px;
+    background-color: rgba(36, 40, 51, 0.43);
+    border-radius: 14px;
+    font-size: 10px;
+    -unity-font-style: bold;
+    color: white;
+}
+
+.model-information { flex-grow: 1; align-items: center; justify-content: center; background-color: white; }
+.model-title { font-size: 14px; -unity-font-style: bold; color: rgb(25, 38, 68); }
+.model-category { margin-top: 2px; font-size: 11px; color: rgb(96, 112, 150); }
+
+/* BENEFITS */
+.benefit-heading { margin-bottom: 15px; }
+
+.benefit-card {
+    min-height: 95px;
+    flex-direction: row;
+    align-items: center;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(220, 228, 242);
+    border-radius: 18px;
+}
+
+.benefit-icon { width: 49px; height: 49px; flex-shrink: 0; align-items: center; justify-content: center; margin-right: 15px; border-radius: 25px; }
+.blue-icon { background-color: rgb(235, 243, 255); }
+.purple-icon { background-color: rgb(246, 239, 255); }
+.orange-icon { background-color: rgb(255, 246, 230); }
+.benefit-image { width: 23px; height: 23px; }
+.benefit-content { flex-grow: 1; flex-shrink: 1; }
+.benefit-title { margin-bottom: 4px; font-size: 15px; -unity-font-style: bold; color: rgb(25, 42, 79); }
+.benefit-description { font-size: 12px; color: rgb(96, 112, 150); white-space: normal; }
+
+/* ACTION AREA: không fixed, nằm cuối nội dung cuộn */
+.bottom-action-area {
+    margin-top: 24px;
+    margin-right: -24px;
+    margin-left: -24px;
+    padding-top: 18px;
+    padding-right: 24px;
+    padding-bottom: 16px;
+    padding-left: 24px;
+    background-color: white;
+    border-top-width: 1px;
+    border-top-color: rgb(218, 226, 240);
+}
+
+.primary-button {
+    width:100%;
+    height: 57px;
+    margin-bottom: 12px;
+    padding: 0;
+    background-color: rgb(2, 70, 182);
+    border-width: 0;
+    border-radius: 29px;
+}
+
+.button-content { flex-grow: 1; flex-direction: row; align-items: center; justify-content: center; }
+.button-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    margin-right: 10px;
+}
+.primary-button-text { font-size: 16px; -unity-font-style: bold; color: white; }
+
+.outline-button {
+    height: 55px;
+    background-color: white;
+    border-width: 2px;
+    border-color: rgb(0, 72, 185);
+    border-radius: 28px;
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(0, 65, 165);
+}
+
+.full-width-button { width: 100%; margin-bottom: 10px; }
+
+.privacy-button {
+    align-self: center;
+    height: 27px;
+    background-color: rgba(255, 255, 255, 0);
+    border-width: 0;
+    font-size: 10px;
+    color: rgb(83, 95, 121);
+}
+
+.primary-button:hover { background-color: rgb(0, 58, 155); }
+.primary-button:active { background-color: rgb(0, 48, 132); }
+.outline-button:hover { background-color: rgb(238, 245, 255); }
+.header-login-button:hover { background-color: rgba(255, 255, 255, 0.25); }

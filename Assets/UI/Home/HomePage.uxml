@@ -1,0 +1,106 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="HomePage.uss"/>
+
+    <ui:VisualElement name="home-root" class="home-root">
+        <ui:ScrollView name="page-scroll" class="page-scroll" mode="Vertical"
+                       horizontal-scroller-visibility="Hidden"
+                       vertical-scroller-visibility="Hidden">
+
+            <ui:VisualElement class="hero-section">
+                <ui:VisualElement class="hero-ring hero-ring-large"/>
+                <ui:VisualElement class="hero-ring hero-ring-medium"/>
+                <ui:VisualElement class="hero-ring hero-ring-small"/>
+
+                <ui:VisualElement class="top-header">
+                    <ui:VisualElement class="brand-area">
+                        <ui:VisualElement class="brand-icon">
+                            <ui:VisualElement class="brand-icon-image icon-graduation-white"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="brand-text-area">
+                            <ui:Label text="Virtual Education" class="brand-title"/>
+                            <ui:Label text="Bách Khoa University" class="brand-subtitle"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:Button name="header-login-button" text="Login" class="header-login-button"/>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="university-badge">
+                    <ui:VisualElement class="badge-dot"/>
+                    <ui:Label text="BÁCH KHOA UNIVERSITY · 2025" class="university-badge-text"/>
+                </ui:VisualElement>
+
+                <ui:Label text="Learn Without Limits" class="hero-title"/>
+                <ui:Label text="Explore 3D models, attend virtual classes, and master engineering concepts."
+                          class="hero-description"/>
+
+                <ui:VisualElement class="feature-chip-container">
+                    <ui:VisualElement class="feature-chip">
+                        <ui:VisualElement class="chip-icon icon-cube-white"/>
+                        <ui:Label text="3D Interactive Models" class="feature-chip-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="feature-chip">
+                        <ui:VisualElement class="chip-icon icon-vr-white"/>
+                        <ui:Label text="VR Classroom" class="feature-chip-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="feature-chip">
+                        <ui:VisualElement class="chip-icon icon-ai-white"/>
+                        <ui:Label text="Gemini AI Tutor" class="feature-chip-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="feature-chip">
+                        <ui:VisualElement class="chip-icon icon-trophy-white"/>
+                        <ui:Label text="Gamified Learning" class="feature-chip-text"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="statistics-card">
+                <ui:VisualElement class="statistic-item"><ui:Label text="1,200+" class="statistic-number"/><ui:Label text="Courses" class="statistic-label"/></ui:VisualElement>
+                <ui:VisualElement class="statistic-divider"/>
+                <ui:VisualElement class="statistic-item"><ui:Label text="48k+" class="statistic-number"/><ui:Label text="Students" class="statistic-label"/></ui:VisualElement>
+                <ui:VisualElement class="statistic-divider"/>
+                <ui:VisualElement class="statistic-item"><ui:Label text="340+" class="statistic-number"/><ui:Label text="3D Models" class="statistic-label"/></ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="content-section">
+                <ui:VisualElement class="section-heading-row">
+                    <ui:Label text="Preview Public 3D Models" class="section-title"/>
+                    <ui:Button name="view-all-models-button" text="View all  ›" class="text-button"/>
+                </ui:VisualElement>
+
+                <ui:ScrollView name="model-scroll" mode="Horizontal" class="model-scroll"
+                               horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden">
+                    <ui:VisualElement class="model-card">
+                        <ui:VisualElement class="model-preview engine-preview"><ui:Label text="12.4k" class="view-count"/><ui:Label text="⚙" class="model-symbol"/></ui:VisualElement>
+                        <ui:VisualElement class="model-information"><ui:Label text="V6 Engine" class="model-title"/><ui:Label text="Mechanical" class="model-category"/></ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="model-card">
+                        <ui:VisualElement class="model-preview dna-preview"><ui:Label text="8.9k" class="view-count"/><ui:Label text="⚛" class="model-symbol purple-symbol"/></ui:VisualElement>
+                        <ui:VisualElement class="model-information"><ui:Label text="DNA Helix" class="model-title"/><ui:Label text="Biology" class="model-category"/></ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="model-card">
+                        <ui:VisualElement class="model-preview robot-preview"><ui:Label text="6.3k" class="view-count"/><ui:VisualElement class="model-image-icon icon-cube-blue"/></ui:VisualElement>
+                        <ui:VisualElement class="model-information"><ui:Label text="Robot Arm" class="model-title"/><ui:Label text="Robotics" class="model-category"/></ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:ScrollView>
+
+                <ui:Label text="Why Create an Account?" class="section-title benefit-heading"/>
+                <ui:VisualElement class="benefit-card"><ui:VisualElement class="benefit-icon blue-icon"><ui:VisualElement class="benefit-image icon-book"/></ui:VisualElement><ui:VisualElement class="benefit-content"><ui:Label text="Unlimited Course Access" class="benefit-title"/><ui:Label text="Full access to 1,200+ courses across all departments" class="benefit-description"/></ui:VisualElement></ui:VisualElement>
+                <ui:VisualElement class="benefit-card"><ui:VisualElement class="benefit-icon purple-icon"><ui:VisualElement class="benefit-image icon-vr-purple"/></ui:VisualElement><ui:VisualElement class="benefit-content"><ui:Label text="VR Classroom Experience" class="benefit-title"/><ui:Label text="Attend live virtual classes with your professors" class="benefit-description"/></ui:VisualElement></ui:VisualElement>
+                <ui:VisualElement class="benefit-card"><ui:VisualElement class="benefit-icon orange-icon"><ui:VisualElement class="benefit-image icon-trophy-orange"/></ui:VisualElement><ui:VisualElement class="benefit-content"><ui:Label text="Earn Certificates" class="benefit-title"/><ui:Label text="Get verified certificates to share on LinkedIn" class="benefit-description"/></ui:VisualElement></ui:VisualElement>
+
+                <ui:VisualElement class="bottom-action-area">
+                    <ui:Button name="login-button" class="primary-button">
+                        <ui:VisualElement class="button-content">
+                            <ui:VisualElement class="button-icon icon-lock-white"/>
+                            <ui:Label text="Log In to Your Account" class="primary-button-text"/>
+                        </ui:VisualElement>
+                    </ui:Button>
+                    <ui:Button name="register-button" text="Create Free Account" class="outline-button full-width-button"/>
+                    <ui:Button name="privacy-button" text="Privacy Policy &amp; Terms of Service" class="privacy-button"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:ScrollView>
+    </ui:VisualElement>
+</ui:UXML>
