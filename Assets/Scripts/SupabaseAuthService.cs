@@ -17,28 +17,52 @@ public static class SupabaseAuthService
         Action<SupabaseSignUpResponse> onSuccess,
         Action<string> onError)
     {
-        string normalizedName = NormalizePlainText(fullName);
-        string normalizedEmail = NormalizeEmail(email);
-        string normalizedRole = NormalizeRole(role);
-
-        if (string.IsNullOrWhiteSpace(normalizedName))
+        var payload = new SignUpRequestPayload
         {
-            onError?.Invoke("Full name is required.");
-            yield break;
-        }
+            email = NormalizeEmail(email),
+            password = password,
+            data = new SignUpMetadataPayload
+            {
+                full_name = NormalizePlainText(fullName),
+                display_name = NormalizePlainText(fullName),
+                role = NormalizeRole(role)
+            }
+        };
 
-        if (string.IsNullOrWhiteSpace(normalizedEmail))
+        yield return SendAuthRequest(
+            "/auth/v1/signup",
+            JsonUtility.ToJson(payload),
+            onSuccess,
+            onError
+        );
+    }
+
+    public static IEnumerator SignIn(
+        string email,
+        string password,
+        Action<SupabaseSignUpResponse> onSuccess,
+        Action<string> onError)
+    {
+        var payload = new SignInRequestPayload
         {
-            onError?.Invoke("Email is required.");
-            yield break;
-        }
+            email = NormalizeEmail(email),
+            password = password
+        };
 
-        if (string.IsNullOrWhiteSpace(password) || password.Length < 6)
-        {
-            onError?.Invoke("Password must contain at least 6 characters.");
-            yield break;
-        }
+        yield return SendAuthRequest(
+            "/auth/v1/token?grant_type=password",
+            JsonUtility.ToJson(payload),
+            onSuccess,
+            onError
+        );
+    }
 
+    private static IEnumerator SendAuthRequest(
+        string endpoint,
+        string requestJson,
+        Action<SupabaseSignUpResponse> onSuccess,
+        Action<string> onError)
+    {
         if (!TryGetSupabaseConfiguration(
                 out string supabaseUrl,
                 out string publishableKey,
@@ -49,102 +73,81 @@ public static class SupabaseAuthService
             yield break;
         }
 
-        SignUpRequestPayload payload = new SignUpRequestPayload
+        string requestUrl = supabaseUrl.TrimEnd('/') + endpoint;
+
+        using (UnityWebRequest request =
+               new UnityWebRequest(requestUrl, UnityWebRequest.kHttpVerbPOST))
         {
-            email = normalizedEmail,
-            password = password,
-            data = new SignUpMetadataPayload
+            request.uploadHandler =
+                new UploadHandlerRaw(Encoding.UTF8.GetBytes(requestJson));
+
+            request.downloadHandler =
+                new DownloadHandlerBuffer();
+
+            request.timeout = RequestTimeoutSeconds;
+
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.SetRequestHeader("Accept", "application/json");
+            request.SetRequestHeader("apikey", publishableKey);
+
+            yield return request.SendWebRequest();
+
+            string responseText =
+                request.downloadHandler != null
+                    ? request.downloadHandler.text
+                    : string.Empty;
+
+            if (request.result != UnityWebRequest.Result.Success)
             {
-                full_name = normalizedName,
-                display_name = normalizedName,
-                role = normalizedRole
-            }
-        };
+                string errorMessage =
+                    ExtractErrorMessage(responseText, request.error);
 
-        string requestJson = JsonUtility.ToJson(payload);
-        string requestUrl = $"{supabaseUrl.TrimEnd('/')}/auth/v1/signup";
-
-        using UnityWebRequest request =
-            new UnityWebRequest(requestUrl, UnityWebRequest.kHttpVerbPOST);
-
-        request.uploadHandler =
-            new UploadHandlerRaw(Encoding.UTF8.GetBytes(requestJson));
-
-        request.downloadHandler =
-            new DownloadHandlerBuffer();
-
-        request.timeout = RequestTimeoutSeconds;
-
-        request.SetRequestHeader("Content-Type", "application/json");
-        request.SetRequestHeader("Accept", "application/json");
-        request.SetRequestHeader("apikey", publishableKey);
-
-        Debug.Log(
-            "Supabase sign-up request\n" +
-            $"URL: {requestUrl}\n" +
-            $"Email: >{normalizedEmail}<\n" +
-            $"Role: {normalizedRole}"
-        );
-
-        yield return request.SendWebRequest();
-
-        string responseText =
-            request.downloadHandler?.text ?? string.Empty;
-
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            string errorMessage =
-                ExtractErrorMessage(responseText, request.error);
-
-            Debug.LogError(
-                "Supabase sign-up failed\n" +
-                $"HTTP status: {request.responseCode}\n" +
-                $"Unity error: {request.error}\n" +
-                $"Response: {responseText}"
-            );
-
-            onError?.Invoke(errorMessage);
-            yield break;
-        }
-
-        SupabaseSignUpResponse response;
-
-        try
-        {
-            response =
-                JsonUtility.FromJson<SupabaseSignUpResponse>(
-                    responseText
+                Debug.LogError(
+                    "Supabase request failed\n" +
+                    $"URL: {requestUrl}\n" +
+                    $"HTTP status: {request.responseCode}\n" +
+                    $"Unity error: {request.error}\n" +
+                    $"Response: {responseText}"
                 );
+
+                onError?.Invoke(errorMessage);
+                yield break;
+            }
+
+            SupabaseSignUpResponse response;
+
+            try
+            {
+                response =
+                    JsonUtility.FromJson<SupabaseSignUpResponse>(
+                        responseText
+                    );
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError(
+                    "Không thể parse Supabase response.\n" +
+                    $"Response: {responseText}\n" +
+                    exception
+                );
+
+                onError?.Invoke(
+                    "Supabase trả về dữ liệu không hợp lệ."
+                );
+
+                yield break;
+            }
+
+            if (response == null || response.user == null)
+            {
+                onError?.Invoke(
+                    "Không nhận được thông tin người dùng từ Supabase."
+                );
+                yield break;
+            }
+
+            onSuccess?.Invoke(response);
         }
-        catch (Exception exception)
-        {
-            Debug.LogError(
-                "Không thể parse response đăng ký từ Supabase.\n" +
-                $"Response: {responseText}\n" +
-                exception
-            );
-
-            onError?.Invoke(
-                "Supabase trả về dữ liệu không hợp lệ."
-            );
-
-            yield break;
-        }
-
-        if (response == null || response.user == null)
-        {
-            Debug.LogError(
-                $"Supabase response không có user: {responseText}"
-            );
-
-            onError?.Invoke(
-                "Không nhận được thông tin người dùng từ Supabase."
-            );
-
-            yield break;
-        }
-
-        onSuccess?.Invoke(response);
     }
 
     private static bool TryGetSupabaseConfiguration(
@@ -187,15 +190,6 @@ public static class SupabaseAuthService
 
         supabaseUrl = supabaseUrl.Trim();
         publishableKey = publishableKey.Trim();
-
-        if (!supabaseUrl.StartsWith(
-                "https://",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            error =
-                "Supabase URL không hợp lệ.";
-            return false;
-        }
 
         error = null;
         return true;
@@ -276,39 +270,39 @@ public static class SupabaseAuthService
         {
             try
             {
-                SignUpErrorPayload errorPayload =
-                    JsonUtility.FromJson<SignUpErrorPayload>(
+                var payload =
+                    JsonUtility.FromJson<AuthErrorPayload>(
                         responseText
                     );
 
-                if (errorPayload != null)
+                if (payload != null)
                 {
-                    if (!string.IsNullOrWhiteSpace(errorPayload.msg))
-                        return errorPayload.msg;
+                    if (!string.IsNullOrWhiteSpace(payload.msg))
+                        return payload.msg;
 
-                    if (!string.IsNullOrWhiteSpace(errorPayload.message))
-                        return errorPayload.message;
+                    if (!string.IsNullOrWhiteSpace(payload.message))
+                        return payload.message;
 
                     if (!string.IsNullOrWhiteSpace(
-                            errorPayload.error_description))
+                            payload.error_description))
                     {
-                        return errorPayload.error_description;
+                        return payload.error_description;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(errorPayload.error))
-                        return errorPayload.error;
+                    if (!string.IsNullOrWhiteSpace(payload.error))
+                        return payload.error;
                 }
             }
             catch
             {
-                // Trả nguyên response nếu không parse được.
+                // Nếu parse thất bại thì trả nguyên response.
             }
 
             return responseText;
         }
 
         return string.IsNullOrWhiteSpace(unityError)
-            ? "Đăng ký Supabase thất bại."
+            ? "Yêu cầu xác thực thất bại."
             : unityError;
     }
 
@@ -329,24 +323,15 @@ public static class SupabaseAuthService
 
     private static string NormalizePlainText(string value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        return value
-            .Trim()
-            .Replace("\u200B", string.Empty)
-            .Replace("\u200C", string.Empty)
-            .Replace("\u200D", string.Empty)
-            .Replace("\u2060", string.Empty)
-            .Replace("\uFEFF", string.Empty);
+        return string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : value.Trim();
     }
 
     private static string NormalizeRole(string role)
     {
-        string normalizedRole =
-            NormalizePlainText(role).ToLowerInvariant();
-
-        return normalizedRole == "teacher"
+        return NormalizePlainText(role)
+                   .ToLowerInvariant() == "teacher"
             ? "teacher"
             : "student";
     }
@@ -360,6 +345,13 @@ public static class SupabaseAuthService
     }
 
     [Serializable]
+    private sealed class SignInRequestPayload
+    {
+        public string email;
+        public string password;
+    }
+
+    [Serializable]
     private sealed class SignUpMetadataPayload
     {
         public string full_name;
@@ -368,7 +360,7 @@ public static class SupabaseAuthService
     }
 
     [Serializable]
-    private sealed class SignUpErrorPayload
+    private sealed class AuthErrorPayload
     {
         public string error;
         public string error_description;

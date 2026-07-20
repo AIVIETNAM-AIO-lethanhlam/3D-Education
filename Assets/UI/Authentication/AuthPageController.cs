@@ -2,11 +2,14 @@ using System;
 using System.Collections;
 using System.Net.Mail;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 [RequireComponent(typeof(UIDocument))]
 public class AuthPageController : MonoBehaviour
 {
+    private const string MainHomeSceneName = "MainHomeScene";
+
     private Button loginTabButton;
     private Button registerTabButton;
 
@@ -48,6 +51,7 @@ public class AuthPageController : MonoBehaviour
     private Button loginPrivacyButton;
     private Button registerPrivacyButton;
 
+    private Label loginMessageLabel;
     private Label registerMessageLabel;
 
     private string loginRole = "student";
@@ -56,6 +60,7 @@ public class AuthPageController : MonoBehaviour
     private bool loginPasswordVisible;
     private bool registerPasswordVisible;
     private bool rememberLogin;
+    private bool isSigningIn;
     private bool isRegistering;
 
     private void OnEnable()
@@ -111,6 +116,7 @@ public class AuthPageController : MonoBehaviour
         loginPrivacyButton = root.Q<Button>("login-privacy-button");
         registerPrivacyButton = root.Q<Button>("register-privacy-button");
 
+        loginMessageLabel = root.Q<Label>("login-message-label");
         registerMessageLabel = root.Q<Label>("register-message-label");
 
         RegisterEvents();
@@ -221,6 +227,8 @@ public class AuthPageController : MonoBehaviour
 
         loginTabButton?.AddToClassList("tab-button-active");
         registerTabButton?.RemoveFromClassList("tab-button-active");
+
+        ClearRegisterMessage();
     }
 
     private void ShowRegisterTab()
@@ -230,6 +238,8 @@ public class AuthPageController : MonoBehaviour
 
         loginTabButton?.RemoveFromClassList("tab-button-active");
         registerTabButton?.AddToClassList("tab-button-active");
+
+        ClearLoginMessage();
     }
 
     private void SelectLoginTeacher()
@@ -272,7 +282,10 @@ public class AuthPageController : MonoBehaviour
         UpdatePasswordVisibility(registerPasswordField, registerEyeIcon, registerPasswordVisible);
     }
 
-    private static void UpdatePasswordVisibility(TextField field, VisualElement icon, bool visible)
+    private static void UpdatePasswordVisibility(
+        TextField field,
+        VisualElement icon,
+        bool visible)
     {
         if (field != null)
             field.isPasswordField = !visible;
@@ -297,29 +310,150 @@ public class AuthPageController : MonoBehaviour
 
     private void SignIn()
     {
+        if (isSigningIn)
+            return;
+
         string email = NormalizeEmail(loginEmailField?.value);
         string password = loginPasswordField?.value ?? string.Empty;
 
+        ClearLoginMessage();
+
         if (!IsValidEmail(email))
         {
-            Debug.LogWarning("Email đăng nhập không hợp lệ.");
+            ShowLoginMessage("Email đăng nhập không hợp lệ.", AuthMessageType.Error);
             loginEmailField?.Focus();
             return;
         }
 
         if (string.IsNullOrWhiteSpace(password))
         {
-            Debug.LogWarning("Vui lòng nhập mật khẩu.");
+            ShowLoginMessage("Vui lòng nhập mật khẩu.", AuthMessageType.Error);
             loginPasswordField?.Focus();
             return;
         }
 
-        PlayerPrefs.SetString("current_role", loginRole);
-        PlayerPrefs.SetString("current_email", email);
+        StartCoroutine(SignInCoroutine(email, password, loginRole));
+    }
+
+    private IEnumerator SignInCoroutine(
+        string email,
+        string password,
+        string selectedRole)
+    {
+        SetLoginLoading(true);
+
+        SupabaseSignUpResponse signInResponse = null;
+        string signInError = null;
+
+        yield return SupabaseAuthService.SignIn(
+            email,
+            password,
+            response => signInResponse = response,
+            error => signInError = error
+        );
+
+        SetLoginLoading(false);
+
+        if (!string.IsNullOrWhiteSpace(signInError))
+        {
+            Debug.LogError($"Supabase sign-in failed: {signInError}");
+
+            ShowLoginMessage(
+                TranslateSignInError(signInError),
+                AuthMessageType.Error
+            );
+
+            yield break;
+        }
+
+        if (signInResponse == null ||
+            signInResponse.user == null ||
+            string.IsNullOrWhiteSpace(signInResponse.access_token))
+        {
+            ShowLoginMessage(
+                "Không nhận được phiên đăng nhập từ Supabase.",
+                AuthMessageType.Error
+            );
+
+            yield break;
+        }
+
+        string actualRole = selectedRole;
+
+        if (signInResponse.user.user_metadata != null &&
+            !string.IsNullOrWhiteSpace(signInResponse.user.user_metadata.role))
+        {
+            actualRole = signInResponse.user.user_metadata.role
+                .Trim()
+                .ToLowerInvariant();
+        }
+
+        if (actualRole != selectedRole)
+        {
+            ShowLoginMessage(
+                $"Tài khoản này có role '{actualRole}', không phải '{selectedRole}'.",
+                AuthMessageType.Error
+            );
+            yield break;
+        }
+
+        string fullName = string.Empty;
+
+        if (signInResponse.user.user_metadata != null)
+        {
+            fullName =
+                signInResponse.user.user_metadata.full_name;
+        }
+
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            fullName = PlayerPrefs.GetString(
+                "full_name",
+                string.Empty
+            );
+        }
+
+        PlayerPrefs.SetString(
+            "current_full_name",
+            fullName
+        );
+
+        PlayerPrefs.SetString("user_id", signInResponse.user.id ?? string.Empty);
+        PlayerPrefs.SetString("current_email", signInResponse.user.email ?? email);
+        PlayerPrefs.SetString("current_role", actualRole);
+        PlayerPrefs.SetString("access_token", signInResponse.access_token);
+
+        
+
+        if (!string.IsNullOrWhiteSpace(signInResponse.refresh_token))
+            PlayerPrefs.SetString("refresh_token", signInResponse.refresh_token);
+
         PlayerPrefs.SetInt("remember_login", rememberLogin ? 1 : 0);
         PlayerPrefs.Save();
 
-        Debug.Log($"Đăng nhập: role={loginRole}, email={email}");
+        Debug.Log(
+            "Đăng nhập Supabase thành công\n" +
+            $"User ID: {signInResponse.user.id}\n" +
+            $"Email: {signInResponse.user.email}\n" +
+            $"Role: {actualRole}"
+        );
+
+        if (!Application.CanStreamedLevelBeLoaded(MainHomeSceneName))
+        {
+            Debug.LogError(
+                $"Không thể mở scene '{MainHomeSceneName}'. " +
+                "Hãy thêm scene này vào File > Build Profiles > Scene List."
+            );
+
+            ShowLoginMessage(
+                $"Scene {MainHomeSceneName} chưa được thêm vào Build Profiles.",
+                AuthMessageType.Error
+            );
+
+            yield break;
+        }
+
+        SceneManager.LoadScene(MainHomeSceneName);
     }
 
     private void CreateAccount()
@@ -335,26 +469,37 @@ public class AuthPageController : MonoBehaviour
 
         if (string.IsNullOrWhiteSpace(fullName))
         {
-            ShowRegisterMessage("Vui lòng nhập họ và tên.", RegisterMessageType.Error);
+            ShowRegisterMessage("Vui lòng nhập họ và tên.", AuthMessageType.Error);
             registerNameField?.Focus();
             return;
         }
 
         if (!IsValidEmail(email))
         {
-            ShowRegisterMessage("Email không hợp lệ.", RegisterMessageType.Error);
+            ShowRegisterMessage("Email không hợp lệ.", AuthMessageType.Error);
             registerEmailField?.Focus();
             return;
         }
 
         if (password.Length < 6)
         {
-            ShowRegisterMessage("Mật khẩu phải có ít nhất 6 ký tự.", RegisterMessageType.Error);
+            ShowRegisterMessage(
+                "Mật khẩu phải có ít nhất 6 ký tự.",
+                AuthMessageType.Error
+            );
+
             registerPasswordField?.Focus();
             return;
         }
 
-        StartCoroutine(CreateAccountCoroutine(fullName, email, password, registerRole));
+        StartCoroutine(
+            CreateAccountCoroutine(
+                fullName,
+                email,
+                password,
+                registerRole
+            )
+        );
     }
 
     private IEnumerator CreateAccountCoroutine(
@@ -385,7 +530,7 @@ public class AuthPageController : MonoBehaviour
 
             ShowRegisterMessage(
                 TranslateSignUpError(signUpError),
-                RegisterMessageType.Error
+                AuthMessageType.Error
             );
 
             yield break;
@@ -395,8 +540,9 @@ public class AuthPageController : MonoBehaviour
         {
             ShowRegisterMessage(
                 "Không nhận được thông tin tài khoản từ Supabase.",
-                RegisterMessageType.Error
+                AuthMessageType.Error
             );
+
             yield break;
         }
 
@@ -407,36 +553,52 @@ public class AuthPageController : MonoBehaviour
             $"Role: {role}"
         );
 
-        PlayerPrefs.SetString("user_id", signUpResponse.user.id ?? string.Empty);
-        PlayerPrefs.SetString("full_name", fullName);
-        PlayerPrefs.SetString("current_role", role);
-        PlayerPrefs.SetString("current_email", email);
-
-        if (!string.IsNullOrWhiteSpace(signUpResponse.access_token))
-        {
-            PlayerPrefs.SetString("access_token", signUpResponse.access_token);
-        }
-
+        // Sau đăng ký, không giữ session signup.
+        PlayerPrefs.DeleteKey("user_id");
+        PlayerPrefs.DeleteKey("access_token");
+        PlayerPrefs.DeleteKey("refresh_token");
+        PlayerPrefs.DeleteKey("current_email");
+        PlayerPrefs.DeleteKey("current_role");
         PlayerPrefs.Save();
 
-        if (string.IsNullOrWhiteSpace(signUpResponse.access_token))
-        {
-            ShowRegisterMessage(
-                "Đăng ký thành công. Vui lòng kiểm tra email để xác nhận tài khoản.",
-                RegisterMessageType.Success
-            );
-        }
+        if (loginEmailField != null)
+            loginEmailField.value = email;
+
+        if (loginPasswordField != null)
+            loginPasswordField.value = string.Empty;
+
+        if (role == "teacher")
+            SelectLoginTeacher();
         else
-        {
-            ShowRegisterMessage(
-                "Đăng ký tài khoản thành công.",
-                RegisterMessageType.Success
-            );
-        }
+            SelectLoginStudent();
 
         if (registerNameField != null) registerNameField.value = string.Empty;
         if (registerEmailField != null) registerEmailField.value = string.Empty;
         if (registerPasswordField != null) registerPasswordField.value = string.Empty;
+
+        ShowLoginTab();
+
+        ShowLoginMessage(
+            "Đăng ký thành công. Vui lòng nhập mật khẩu để đăng nhập.",
+            AuthMessageType.Success
+        );
+
+        loginPasswordField?.Focus();
+    }
+
+    private void SetLoginLoading(bool loading)
+    {
+        isSigningIn = loading;
+
+        signInButton?.SetEnabled(!loading);
+        loginTeacherButton?.SetEnabled(!loading);
+        loginStudentButton?.SetEnabled(!loading);
+
+        if (signInButton != null)
+            signInButton.text = loading ? "Signing In..." : "Sign In";
+
+        if (loading)
+            ShowLoginMessage("Đang đăng nhập...", AuthMessageType.Loading);
     }
 
     private void SetRegisterLoading(bool loading)
@@ -448,17 +610,38 @@ public class AuthPageController : MonoBehaviour
         registerStudentButton?.SetEnabled(!loading);
 
         if (createAccountButton != null)
-            createAccountButton.text = loading ? "Creating Account..." : "Create Account";
+            createAccountButton.text =
+                loading ? "Creating Account..." : "Create Account";
 
         if (loading)
-            ShowRegisterMessage("Đang tạo tài khoản...", RegisterMessageType.Loading);
+            ShowRegisterMessage(
+                "Đang tạo tài khoản...",
+                AuthMessageType.Loading
+            );
     }
 
-    private void ShowRegisterMessage(string message, RegisterMessageType messageType)
+    private void ShowLoginMessage(
+        string message,
+        AuthMessageType messageType)
     {
-        if (registerMessageLabel == null)
+        ShowMessage(loginMessageLabel, message, messageType);
+    }
+
+    private void ShowRegisterMessage(
+        string message,
+        AuthMessageType messageType)
+    {
+        ShowMessage(registerMessageLabel, message, messageType);
+    }
+
+    private static void ShowMessage(
+        Label label,
+        string message,
+        AuthMessageType messageType)
+    {
+        if (label == null)
         {
-            if (messageType == RegisterMessageType.Error)
+            if (messageType == AuthMessageType.Error)
                 Debug.LogError(message);
             else
                 Debug.Log(message);
@@ -466,34 +649,57 @@ public class AuthPageController : MonoBehaviour
             return;
         }
 
-        registerMessageLabel.text = message;
+        label.text = message;
 
-        registerMessageLabel.RemoveFromClassList("register-message--error");
-        registerMessageLabel.RemoveFromClassList("register-message--success");
-        registerMessageLabel.RemoveFromClassList("register-message--loading");
+        RemoveMessageClasses(label);
 
         switch (messageType)
         {
-            case RegisterMessageType.Error:
-                registerMessageLabel.AddToClassList("register-message--error");
+            case AuthMessageType.Error:
+                label.AddToClassList("auth-message--error");
+                label.AddToClassList("register-message--error");
                 break;
-            case RegisterMessageType.Success:
-                registerMessageLabel.AddToClassList("register-message--success");
+
+            case AuthMessageType.Success:
+                label.AddToClassList("auth-message--success");
+                label.AddToClassList("register-message--success");
                 break;
-            case RegisterMessageType.Loading:
-                registerMessageLabel.AddToClassList("register-message--loading");
+
+            case AuthMessageType.Loading:
+                label.AddToClassList("auth-message--loading");
+                label.AddToClassList("register-message--loading");
                 break;
         }
     }
 
+    private void ClearLoginMessage()
+    {
+        ClearMessage(loginMessageLabel);
+    }
+
     private void ClearRegisterMessage()
     {
-        if (registerMessageLabel == null) return;
+        ClearMessage(registerMessageLabel);
+    }
 
-        registerMessageLabel.text = string.Empty;
-        registerMessageLabel.RemoveFromClassList("register-message--error");
-        registerMessageLabel.RemoveFromClassList("register-message--success");
-        registerMessageLabel.RemoveFromClassList("register-message--loading");
+    private static void ClearMessage(Label label)
+    {
+        if (label == null) return;
+
+        label.text = string.Empty;
+        RemoveMessageClasses(label);
+    }
+
+    private static void RemoveMessageClasses(VisualElement element)
+    {
+        element.RemoveFromClassList("auth-message--error");
+        element.RemoveFromClassList("auth-message--success");
+        element.RemoveFromClassList("auth-message--loading");
+
+        // Hỗ trợ USS cũ.
+        element.RemoveFromClassList("register-message--error");
+        element.RemoveFromClassList("register-message--success");
+        element.RemoveFromClassList("register-message--loading");
     }
 
     private static string NormalizeEmail(string value)
@@ -533,6 +739,7 @@ public class AuthPageController : MonoBehaviour
         try
         {
             MailAddress address = new MailAddress(email);
+
             return string.Equals(
                 address.Address,
                 email,
@@ -555,50 +762,110 @@ public class AuthPageController : MonoBehaviour
         if (lowerError.Contains("already registered") ||
             lowerError.Contains("already been registered") ||
             lowerError.Contains("user already exists"))
+        {
             return "Email này đã được đăng ký.";
+        }
 
         if (lowerError.Contains("invalid email") ||
             lowerError.Contains("email address"))
+        {
             return "Email không hợp lệ.";
+        }
 
         if (lowerError.Contains("password"))
             return "Mật khẩu không đáp ứng yêu cầu của hệ thống.";
 
         if (lowerError.Contains("rate limit") ||
             lowerError.Contains("too many requests"))
+        {
             return "Bạn thao tác quá nhanh. Vui lòng thử lại sau.";
+        }
 
         if (lowerError.Contains("network") ||
             lowerError.Contains("unable to resolve host") ||
             lowerError.Contains("cannot resolve destination host") ||
             lowerError.Contains("connection"))
+        {
             return "Không thể kết nối đến máy chủ. Vui lòng kiểm tra Internet.";
-
-        if (lowerError.Contains("supabase url") ||
-            lowerError.Contains("anon key") ||
-            lowerError.Contains("configuration"))
-            return "Cấu hình Supabase chưa đúng. Hãy kiểm tra SupabaseConfig.cs.";
+        }
 
         return error;
     }
 
-    private void OpenForgotPassword() => Debug.Log("Mở trang quên mật khẩu.");
-    private void LoginWithGoogle() => Debug.Log("Đăng nhập bằng Google.");
-    private void RegisterWithGoogle() => Debug.Log($"Đăng ký bằng Google với role: {registerRole}");
-    private void OpenPrivacy() => Debug.Log("Mở Privacy Policy & Terms.");
+    private static string TranslateSignInError(string error)
+    {
+        if (string.IsNullOrWhiteSpace(error))
+            return "Đăng nhập thất bại.";
 
-    private void OnLoginEmailFocusIn(FocusInEvent evt) => loginEmailContainer?.AddToClassList("input-focused");
-    private void OnLoginEmailFocusOut(FocusOutEvent evt) => loginEmailContainer?.RemoveFromClassList("input-focused");
-    private void OnLoginPasswordFocusIn(FocusInEvent evt) => loginPasswordContainer?.AddToClassList("input-focused");
-    private void OnLoginPasswordFocusOut(FocusOutEvent evt) => loginPasswordContainer?.RemoveFromClassList("input-focused");
-    private void OnRegisterNameFocusIn(FocusInEvent evt) => registerNameContainer?.AddToClassList("input-focused");
-    private void OnRegisterNameFocusOut(FocusOutEvent evt) => registerNameContainer?.RemoveFromClassList("input-focused");
-    private void OnRegisterEmailFocusIn(FocusInEvent evt) => registerEmailContainer?.AddToClassList("input-focused");
-    private void OnRegisterEmailFocusOut(FocusOutEvent evt) => registerEmailContainer?.RemoveFromClassList("input-focused");
-    private void OnRegisterPasswordFocusIn(FocusInEvent evt) => registerPasswordContainer?.AddToClassList("input-focused");
-    private void OnRegisterPasswordFocusOut(FocusOutEvent evt) => registerPasswordContainer?.RemoveFromClassList("input-focused");
+        string lowerError = error.ToLowerInvariant();
 
-    private enum RegisterMessageType
+        if (lowerError.Contains("invalid login credentials") ||
+            lowerError.Contains("invalid credentials"))
+        {
+            return "Email hoặc mật khẩu không chính xác.";
+        }
+
+        if (lowerError.Contains("email not confirmed"))
+            return "Email chưa được xác nhận.";
+
+        if (lowerError.Contains("rate limit") ||
+            lowerError.Contains("too many requests"))
+        {
+            return "Bạn thao tác quá nhanh. Vui lòng thử lại sau.";
+        }
+
+        if (lowerError.Contains("network") ||
+            lowerError.Contains("connection"))
+        {
+            return "Không thể kết nối đến máy chủ.";
+        }
+
+        return error;
+    }
+
+    private void OpenForgotPassword() =>
+        Debug.Log("Mở trang quên mật khẩu.");
+
+    private void LoginWithGoogle() =>
+        Debug.Log("Đăng nhập bằng Google.");
+
+    private void RegisterWithGoogle() =>
+        Debug.Log($"Đăng ký bằng Google với role: {registerRole}");
+
+    private void OpenPrivacy() =>
+        Debug.Log("Mở Privacy Policy & Terms.");
+
+    private void OnLoginEmailFocusIn(FocusInEvent evt) =>
+        loginEmailContainer?.AddToClassList("input-focused");
+
+    private void OnLoginEmailFocusOut(FocusOutEvent evt) =>
+        loginEmailContainer?.RemoveFromClassList("input-focused");
+
+    private void OnLoginPasswordFocusIn(FocusInEvent evt) =>
+        loginPasswordContainer?.AddToClassList("input-focused");
+
+    private void OnLoginPasswordFocusOut(FocusOutEvent evt) =>
+        loginPasswordContainer?.RemoveFromClassList("input-focused");
+
+    private void OnRegisterNameFocusIn(FocusInEvent evt) =>
+        registerNameContainer?.AddToClassList("input-focused");
+
+    private void OnRegisterNameFocusOut(FocusOutEvent evt) =>
+        registerNameContainer?.RemoveFromClassList("input-focused");
+
+    private void OnRegisterEmailFocusIn(FocusInEvent evt) =>
+        registerEmailContainer?.AddToClassList("input-focused");
+
+    private void OnRegisterEmailFocusOut(FocusOutEvent evt) =>
+        registerEmailContainer?.RemoveFromClassList("input-focused");
+
+    private void OnRegisterPasswordFocusIn(FocusInEvent evt) =>
+        registerPasswordContainer?.AddToClassList("input-focused");
+
+    private void OnRegisterPasswordFocusOut(FocusOutEvent evt) =>
+        registerPasswordContainer?.RemoveFromClassList("input-focused");
+
+    private enum AuthMessageType
     {
         Error,
         Success,

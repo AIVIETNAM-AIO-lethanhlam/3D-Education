@@ -5,8 +5,8 @@
     <ui:VisualElement name="auth-root" class="auth-root">
 
         <ui:ScrollView
-            name=".auth-scroll"
-            class=".auth-scroll"
+            name="auth-scroll"
+            class="auth-scroll"
             mode="Vertical"
             horizontal-scroller-visibility="Hidden"
             vertical-scroller-visibility="Hidden">
@@ -108,6 +108,11 @@
                             </ui:VisualElement>
                         </ui:Button>
                     </ui:VisualElement>
+
+                    <ui:Label
+                        name="login-message-label"
+                        text=""
+                        class="auth-message"/>
 
                     <ui:VisualElement class="option-row">
                         <ui:Button
@@ -243,7 +248,7 @@
                     <ui:Label
                         name="register-message-label"
                         text=""
-                        class="register-message"/>
+                        class="auth-message"/>
 
                     <ui:Button
                         name="create-account-button"

@@ -478,8 +478,8 @@
     height: 80px;
 }
 
-/* REGISTER MESSAGE */
-.register-message {
+/* AUTH MESSAGE: dùng chung cho Login và Register */
+.auth-message {
     display: none;
     min-height: 18px;
     margin-top: -6px;
@@ -491,17 +491,17 @@
     -unity-text-align: middle-left;
 }
 
-.register-message--error {
+.auth-message--error {
     display: flex;
     color: rgb(210, 45, 45);
 }
 
-.register-message--success {
+.auth-message--success {
     display: flex;
     color: rgb(35, 145, 80);
 }
 
-.register-message--loading {
+.auth-message--loading {
     display: flex;
     color: rgb(79, 93, 127);
 }
