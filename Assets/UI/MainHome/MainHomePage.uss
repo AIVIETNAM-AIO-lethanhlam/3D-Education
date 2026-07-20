@@ -1,0 +1,831 @@
+.main-home-root {
+    flex-grow: 1;
+    flex-direction: column;
+    background-color: rgb(247, 249, 253);
+    color: rgb(20, 37, 76);
+    -unity-font-definition: resource("Fonts/Inter_24pt-Regular");
+}
+
+/* =========================================================
+   MAIN SCROLL VIEW
+   ========================================================= */
+
+.main-home-scroll {
+    flex-grow: 1;
+}
+
+.main-home-scroll .unity-scroll-view__content-container {
+    flex-grow: 1;
+    min-height: 100%;
+}
+
+.main-home-scroll .unity-scroller,
+.main-home-scroll .unity-scroll-view__vertical-scroller,
+.main-home-scroll .unity-scroll-view__horizontal-scroller {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.main-home-scroll .unity-scroll-view__content-viewport {
+    margin-right: 0;
+    margin-bottom: 0;
+}
+
+/* =========================================================
+   ICON SOURCES
+   ========================================================= */
+
+.icon-notification {
+    background-image: url("project://database/Assets/UI/Images/Icons/notification.png");
+}
+
+.icon-profile {
+    background-image: url("project://database/Assets/UI/Images/Icons/profile-white.png");
+}
+
+.icon-search {
+    background-image: url("project://database/Assets/UI/Images/Icons/search.png");
+}
+
+.icon-book {
+    background-image: url("project://database/Assets/UI/Images/Icons/book-white.png");
+}
+
+.icon-category-all {
+    background-image: url("project://database/Assets/UI/Images/Icons/category-all.png");
+}
+
+.icon-physics {
+    background-image: url("project://database/Assets/UI/Images/Icons/cube.png");
+}
+
+.icon-chemistry {
+    background-image: url("project://database/Assets/UI/Images/Icons/trophy.png");
+}
+
+.icon-math {
+    background-image: url("project://database/Assets/UI/Images/Icons/category-all.png");
+}
+
+.icon-programming {
+    background-image: url("project://database/Assets/UI/Images/Icons/cube.png");
+}
+
+.icon-book-blue,
+.icon-book-purple,
+.icon-book-green,
+.icon-book-red {
+    background-image: url("project://database/Assets/UI/Images/Icons/book.png");
+}
+
+.icon-nav-home {
+    background-image: url("project://database/Assets/UI/Images/Icons/home.png");
+}
+
+.icon-nav-classes {
+    background-image: url("project://database/Assets/UI/Images/Icons/category-all.png");
+}
+
+.icon-nav-ai {
+    background-image: url("project://database/Assets/UI/Images/Icons/ai-sparkle.png");
+}
+
+.icon-nav-settings {
+    background-image: url("project://database/Assets/UI/Images/Icons/settings.png");
+}
+
+.header-icon,
+.search-icon,
+.banner-book-icon,
+.category-icon,
+.course-book-icon,
+.nav-icon {
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.home-header {
+    padding-top: 42px;
+    padding-right: 20px;
+    padding-bottom: 20px;
+    padding-left: 20px;
+    background-color: white;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(224, 230, 241);
+}
+
+.header-top-row {
+    min-height: 61px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 17px;
+}
+
+.welcome-container {
+    flex-grow: 1;
+    justify-content: center;
+}
+
+.welcome-role-label {
+    margin-bottom: 1px;
+    font-size: 15px;
+    color: rgb(72, 86, 119);
+    -unity-text-align: middle-left;
+}
+
+.user-name-label {
+    font-size: 25px;
+    -unity-font-style: bold;
+    color: rgb(13, 31, 70);
+    -unity-text-align: middle-left;
+}
+
+.header-actions {
+    flex-direction: row;
+    align-items: center;
+}
+
+.header-icon-button {
+    position: relative;
+    width: 45px;
+    height: 45px;
+    flex-shrink: 0;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border-width: 0;
+    border-radius: 23px;
+}
+
+.notification-button {
+    margin-right: 10px;
+    background-color: rgb(241, 245, 253);
+}
+
+.profile-button {
+    background-color: rgb(0, 70, 180);
+}
+
+.header-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.notification-button .header-icon {
+    -unity-background-image-tint-color: rgb(26, 48, 92);
+}
+
+.profile-button .header-icon,
+.profile-button .icon-profile {
+    /* Dùng trực tiếp icon PNG màu trắng vì tint không đổi được pixel đen thành trắng */
+    background-image: url("project://database/Assets/UI/Images/Icons/profile-white.png");
+    -unity-background-image-tint-color: rgb(255, 255, 255);
+    opacity: 1;
+}
+
+.notification-dot {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    top: 4px;
+    right: 4px;
+    background-color: rgb(255, 78, 87);
+    border-width: 2px;
+    border-color: white;
+    border-radius: 5px;
+}
+
+/* =========================================================
+   SEARCH BAR
+   ========================================================= */
+
+.search-container {
+    height: 51px;
+    flex-direction: row;
+    align-items: center;
+    padding-right: 17px;
+    padding-left: 17px;
+    background-color: rgb(237, 243, 254);
+    border-radius: 26px;
+}
+
+.search-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    margin-right: 11px;
+    -unity-background-image-tint-color: rgb(94, 111, 150);
+}
+
+.course-search-field {
+    flex-grow: 1;
+    height: 47px;
+    background-color: rgba(255, 255, 255, 0);
+    border-width: 0;
+    font-size: 15px;
+    color: rgb(35, 53, 91);
+}
+
+.course-search-field .unity-text-field__input {
+    flex-grow: 1;
+    height: 47px;
+    padding: 0;
+    background-color: rgba(255, 255, 255, 0);
+    border-width: 0;
+    font-size: 15px;
+    color: rgb(35, 53, 91);
+}
+
+/* =========================================================
+   ACTIVE COURSES BANNER
+   ========================================================= */
+
+.active-course-banner {
+    position: relative;
+    height: 145px;
+    flex-direction: row;
+    align-items: center;
+    margin-top: 20px;
+    margin-right: 20px;
+    margin-left: 20px;
+    padding-top: 18px;
+    padding-right: 18px;
+    padding-bottom: 18px;
+    padding-left: 18px;
+    background-color: rgb(4, 67, 178);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.banner-circle {
+    position: absolute;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.09);
+    border-radius: 1000px;
+}
+
+.banner-circle-large {
+    width: 160px;
+    height: 160px;
+    top: -18px;
+    right: -35px;
+}
+
+.banner-circle-medium {
+    width: 118px;
+    height: 118px;
+    top: 2px;
+    right: -12px;
+}
+
+.banner-circle-small {
+    width: 82px;
+    height: 82px;
+    top: 20px;
+    right: 10px;
+}
+
+.banner-content {
+    flex-grow: 1;
+    justify-content: center;
+}
+
+.semester-label {
+    margin-bottom: 5px;
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgba(255, 255, 255, 0.88);
+    -unity-text-align: middle-left;
+}
+
+.active-course-label {
+    margin-bottom: 9px;
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: white;
+    -unity-text-align: middle-left;
+}
+
+.my-classes-button {
+    width: 108px;
+    height: 29px;
+    padding: 0;
+    background-color: rgba(255, 255, 255, 0.18);
+    border-width: 0;
+    border-radius: 15px;
+}
+
+.my-classes-button-content {
+    flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.my-classes-button-text {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: white;
+}
+
+.my-classes-arrow {
+    margin-left: 5px;
+    font-size: 17px;
+    color: white;
+}
+
+.banner-book-container {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    top: 42px;
+    right: 22px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.13);
+    border-radius: 18px;
+}
+
+.banner-book-icon {
+    width: 28px;
+    height: 28px;
+    background-image: url("project://database/Assets/UI/Images/Icons/book-white.png");
+    -unity-background-image-tint-color: rgb(255, 255, 255);
+    opacity: 1;
+}
+
+/* =========================================================
+   SECTION HEADER
+   ========================================================= */
+
+.section-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 24px;
+    margin-right: 20px;
+    margin-bottom: 13px;
+    margin-left: 20px;
+}
+
+.section-title {
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: rgb(18, 35, 75);
+    -unity-text-align: middle-left;
+}
+
+.see-all-button {
+    height: 28px;
+    padding: 0;
+    background-color: rgba(255, 255, 255, 0);
+    border-width: 0;
+}
+
+.see-all-content {
+    flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.see-all-text {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(0, 70, 180);
+}
+
+.see-all-arrow {
+    margin-left: 4px;
+    font-size: 19px;
+    color: rgb(0, 70, 180);
+}
+
+/* =========================================================
+   CATEGORIES
+   ========================================================= */
+
+.category-scroll {
+    height: 111px;
+    margin-left: 20px;
+}
+
+.category-scroll .unity-scroll-view__content-container {
+    flex-direction: row;
+}
+
+.category-scroll .unity-scroller,
+.category-scroll .unity-scroll-view__vertical-scroller,
+.category-scroll .unity-scroll-view__horizontal-scroller {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.category-scroll .unity-scroll-view__content-viewport {
+    margin-right: 0;
+    margin-bottom: 0;
+}
+
+.category-row {
+    flex-direction: row;
+    padding-right: 20px;
+}
+
+.category-card {
+    width: 88px;
+    height: 104px;
+    flex-shrink: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    margin-right: 10px;
+    padding: 0;
+
+    background-color: white;
+
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 18px;
+}
+
+/* Kích thước riêng theo độ dài tên */
+.category-small {
+    width: 82px;
+}
+
+.category-medium {
+    width: 94px;
+}
+
+.category-large {
+    width: 108px;
+}
+
+.category-xlarge {
+    width: 124px;
+}
+
+.category-card-active {
+    border-width: 2px;
+    border-color: rgb(0, 70, 180);
+}
+
+.category-icon-circle {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 9px;
+    border-radius: 21px;
+}
+
+.category-icon-all {
+    background-color: rgb(220, 230, 253);
+}
+
+.category-icon-physics {
+    background-color: rgb(235, 242, 255);
+}
+
+.category-icon-chemistry {
+    background-color: rgb(244, 235, 255);
+}
+
+.category-icon-math {
+    background-color: rgb(255, 245, 225);
+}
+
+.category-icon-programming {
+    background-color: rgb(230, 248, 237);
+}
+
+.category-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.category-icon-all .category-icon {
+    -unity-background-image-tint-color: rgb(0, 70, 180);
+}
+
+.category-icon-physics .category-icon {
+    -unity-background-image-tint-color: rgb(0, 85, 190);
+}
+
+.category-icon-chemistry .category-icon {
+    -unity-background-image-tint-color: rgb(145, 79, 238);
+}
+
+.category-icon-math .category-icon {
+    -unity-background-image-tint-color: rgb(239, 149, 25);
+}
+
+.category-icon-programming .category-icon {
+    -unity-background-image-tint-color: rgb(29, 170, 90);
+}
+
+.category-name {
+    padding-right: 4px;
+    padding-left: 4px;
+
+    font-size: 13px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+
+    /* Không cho các tên như Chemistry bị xuống dòng */
+    white-space: nowrap;
+    flex-shrink: 0;
+    color: rgb(32, 49, 88);
+}
+
+.category-card-active .category-name {
+    color: rgb(0, 70, 180);
+}
+
+/* =========================================================
+   RECENTLY VIEWED
+   ========================================================= */
+
+.recently-header {
+    margin-top: 24px;
+}
+
+.recent-course-list {
+    margin-right: 20px;
+    margin-left: 20px;
+}
+
+.course-card {
+    width: 100%;
+    height: 88px;
+    margin-bottom: 12px;
+    padding: 0;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 18px;
+}
+
+.course-card-content {
+    flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
+    padding-top: 14px;
+    padding-right: 14px;
+    padding-bottom: 14px;
+    padding-left: 14px;
+}
+
+.course-leading {
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    margin-right: 13px;
+    border-radius: 23px;
+}
+
+.course-leading-blue {
+    background-color: rgb(231, 239, 255);
+}
+
+.course-leading-purple {
+    background-color: rgb(244, 235, 255);
+}
+
+.course-leading-green {
+    background-color: rgb(229, 249, 237);
+}
+
+.course-leading-red {
+    background-color: rgb(255, 233, 235);
+}
+
+.course-book-icon {
+    width: 23px;
+    height: 23px;
+}
+
+.icon-book-blue {
+    -unity-background-image-tint-color: rgb(0, 70, 180);
+}
+
+.icon-book-purple {
+    -unity-background-image-tint-color: rgb(135, 76, 238);
+}
+
+.icon-book-green {
+    -unity-background-image-tint-color: rgb(19, 181, 93);
+}
+
+.icon-book-red {
+    -unity-background-image-tint-color: rgb(245, 60, 70);
+}
+
+.course-information {
+    flex-grow: 1;
+    align-self: stretch;
+    justify-content: center;
+    margin-right: 8px;
+}
+
+.course-title {
+    margin-bottom: 8px;
+    font-size: 16px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    color: rgb(20, 37, 76);
+}
+
+.course-progress-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.course-category {
+    /* Giữ phần tên môn gọn để thanh tiến độ dài hơn */
+    width: 62px;
+    min-width: 62px;
+    flex-shrink: 0;
+    margin-right: 5px;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: visible;
+    -unity-text-align: middle-left;
+    color: rgb(92, 106, 140);
+}
+
+.progress-track {
+    height: 6px;
+    flex-grow: 1;
+    margin-right: 8px;
+    background-color: rgb(230, 236, 247);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 6px;
+    border-radius: 4px;
+}
+
+.progress-blue {
+    background-color: rgb(0, 70, 180);
+}
+
+.progress-purple {
+    background-color: rgb(132, 75, 238);
+}
+
+.progress-green {
+    background-color: rgb(23, 185, 92);
+}
+
+.progress-red {
+    background-color: rgb(241, 65, 76);
+}
+
+.progress-72 {
+    width: 72%;
+}
+
+.progress-45 {
+    width: 45%;
+}
+
+.progress-90 {
+    width: 90%;
+}
+
+.progress-30 {
+    width: 30%;
+}
+
+.progress-text {
+    width: 32px;
+    flex-shrink: 0;
+    font-size: 12px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    color: rgb(93, 106, 137);
+}
+
+.progress-circle {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    border-width: 4px;
+    border-radius: 24px;
+}
+
+.progress-circle-blue {
+    border-color: rgb(0, 70, 180);
+}
+
+.progress-circle-purple {
+    border-color: rgb(132, 75, 238);
+}
+
+.progress-circle-green {
+    border-color: rgb(23, 185, 92);
+}
+
+.progress-circle-red {
+    border-color: rgb(241, 65, 76);
+}
+
+.progress-circle-value {
+    display: none;
+}
+
+.scroll-bottom-space {
+    height: 34px;
+}
+
+/* =========================================================
+   BOTTOM NAVIGATION
+   ========================================================= */
+
+.bottom-navigation {
+    height: 86px;
+    flex-shrink: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    padding-top: 6px;
+    padding-bottom: 5px;
+    background-color: white;
+    border-top-width: 1px;
+    border-top-color: rgb(216, 225, 240);
+}
+
+.nav-button {
+    width: 25%;
+    height: 75px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0);
+    border-width: 0;
+}
+
+.nav-icon {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 6px;
+    -unity-background-image-tint-color: rgb(91, 107, 143);
+}
+
+.nav-label {
+    font-size: 12px;
+    color: rgb(70, 87, 123);
+}
+
+.nav-button-active .nav-icon {
+    -unity-background-image-tint-color: rgb(0, 70, 180);
+}
+
+.nav-button-active .nav-label {
+    -unity-font-style: bold;
+    color: rgb(0, 70, 180);
+}
+
+/* =========================================================
+   INTERACTION
+   ========================================================= */
+
+.header-icon-button:hover,
+.category-card:hover,
+.course-card:hover,
+.nav-button:hover,
+.see-all-button:hover,
+.my-classes-button:hover {
+    opacity: 0.88;
+}
+
+.header-icon-button:active,
+.category-card:active,
+.course-card:active,
+.nav-button:active,
+.see-all-button:active,
+.my-classes-button:active {
+    opacity: 0.72;
+}

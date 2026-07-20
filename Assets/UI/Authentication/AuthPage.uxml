@@ -1,0 +1,279 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+
+    <Style src="AuthPage.uss"/>
+
+    <ui:VisualElement name="auth-root" class="auth-root">
+
+        <ui:ScrollView
+            name=".auth-scroll"
+            class=".auth-scroll"
+            mode="Vertical"
+            horizontal-scroller-visibility="Hidden"
+            vertical-scroller-visibility="Hidden">
+
+            <!-- HERO -->
+            <ui:VisualElement class="login-hero">
+                <ui:VisualElement class="hero-circle hero-circle-large"/>
+                <ui:VisualElement class="hero-circle hero-circle-medium"/>
+                <ui:VisualElement class="hero-circle hero-circle-small"/>
+
+                <ui:VisualElement class="logo-container">
+                    <ui:VisualElement class="logo-icon-container">
+                        <ui:VisualElement class="logo-icon icon-graduation"/>
+                    </ui:VisualElement>
+
+                    <ui:Label text="Virtual Education" class="logo-title"/>
+                    <ui:Label text="Bách Khoa University" class="logo-subtitle"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- AUTH CARD -->
+            <ui:VisualElement class="auth-card">
+
+                <!-- TABS -->
+                <ui:VisualElement class="tab-header">
+                    <ui:Button
+                        name="login-tab-button"
+                        text="Login"
+                        class="tab-button tab-button-active"/>
+
+                    <ui:Button
+                        name="register-tab-button"
+                        text="Register"
+                        class="tab-button"/>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="tab-divider"/>
+
+                <!-- ================= LOGIN FORM ================= -->
+                <ui:VisualElement name="login-form" class="form-content">
+
+                    <ui:Label text="I AM A" class="field-heading"/>
+
+                    <ui:VisualElement class="role-row">
+                        <ui:Button
+                            name="login-teacher-role-button"
+                            class="role-button role-button-left">
+
+                            <ui:VisualElement class="role-button-content">
+                                <ui:VisualElement class="role-icon icon-teacher"/>
+                                <ui:Label text="Teacher" class="role-button-text"/>
+                            </ui:VisualElement>
+                        </ui:Button>
+
+                        <ui:Button
+                            name="login-student-role-button"
+                            class="role-button role-button-right role-button-active">
+
+                            <ui:VisualElement class="role-button-content">
+                                <ui:VisualElement class="role-icon icon-student"/>
+                                <ui:Label text="Student" class="role-button-text"/>
+                            </ui:VisualElement>
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement
+                        name="login-email-container"
+                        class="input-container">
+
+                        <ui:VisualElement class="input-icon icon-globe"/>
+
+                        <ui:TextField
+                            name="login-email-field"
+                            class="auth-input"
+                            placeholder-text="Email address"/>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement
+                        name="login-password-container"
+                        class="input-container">
+
+                        <ui:VisualElement class="input-icon icon-lock"/>
+
+                        <ui:TextField
+                            name="login-password-field"
+                            class="auth-input"
+                            password="true"
+                            mask-character="•"
+                            placeholder-text="Password"/>
+
+                        <ui:Button
+                            name="login-toggle-password-button"
+                            class="eye-button">
+
+                            <ui:VisualElement class="eye-wrapper">
+                                <ui:VisualElement
+                                    name="login-eye-icon"
+                                    class="eye-icon icon-eye"/>
+                            </ui:VisualElement>
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="option-row">
+                        <ui:Button
+                            name="remember-button"
+                            class="remember-button">
+
+                            <ui:VisualElement
+                                name="remember-checkbox"
+                                class="remember-checkbox">
+
+                                <ui:Label
+                                    name="remember-checkmark"
+                                    text="✓"
+                                    class="remember-checkmark remember-checkmark-hidden"/>
+                            </ui:VisualElement>
+
+                            <ui:Label
+                                text="Remember me"
+                                class="remember-label"/>
+                        </ui:Button>
+
+                        <ui:Button
+                            name="forgot-password-button"
+                            text="Forgot password?"
+                            class="link-button"/>
+                    </ui:VisualElement>
+
+                    <ui:Button
+                        name="sign-in-button"
+                        text="Sign In"
+                        class="primary-action-button"/>
+
+                    <ui:VisualElement class="social-divider-row">
+                        <ui:VisualElement class="social-divider"/>
+                        <ui:Label text="or continue with" class="social-divider-text"/>
+                        <ui:VisualElement class="social-divider"/>
+                    </ui:VisualElement>
+
+                    <ui:Button
+                        name="login-google-button"
+                        class="social-button">
+
+                        <ui:VisualElement class="social-button-content">
+                            <ui:VisualElement class="social-icon icon-google"/>
+                            <ui:Label text="Continue with Google" class="social-button-text"/>
+                        </ui:VisualElement>
+                    </ui:Button>
+
+                    <ui:Button
+                        name="login-privacy-button"
+                        text="Privacy Policy &amp; Terms"
+                        class="privacy-button"/>
+                </ui:VisualElement>
+
+                <!-- ================= REGISTER FORM ================= -->
+                <ui:VisualElement
+                    name="register-form"
+                    class="form-content form-hidden">
+
+                    <ui:Label text="I AM A" class="field-heading"/>
+
+                    <ui:VisualElement class="role-row">
+                        <ui:Button
+                            name="register-teacher-role-button"
+                            class="role-button role-button-left">
+
+                            <ui:VisualElement class="role-button-content">
+                                <ui:VisualElement class="role-icon icon-teacher"/>
+                                <ui:Label text="Teacher" class="role-button-text"/>
+                            </ui:VisualElement>
+                        </ui:Button>
+
+                        <ui:Button
+                            name="register-student-role-button"
+                            class="role-button role-button-right role-button-active">
+
+                            <ui:VisualElement class="role-button-content">
+                                <ui:VisualElement class="role-icon icon-student"/>
+                                <ui:Label text="Student" class="role-button-text"/>
+                            </ui:VisualElement>
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement
+                        name="register-name-container"
+                        class="input-container">
+
+                        <ui:VisualElement class="input-icon icon-student"/>
+
+                        <ui:TextField
+                            name="register-name-field"
+                            class="auth-input"
+                            placeholder-text="Full name"/>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement
+                        name="register-email-container"
+                        class="input-container">
+
+                        <ui:VisualElement class="input-icon icon-globe"/>
+
+                        <ui:TextField
+                            name="register-email-field"
+                            class="auth-input"
+                            placeholder-text="Email address"/>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement
+                        name="register-password-container"
+                        class="input-container">
+
+                        <ui:VisualElement class="input-icon icon-lock"/>
+
+                        <ui:TextField
+                            name="register-password-field"
+                            class="auth-input"
+                            password="true"
+                            mask-character="●"
+                            placeholder-text="Password"/>
+
+                        <ui:Button
+                            name="register-toggle-password-button"
+                            class="eye-button">
+
+                            <ui:VisualElement class="eye-wrapper">
+                                <ui:VisualElement
+                                    name="register-eye-icon"
+                                    class="eye-icon icon-eye"/>
+                            </ui:VisualElement>
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:Label
+                        name="register-message-label"
+                        text=""
+                        class="register-message"/>
+
+                    <ui:Button
+                        name="create-account-button"
+                        text="Create Account"
+                        class="primary-action-button register-action-button"/>
+
+                    <ui:VisualElement class="social-divider-row">
+                        <ui:VisualElement class="social-divider"/>
+                        <ui:Label text="or continue with" class="social-divider-text"/>
+                        <ui:VisualElement class="social-divider"/>
+                    </ui:VisualElement>
+
+                    <ui:Button
+                        name="register-google-button"
+                        class="social-button">
+
+                        <ui:VisualElement class="social-button-content">
+                            <ui:VisualElement class="social-icon icon-google"/>
+                            <ui:Label text="Continue with Google" class="social-button-text"/>
+                        </ui:VisualElement>
+                    </ui:Button>
+
+                    <ui:Button
+                        name="register-privacy-button"
+                        text="Privacy Policy &amp; Terms"
+                        class="privacy-button"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="page-bottom-space"/>
+        </ui:ScrollView>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,405 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+
+    <Style src="MainHomePage.uss"/>
+
+    <ui:VisualElement
+        name="main-home-root"
+        class="main-home-root">
+
+        <ui:ScrollView
+            name="main-home-scroll"
+            class="main-home-scroll"
+            mode="Vertical"
+            horizontal-scroller-visibility="Hidden"
+            vertical-scroller-visibility="Hidden">
+
+            <!-- HEADER -->
+            
+            <ui:VisualElement class="home-header">
+
+                <ui:VisualElement class="header-top-row">
+
+                    <ui:VisualElement class="welcome-container">
+
+                        <ui:Label
+                            name="welcome-role-label"
+                            text="Hello"
+                            class="welcome-role-label"/>
+
+                        <ui:Label
+                            name="user-name-label"
+                            text="User"
+                            class="user-name-label"/>
+
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="header-actions">
+
+                        <ui:Button
+                            name="notification-button"
+                            class="header-icon-button notification-button">
+
+                            <ui:VisualElement
+                                class="header-icon icon-notification"/>
+
+                            <ui:VisualElement
+                                name="notification-dot"
+                                class="notification-dot"/>
+                        </ui:Button>
+
+                        <ui:Button
+                            name="profile-button"
+                            class="header-icon-button profile-button">
+
+                            <ui:VisualElement
+                                class="header-icon icon-profile"/>
+                        </ui:Button>
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+                <ui:VisualElement class="search-container">
+
+                    <ui:VisualElement class="search-icon icon-search"/>
+
+                    <ui:TextField
+                        name="course-search-field"
+                        class="course-search-field"
+                        placeholder-text="Search courses, subjects..."/>
+
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+            <!-- ACTIVE COURSE BANNER -->
+            <ui:VisualElement class="active-course-banner">
+
+                <ui:VisualElement class="banner-circle banner-circle-large"/>
+                <ui:VisualElement class="banner-circle banner-circle-medium"/>
+                <ui:VisualElement class="banner-circle banner-circle-small"/>
+
+                <ui:VisualElement class="banner-content">
+
+                    <ui:Label
+                        text="Semester 2 · 2024–2025"
+                        class="semester-label"/>
+
+                    <ui:Label
+                        name="active-course-count-label"
+                        text="3 Active Courses"
+                        class="active-course-label"/>
+
+                    <ui:Button
+                        name="my-classes-banner-button"
+                        class="my-classes-button">
+
+                        <ui:VisualElement class="my-classes-button-content">
+                            <ui:Label
+                                text="My Classes"
+                                class="my-classes-button-text"/>
+
+                            <ui:Label
+                                text="›"
+                                class="my-classes-arrow"/>
+                        </ui:VisualElement>
+                    </ui:Button>
+
+                </ui:VisualElement>
+
+                <ui:VisualElement class="banner-book-container">
+                    <ui:VisualElement class="banner-book-icon icon-book"/>
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+            <!-- CATEGORIES -->
+            <ui:VisualElement class="section-header">
+                <ui:Label text="Categories" class="section-title"/>
+
+                <ui:Button
+                    name="see-all-categories-button"
+                    class="see-all-button">
+
+                    <ui:VisualElement class="see-all-content">
+                        <ui:Label text="See all" class="see-all-text"/>
+                        <ui:Label text="›" class="see-all-arrow"/>
+                    </ui:VisualElement>
+                </ui:Button>
+            </ui:VisualElement>
+
+            <ui:ScrollView
+                name="category-scroll"
+                class="category-scroll"
+                mode="Horizontal"
+                horizontal-scroller-visibility="Hidden"
+                vertical-scroller-visibility="Hidden">
+
+                <ui:VisualElement class="category-row">
+
+                    <ui:Button
+                        name="category-all-button"
+                        class="category-card category-small category-card-active">
+
+                        <ui:VisualElement class="category-icon-circle category-icon-all">
+                            <ui:VisualElement class="category-icon icon-category-all"/>
+                        </ui:VisualElement>
+
+                        <ui:Label text="All" class="category-name"/>
+                    </ui:Button>
+
+                    <ui:Button
+                        name="category-physics-button"
+                        class="category-card category-medium">
+
+                        <ui:VisualElement class="category-icon-circle category-icon-physics">
+                            <ui:VisualElement class="category-icon icon-physics"/>
+                        </ui:VisualElement>
+
+                        <ui:Label text="Physics" class="category-name"/>
+                    </ui:Button>
+
+                    <ui:Button
+                        name="category-chemistry-button"
+                        class="category-card category-large">
+
+                        <ui:VisualElement class="category-icon-circle category-icon-chemistry">
+                            <ui:VisualElement class="category-icon icon-chemistry"/>
+                        </ui:VisualElement>
+
+                        <ui:Label text="Chemistry" class="category-name"/>
+                    </ui:Button>
+
+                    <ui:Button
+                        name="category-math-button"
+                        class="category-card category-small">
+
+                        <ui:VisualElement class="category-icon-circle category-icon-math">
+                            <ui:VisualElement class="category-icon icon-math"/>
+                        </ui:VisualElement>
+
+                        <ui:Label text="Math" class="category-name"/>
+                    </ui:Button>
+
+                    <ui:Button
+                        name="category-programming-button"
+                        class="category-card category-xlarge">
+
+                        <ui:VisualElement class="category-icon-circle category-icon-programming">
+                            <ui:VisualElement class="category-icon icon-programming"/>
+                        </ui:VisualElement>
+
+                        <ui:Label text="Programming" class="category-name"/>
+                    </ui:Button>
+
+                </ui:VisualElement>
+            </ui:ScrollView>
+
+            <!-- RECENTLY VIEWED -->
+            <ui:VisualElement class="section-header recently-header">
+                <ui:Label text="Recently Viewed" class="section-title"/>
+
+                <ui:Button
+                    name="see-all-recent-button"
+                    class="see-all-button">
+
+                    <ui:VisualElement class="see-all-content">
+                        <ui:Label text="See all" class="see-all-text"/>
+                        <ui:Label text="›" class="see-all-arrow"/>
+                    </ui:VisualElement>
+                </ui:Button>
+            </ui:VisualElement>
+
+            <ui:VisualElement
+                name="recent-course-list"
+                class="recent-course-list">
+
+                <!-- COURSE 1 -->
+                <ui:Button
+                    name="fluid-mechanics-card"
+                    class="course-card">
+
+                    <ui:VisualElement class="course-card-content">
+
+                        <ui:VisualElement class="course-leading course-leading-blue">
+                            <ui:VisualElement class="course-book-icon icon-book-blue"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="course-information">
+
+                            <ui:Label
+                                text="Fluid Mechanics"
+                                class="course-title"/>
+
+                            <ui:VisualElement class="course-progress-row">
+                                <ui:Label text="Physics" class="course-category"/>
+
+                                <ui:VisualElement class="progress-track">
+                                    <ui:VisualElement
+                                        class="progress-fill progress-blue progress-72"/>
+                                </ui:VisualElement>
+
+                                <ui:Label text="72%" class="progress-text"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="progress-circle progress-circle-blue">
+                            <ui:Label text="72" class="progress-circle-value"/>
+                        </ui:VisualElement>
+
+                    </ui:VisualElement>
+                </ui:Button>
+
+                <!-- COURSE 2 -->
+                <ui:Button
+                    name="thermodynamics-card"
+                    class="course-card">
+
+                    <ui:VisualElement class="course-card-content">
+
+                        <ui:VisualElement class="course-leading course-leading-purple">
+                            <ui:VisualElement class="course-book-icon icon-book-purple"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="course-information">
+
+                            <ui:Label
+                                text="Thermodynamics"
+                                class="course-title"/>
+
+                            <ui:VisualElement class="course-progress-row">
+                                <ui:Label text="Physics" class="course-category"/>
+
+                                <ui:VisualElement class="progress-track">
+                                    <ui:VisualElement
+                                        class="progress-fill progress-purple progress-45"/>
+                                </ui:VisualElement>
+
+                                <ui:Label text="45%" class="progress-text"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="progress-circle progress-circle-purple">
+                            <ui:Label text="45" class="progress-circle-value"/>
+                        </ui:VisualElement>
+
+                    </ui:VisualElement>
+                </ui:Button>
+
+                <!-- COURSE 3 -->
+                <ui:Button
+                    name="circuit-analysis-card"
+                    class="course-card">
+
+                    <ui:VisualElement class="course-card-content">
+
+                        <ui:VisualElement class="course-leading course-leading-green">
+                            <ui:VisualElement class="course-book-icon icon-book-green"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="course-information">
+
+                            <ui:Label
+                                text="Circuit Analysis"
+                                class="course-title"/>
+
+                            <ui:VisualElement class="course-progress-row">
+                                <ui:Label text="Engineering" class="course-category"/>
+
+                                <ui:VisualElement class="progress-track">
+                                    <ui:VisualElement
+                                        class="progress-fill progress-green progress-90"/>
+                                </ui:VisualElement>
+
+                                <ui:Label text="90%" class="progress-text"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="progress-circle progress-circle-green">
+                            <ui:Label text="90" class="progress-circle-value"/>
+                        </ui:VisualElement>
+
+                    </ui:VisualElement>
+                </ui:Button>
+
+                <!-- COURSE 4 -->
+                <ui:Button
+                    name="machine-learning-card"
+                    class="course-card">
+
+                    <ui:VisualElement class="course-card-content">
+
+                        <ui:VisualElement class="course-leading course-leading-red">
+                            <ui:VisualElement class="course-book-icon icon-book-red"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="course-information">
+
+                            <ui:Label
+                                text="Machine Learning"
+                                class="course-title"/>
+
+                            <ui:VisualElement class="course-progress-row">
+                                <ui:Label text="AI &amp; ML" class="course-category"/>
+
+                                <ui:VisualElement class="progress-track">
+                                    <ui:VisualElement
+                                        class="progress-fill progress-red progress-30"/>
+                                </ui:VisualElement>
+
+                                <ui:Label text="30%" class="progress-text"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="progress-circle progress-circle-red">
+                            <ui:Label text="30" class="progress-circle-value"/>
+                        </ui:VisualElement>
+
+                    </ui:VisualElement>
+                </ui:Button>
+
+            </ui:VisualElement>
+
+            <ui:VisualElement class="scroll-bottom-space"/>
+
+        </ui:ScrollView>
+
+        <!-- BOTTOM NAVIGATION -->
+        <ui:VisualElement class="bottom-navigation">
+
+            <ui:Button
+                name="home-nav-button"
+                class="nav-button nav-button-active">
+
+                <ui:VisualElement class="nav-icon icon-nav-home"/>
+                <ui:Label text="Home" class="nav-label"/>
+            </ui:Button>
+
+            <ui:Button
+                name="classes-nav-button"
+                class="nav-button">
+
+                <ui:VisualElement class="nav-icon icon-nav-classes"/>
+                <ui:Label text="My" class="nav-label"/>
+            </ui:Button>
+
+            <ui:Button
+                name="ai-nav-button"
+                class="nav-button">
+
+                <ui:VisualElement class="nav-icon icon-nav-ai"/>
+                <ui:Label text="AI" class="nav-label"/>
+            </ui:Button>
+
+            <ui:Button
+                name="settings-nav-button"
+                class="nav-button">
+
+                <ui:VisualElement class="nav-icon icon-nav-settings"/>
+                <ui:Label text="Settings" class="nav-label"/>
+            </ui:Button>
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

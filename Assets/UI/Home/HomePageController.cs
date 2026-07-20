@@ -49,7 +49,7 @@ public class HomePageController : MonoBehaviour
         if (privacyButton != null) privacyButton.clicked -= OpenPrivacyPolicy;
     }
 
-    private void OpenLoginPage() { Debug.Log("Mở trang đăng nhập");  SceneManager.LoadScene("LoginScene");  }
+    private void OpenLoginPage() { Debug.Log("Mở trang đăng nhập");  SceneManager.LoadScene("AuthScene");  }
     private void OpenRegisterPage()
     {
         PlayerPrefs.SetString("open_auth_tab", "register");
