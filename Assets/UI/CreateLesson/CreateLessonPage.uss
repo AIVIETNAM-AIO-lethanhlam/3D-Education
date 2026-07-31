@@ -1,0 +1,600 @@
+/* GLOBAL FONT */
+* {
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Regular.ttf");
+}
+
+.create-lesson-page {
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    background-color: rgb(242, 246, 255);
+    color: rgb(12, 30, 67);
+}
+
+.hidden { display: none; }
+
+/* HEADER */
+.wizard-header {
+    width: 100%;
+    height: 142px;
+    padding-left: 18px;
+    padding-right: 18px;
+    padding-top: 32px;
+    padding-bottom: 16px;
+    flex-shrink: 0;
+    background-color: white;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(225, 231, 242);
+}
+
+.header-main-row {
+    width: 100%;
+    height: 66px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.header-back-button {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    margin-right: 8px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(242, 246, 255);
+    border-width: 0;
+    border-radius: 20px;
+}
+
+.back-icon {
+    width: 18px;
+    height: 18px;
+    background-image: url("project://database/Assets/UI/Images/Icons/back.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(10, 76, 180);
+}
+
+.header-title-group { flex-grow: 1; justify-content: center; }
+.step-label { margin-bottom: 1px; font-size: 13px; color: rgb(118, 136, 170); }
+.page-title-label { font-size: 19px; -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(8, 28, 66); }
+.cancel-button { width: 60px; min-width: 60px; height: 36px; padding: 0; background-color: transparent; border-width: 0; font-size: 13px; color: rgb(92, 111, 145); }
+
+.progress-row { width: 100%; height: 7px; margin-top: 8px; flex-direction: row; }
+.progress-segment { height: 7px; flex-grow: 1; margin-right: 7px; background-color: rgb(224, 231, 243); border-radius: 4px; }
+.progress-segment-end { margin-right: 0; }
+.progress-current { background-color: rgb(0, 76, 181); }
+.progress-complete { background-color: rgb(22, 195, 102); }
+
+/* BODY */
+.body-container { flex-grow: 1; min-height: 0; background-color: rgb(242, 246, 255); }
+.step-panel { width: 100%; height: 100%; }
+/* Hide ScrollView bars but keep touch/mouse-wheel scrolling enabled */
+.clean-scroll .unity-scroller--vertical,
+.clean-scroll .unity-scroller--horizontal,
+.clean-scroll .unity-scroll-view__vertical-scroller,
+.clean-scroll .unity-scroll-view__horizontal-scroller {
+    display: none;
+}
+
+.clean-scroll .unity-scroll-view__content-viewport {
+    right: 0;
+    bottom: 0;
+    padding: 0;
+}
+.form-content { width: 100%; padding-left: 18px; padding-right: 18px; padding-top: 28px; padding-bottom: 34px; }
+.form-label { margin-bottom: 9px; font-size: 13px; -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(70, 94, 138); }
+.helper-label { margin-top: -4px; margin-bottom: 14px; font-size: 13px; color: rgb(148, 163, 193); }
+.validation-message { margin-top: 12px; min-height: 18px; font-size: 12px; color: rgb(212, 54, 54); }
+
+/* STEP 1 */
+.chapter-dropdown {
+    width: 100%;
+    height: 54px;
+    margin-bottom: 22px;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(205, 216, 233);
+    border-radius: 17px;
+    font-size: 15px;
+    color: rgb(17, 38, 78);
+}
+.chapter-dropdown .unity-base-field__input { min-height: 52px; padding-left: 16px; padding-right: 16px; background-color: transparent; border-width: 0; }
+.chapter-dropdown .unity-popup-field__text { -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(17, 38, 78); }
+
+.section-title-row { width: 100%; flex-direction: row; align-items: center; }
+.section-title-label { flex-grow: 1; margin-bottom: 3px; }
+.section-action-button {
+    width: auto;
+    min-width: 0;
+    height: 26px;
+    margin-left: auto;
+    margin-bottom: 3px;
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+    font-size: 13px;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+    color: rgb(0, 73, 177);
+}
+.section-action-button:hover { color: rgb(0, 55, 145); }
+.section-action-button:active { opacity: 0.65; }
+
+.format-card {
+    width: 100%;
+    min-height: 88px;
+    margin-bottom: 14px;
+    padding-left: 14px;
+    padding-right: 14px;
+    flex-direction: row;
+    align-items: center;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(217, 225, 237);
+    border-radius: 17px;
+}
+.format-card:hover { background-color: rgb(250, 252, 255); }
+.format-card-selected { border-width: 2px; border-color: rgb(18, 94, 210); background-color: rgb(247, 251, 255); }
+.format-icon-wrap {
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    margin-right: 11px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(244, 247, 252);
+    border-radius: 24px;
+}
+.format-icon { width: 23px; height: 23px; background-repeat: no-repeat; background-position: center; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: rgb(145, 166, 199); }
+.icon-video { background-image: url("project://database/Assets/UI/Images/Icons/video.png"); }
+.icon-model { background-image: url("project://database/Assets/UI/Images/Icons/cube.png"); }
+.icon-document { background-image: url("project://database/Assets/UI/Images/Icons/document.png"); }
+.format-text-group {
+    flex-grow: 1;
+    min-width: 0;
+    margin-right: 8px;
+
+    justify-content: flex-start;
+    align-items: flex-start;
+
+}
+.format-title {
+    width: 100%;
+    font-size: 16px;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+    -unity-text-align: middle-left;
+    color: rgb(15, 34, 72);
+}
+.format-description{
+    margin-top:0;
+    padding-top:0;
+
+    -unity-text-align: middle-left;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+    font-size:12px;
+    color:rgb(150,160,180);
+
+    white-space:normal;
+}
+.format-radio {
+    width: 22px;
+    min-width: 22px;
+    max-width: 22px;
+    height: 22px;
+    min-height: 22px;
+    max-height: 22px;
+    margin-left: 4px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    align-self: center;
+    border-width: 2px;
+    border-color: rgb(194, 208, 226);
+    border-radius: 11px;
+    background-color: white;
+}
+.format-radio-selected {
+    border-width: 2px;
+    border-color: rgb(17, 91, 205);
+    background-color: rgb(17, 91, 205);
+    background-image: url("project://database/Assets/UI/Images/Icons/check.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* STEP 2 */
+.asset-content { padding-top: 24px; }
+.asset-intro { margin-bottom: 18px; font-size: 13px; white-space: normal; color: rgb(132, 150, 184); }
+.upload-card { width: 100%; margin-bottom: 16px; padding: 18px; background-color: rgba(255,255,255,0.45); border-width: 2px; border-radius: 18px; }
+.upload-card-video { border-color: rgb(125, 180, 255); }
+.upload-card-document { border-color: rgb(65, 205, 221); }
+.upload-card-exercise { border-color: rgb(255, 174, 77); }
+.upload-card-model { border-color: rgb(180, 144, 255); }
+.upload-card-header { flex-direction: row; align-items: center; margin-bottom: 13px; }
+.upload-type-icon-wrap { width: 46px; height: 46px; margin-right: 13px; align-items: center; justify-content: center; border-radius: 23px; }
+.upload-type-video-wrap { background-color: rgb(228, 239, 255); }
+.upload-type-document-wrap { background-color: rgb(219, 249, 252); }
+.upload-type-exercise-wrap { background-color: rgb(255, 242, 222); }
+.upload-type-model-wrap { background-color: rgb(239, 229, 255); }
+.upload-type-icon { width: 22px; height: 22px; background-repeat: no-repeat; background-position: center; -unity-background-scale-mode: scale-to-fit; }
+.upload-title-group { flex-grow: 1; align-items: flex-start; }
+.upload-card-title { font-size: 16px; -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(18, 37, 76); }
+.upload-card-subtitle { margin-top: 3px; font-size: 13px; color: rgb(120, 139, 174); }
+.selected-file-label { margin-bottom: 10px; font-size: 12px; color: rgb(45, 74, 125); white-space: normal; }
+
+.single-file-row {
+    width: 100%;
+    min-height: 38px;
+    margin-bottom: 10px;
+    padding-left: 10px;
+    padding-right: 5px;
+    flex-direction: row;
+    align-items: center;
+    background-color: white;
+    border-radius: 11px;
+}
+
+.single-file-name {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin-right: 4px;
+    font-size: 11px;
+    color: rgb(30, 52, 92);
+    white-space: normal;
+}
+
+.single-file-remove {
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+.upload-action-button {
+    width: 100%;
+    height: 49px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    border-width: 0;
+    border-radius: 18px;
+    color: white;
+}
+.button-icon {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+}
+.upload-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/upload.png");
+}
+.upload-button-label {
+    font-size: 15px;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+    color: white;
+}
+.upload-action-video { background-color: rgb(49, 101, 232); }
+.upload-action-document { background-color: rgb(13, 156, 183); }
+.upload-action-exercise { background-color: rgb(238, 137, 35); }
+.upload-action-model { background-color: rgb(126, 48, 235); }
+.document-chip-container { width: 100%; margin-bottom: 10px; flex-direction: row; flex-wrap: wrap; }
+.document-chip-row {
+    height: 28px;
+    margin-right: 6px;
+    margin-bottom: 6px;
+    padding-left: 9px;
+    padding-right: 10px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(85, 204, 219);
+    border-radius: 14px;
+}
+.document-chip-icon {
+    width: 13px;
+    height: 13px;
+    margin-right: 5px;
+    background-image: url("project://database/Assets/UI/Images/Icons/document.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(17, 137, 160);
+}
+.document-chip-text {
+    font-size: 11px;
+    color: rgb(17, 137, 160);
+}
+
+/* STEP 3 */
+.details-content { padding-top: 24px; }
+.form-input { width: 100%; height: 54px; background-color: white; border-width: 1px; border-color: rgb(205, 216, 233); border-radius: 17px; }
+.form-input .unity-base-field__input, .form-input .unity-text-input { height: 52px; padding-left: 17px; padding-right: 17px; background-color: transparent; border-width: 0; font-size: 15px; color: rgb(22, 43, 82); }
+.generate-ai-button { width: 100%; height: 54px; margin-top: 16px; margin-bottom: 16px; padding-left: 18px; flex-direction: row; align-items: center; justify-content: center; background-color: white; border-width: 2px; border-color: rgb(0, 76, 181); border-radius: 17px; }
+.ai-icon { width: 20px; height: 20px; margin-right: 9px; background-image: url("project://database/Assets/UI/Images/Icons/magic.png"); background-repeat: no-repeat; background-position: center; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: rgb(0, 76, 181); }
+.generate-ai-label { font-size: 14px; -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(0, 65, 158); }
+.details-card { width: 100%; margin-bottom: 16px; background-color: white; border-width: 1px; border-color: rgb(205, 216, 233); border-radius: 17px; overflow: hidden; }
+.details-card-header { height: 51px; padding-left: 16px; flex-direction: row; align-items: center; border-bottom-width: 1px; border-bottom-color: rgb(232, 236, 244); }
+.details-header-icon { width: 18px; height: 18px; margin-right: 9px; background-repeat: no-repeat; background-position: center; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: rgb(0, 80, 185); }
+.description-icon { background-image: url("project://database/Assets/UI/Images/Icons/description.png"); }
+.objective-icon { background-image: url("project://database/Assets/UI/Images/Icons/objective.png"); }
+.details-card-title { font-size: 13px; -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(76, 98, 139); }
+.details-text-area { width: 100%; min-height: 150px; background-color: white; border-width: 0; }
+.details-text-area .unity-base-field__input, .details-text-area .unity-text-input { min-height: 145px; padding: 16px; background-color: white; border-width: 0; font-size: 14px; white-space: normal; color: rgb(35, 57, 96); }
+.objectives-container {
+    width: 100%;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 8px;
+}
+
+.objective-row {
+    width: 100%;
+    min-height: 58px;
+    flex-direction: row;
+    align-items: flex-start;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(235, 239, 246);
+    padding-top: 7px;
+    padding-bottom: 7px;
+}
+
+.objective-number {
+    width: 24px;
+    min-width: 24px;
+    margin-top: 8px;
+    flex-shrink: 0;
+    font-size: 13px;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+    color: rgb(0, 76, 181);
+}
+
+.objective-field {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    min-height: 44px;
+    height: auto;
+    background-color: transparent;
+    border-width: 0;
+}
+
+.objective-field .unity-base-field__input,
+.objective-field .unity-text-input {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    height: auto;
+    padding-left: 0;
+    padding-right: 4px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    background-color: transparent;
+    border-width: 0;
+    font-size: 14px;
+    white-space: normal;
+    -unity-text-align: upper-left;
+    color: rgb(70, 88, 124);
+}
+.remove-objective-button {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    min-height: 18px;
+    margin-left: 7px;
+    margin-top: 8px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    padding: 0;
+    background-color: rgb(255, 230, 230);
+    background-image: url("project://database/Assets/UI/Images/Icons/close.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(255, 94, 94);
+    border-width: 0;
+    border-radius: 9px;
+}
+.add-objective-button { width: 100%; height: 48px; padding-left: 16px; flex-direction: row; align-items: center; justify-content: flex-start; background-color: white; border-width: 0; border-top-width: 1px; border-top-color: rgb(232, 236, 244); }
+.add-objective-icon {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    background-image: url("project://database/Assets/UI/Images/Icons/add.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(0, 76, 181);
+}
+.add-objective-label { font-size: 14px; -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(0, 76, 181); }
+
+/* BOTTOM */
+.bottom-action-container { width: 100%; padding-left: 18px; padding-right: 18px; padding-top: 12px; padding-bottom: 14px; flex-shrink: 0; background-color: white; border-top-width: 1px; border-top-color: rgb(229, 234, 243); }
+.primary-button {
+    width: 100%;
+    height: 55px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(17, 83, 194);
+    border-width: 0;
+    border-radius: 18px;
+}
+.primary-button-label {
+    font-size: 16px;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+    color: white;
+}
+.next-button-icon {
+    width: 17px;
+    height: 17px;
+    margin-left: 7px;
+    background-image: url("project://database/Assets/UI/Images/Icons/arrow-right.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+}
+.secondary-button { width: 100%; height: 50px; margin-top: 9px; background-color: white; border-width: 1px; border-color: rgb(199, 211, 229); border-radius: 17px; font-size: 15px; -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(78, 96, 130); }
+
+
+/* =========================================================
+   SUPABASE ASSET INPUTS
+   ========================================================= */
+
+.youtube-url-field {
+    width: 100%;
+    height: 46px;
+    margin-top: 12px;
+    margin-bottom: 10px;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(199, 215, 239);
+    border-radius: 12px;
+    color: rgb(18, 38, 77);
+}
+
+.youtube-url-field .unity-base-text-field__input {
+    height: 44px;
+    padding-left: 12px;
+    padding-right: 12px;
+    background-color: transparent;
+    border-width: 0;
+    font-size: 12px;
+    color: rgb(18, 38, 77);
+}
+
+.link-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 7px;
+    background-image: url("project://database/Assets/UI/Images/Icons/link.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.video-link-status-label {
+    min-height: 17px;
+    margin-top: 7px;
+    font-size: 11px;
+    color: rgb(25, 168, 92);
+    white-space: normal;
+}
+
+.video-link-status-error {
+    color: rgb(212, 54, 54);
+}
+
+.document-chip-row {
+    min-height: 36px;
+    margin-top: 7px;
+    padding-left: 10px;
+    padding-right: 7px;
+    flex-direction: row;
+    align-items: center;
+    background-color: white;
+    border-radius: 11px;
+}
+
+.document-chip-text {
+    flex-grow: 1;
+    min-width: 0;
+    font-size: 11px;
+    color: rgb(30, 52, 92);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.remove-file-button {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    margin-left: 5px;
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+    color: rgb(190, 45, 45);
+    font-size: 14px;
+}
+
+.save-progress-container {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.save-progress-bar {
+    width: 100%;
+    height: 8px;
+}
+
+.save-progress-bar .unity-progress-bar__background {
+    height: 8px;
+    background-color: rgb(223, 231, 245);
+    border-width: 0;
+    border-radius: 4px;
+}
+
+.save-progress-bar .unity-progress-bar__progress {
+    height: 8px;
+    background-color: rgb(18, 94, 210);
+    border-radius: 4px;
+}
+
+.save-progress-bar .unity-progress-bar__title {
+    display: none;
+}
+
+.save-progress-label {
+    margin-top: 5px;
+    font-size: 11px;
+    -unity-text-align: middle-center;
+    color: rgb(82, 104, 143);
+}
+
+/* STEP 1 - LESSON NAME */
+.lesson-name-section {
+    width: 100%;
+    margin-top: 18px;
+    margin-bottom: 22px;
+}
+
+.lesson-name-section .form-label {
+    margin-bottom: 9px;
+}
+
+.lesson-name-input {
+    width: 100%;
+    height: 54px;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(205, 216, 233);
+    border-radius: 17px;
+}
+
+.lesson-name-input .unity-base-field__input,
+.lesson-name-input .unity-text-input {
+    height: 52px;
+    padding-left: 17px;
+    padding-right: 17px;
+    background-color: transparent;
+    border-width: 0;
+    font-size: 15px;
+    color: rgb(22, 43, 82);
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Regular.ttf");
+}
+
+.lesson-name-input .unity-text-input:focus {
+    border-width: 0;
+}
+
+
+/* Update mode keeps only the single blue Finish button on step 3. */
+.update-mode-finish {
+    background-color: rgb(26, 91, 207);
+}

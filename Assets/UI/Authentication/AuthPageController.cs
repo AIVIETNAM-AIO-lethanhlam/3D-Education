@@ -342,7 +342,7 @@ public class AuthPageController : MonoBehaviour
     {
         SetLoginLoading(true);
 
-        SupabaseSignUpResponse signInResponse = null;
+        SupabaseAuthResponse signInResponse = null;
         string signInError = null;
 
         yield return SupabaseAuthService.SignIn(
@@ -380,12 +380,13 @@ public class AuthPageController : MonoBehaviour
 
         string actualRole = selectedRole;
 
-        if (signInResponse.user.user_metadata != null &&
-            !string.IsNullOrWhiteSpace(signInResponse.user.user_metadata.role))
+        string metadataRole =
+            signInResponse.user.user_metadata?.role;
+
+        if (!string.IsNullOrWhiteSpace(metadataRole))
         {
-            actualRole = signInResponse.user.user_metadata.role
-                .Trim()
-                .ToLowerInvariant();
+            actualRole =
+                metadataRole.Trim().ToLowerInvariant();
         }
 
         if (actualRole != selectedRole)
@@ -394,41 +395,50 @@ public class AuthPageController : MonoBehaviour
                 $"Tài khoản này có role '{actualRole}', không phải '{selectedRole}'.",
                 AuthMessageType.Error
             );
+
             yield break;
         }
 
-        string fullName = string.Empty;
+        SupabaseSession.SaveAuthResponse(
+            signInResponse,
+            actualRole
+        );
 
-        if (signInResponse.user.user_metadata != null)
-        {
-            fullName =
-                signInResponse.user.user_metadata.full_name;
-        }
+        /*
+         * Giữ các key cũ để những scene chưa refactor vẫn hoạt động.
+         * Khi toàn bộ project dùng SupabaseSession, có thể xóa khối này.
+         */
+        PlayerPrefs.SetString(
+            "current_user_id",
+            SupabaseSession.UserId
+        );
 
-        if (string.IsNullOrWhiteSpace(fullName))
-        {
-            fullName = PlayerPrefs.GetString(
-                "full_name",
-                string.Empty
-            );
-        }
+        PlayerPrefs.SetString(
+            "current_email",
+            SupabaseSession.Email
+        );
 
         PlayerPrefs.SetString(
             "current_full_name",
-            fullName
+            SupabaseSession.FullName
         );
 
-        PlayerPrefs.SetString("user_id", signInResponse.user.id ?? string.Empty);
-        PlayerPrefs.SetString("current_email", signInResponse.user.email ?? email);
-        PlayerPrefs.SetString("current_role", actualRole);
-        PlayerPrefs.SetString("access_token", signInResponse.access_token);
+        PlayerPrefs.SetString(
+            "current_role",
+            SupabaseSession.Role
+        );
 
-        
+        PlayerPrefs.SetString(
+            "current_avatar_url",
+            SupabaseSession.AvatarUrl
+        );
 
-        if (!string.IsNullOrWhiteSpace(signInResponse.refresh_token))
-            PlayerPrefs.SetString("refresh_token", signInResponse.refresh_token);
+        PlayerPrefs.SetInt(
+            "remember_login",
+            rememberLogin ? 1 : 0
+        );
 
-        PlayerPrefs.SetInt("remember_login", rememberLogin ? 1 : 0);
+        PlayerPrefs.DeleteKey("current_password");
         PlayerPrefs.Save();
 
         Debug.Log(
@@ -510,7 +520,7 @@ public class AuthPageController : MonoBehaviour
     {
         SetRegisterLoading(true);
 
-        SupabaseSignUpResponse signUpResponse = null;
+        SupabaseAuthResponse signUpResponse = null;
         string signUpError = null;
 
         yield return SupabaseAuthService.SignUp(
@@ -554,12 +564,8 @@ public class AuthPageController : MonoBehaviour
         );
 
         // Sau đăng ký, không giữ session signup.
-        PlayerPrefs.DeleteKey("user_id");
-        PlayerPrefs.DeleteKey("access_token");
-        PlayerPrefs.DeleteKey("refresh_token");
-        PlayerPrefs.DeleteKey("current_email");
-        PlayerPrefs.DeleteKey("current_role");
-        PlayerPrefs.Save();
+        SupabaseSession.Clear();
+
 
         if (loginEmailField != null)
             loginEmailField.value = email;

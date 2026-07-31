@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/UI/ShowLesson/ShowLessonPage.uss"/>
+
+    <ui:VisualElement name="show-lesson-page" class="show-lesson-page">
+        <ui:ScrollView name="lesson-scroll-view" class="lesson-scroll-view" mode="Vertical" horizontal-scroller-visibility="Hidden">
+            <ui:VisualElement class="lesson-header">
+                <ui:Button name="back-button" class="circle-button header-back-button">
+                    <ui:VisualElement class="button-icon icon-back"/>
+                </ui:Button>
+                <ui:VisualElement class="header-information">
+                    <ui:Label name="lesson-code-label" text="LESSON" class="header-code"/>
+                    <ui:Label name="class-title-label" text="Class" class="header-title"/>
+                </ui:VisualElement>
+                <ui:Button name="edit-lesson-button" class="circle-button header-edit-button">
+                    <ui:VisualElement class="button-icon icon-edit"/>
+                </ui:Button>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="lesson-content">
+                <ui:Label name="load-error-label" text="" class="load-error-label hidden"/>
+                <ui:Label name="lesson-title-label" text="Loading lesson..." class="lesson-main-title"/>
+
+                <ui:VisualElement class="lesson-status-row">
+                    <ui:VisualElement name="lesson-type-item" class="status-item">
+                        <ui:VisualElement class="small-icon icon-atom"/>
+                        <ui:Label name="lesson-type-label" text="Lesson" class="lesson-type-label"/>
+                    </ui:VisualElement>
+                    <ui:Label text="•" class="status-separator"/>
+                    <ui:VisualElement class="status-item">
+                        <ui:VisualElement class="small-icon icon-trend-up"/>
+                        <ui:Label name="lesson-status-label" text="Published" class="lesson-progress-label"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement name="video-wrapper">
+                    <ui:VisualElement name="video-section" class="video-section">
+                        <ui:VisualElement class="video-grid-background"/>
+                        <ui:VisualElement class="video-name-badge">
+                            <ui:VisualElement class="tiny-icon icon-video-white"/>
+                            <ui:Label name="video-name-label" text="Video" class="video-name-text"/>
+                        </ui:VisualElement>
+                        <ui:Button name="play-video-button" class="video-play-button">
+                            <ui:VisualElement name="play-video-icon" class="play-icon icon-play"/>
+                        </ui:Button>
+                        <ui:Label name="video-fallback-label" text="Tap play to open the YouTube lesson" class="video-fallback-label"/>
+                        <ui:VisualElement class="video-progress-track">
+                            <ui:VisualElement name="video-progress-fill" class="video-progress-fill"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="video-control-row">
+                        <ui:Label name="video-time-label" text="00:00 / --:--" class="video-time-label"/>
+                        <ui:VisualElement class="video-actions">
+                            <ui:Button name="replay-button" class="plain-icon-button"><ui:VisualElement class="control-icon icon-replay"/></ui:Button>
+                            <ui:Button name="volume-button" class="plain-icon-button"><ui:VisualElement class="control-icon icon-volume"/></ui:Button>
+                            <ui:Button name="fullscreen-button" class="plain-icon-button"><ui:VisualElement class="control-icon icon-fullscreen"/></ui:Button>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:Label name="lesson-description-label" text="" class="lesson-description"/>
+
+                <ui:Label text="LEARNING OBJECTIVES" class="section-heading"/>
+                <ui:VisualElement name="objectives-container" class="objectives-container"/>
+
+                <ui:Label text="RESOURCES" class="section-heading resource-heading"/>
+                <ui:VisualElement name="resources-container" class="resources-container">
+                    <ui:Button name="lecture-slides-button" class="resource-button">
+                        <ui:VisualElement class="resource-icon icon-download"/>
+                        <ui:Label name="lecture-slides-label" text="Lecture Slides" class="resource-button-text"/>
+                    </ui:Button>
+                    <ui:Button name="exercise-files-button" class="resource-button">
+                        <ui:VisualElement class="resource-icon icon-download"/>
+                        <ui:Label name="exercise-files-label" text="Exercises" class="resource-button-text"/>
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <ui:Label text="QUIZ" class="section-heading quiz-heading"/>
+                <ui:VisualElement name="quiz-container" class="quiz-card"/>
+                <ui:Label name="quiz-empty-label" text="No quiz available." class="empty-section-label hidden"/>
+
+                <ui:VisualElement name="interactive-model-card" class="interactive-model-card hidden">
+                    <ui:VisualElement class="interactive-grid-background"/>
+                    <ui:Label text="•  INTERACTIVE" class="interactive-badge"/>
+                    <ui:VisualElement class="model-preview-area">
+                        <ui:VisualElement class="model-icon-box"><ui:VisualElement class="model-main-icon icon-physics-white"/></ui:VisualElement>
+                        <ui:Label name="model-preview-label" text="3D Model" class="model-preview-label"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="interactive-divider"/>
+                    <ui:Label text="3D INTERACTIVE MODEL" class="interactive-small-title"/>
+                    <ui:Label name="interactive-title-label" text="3D Model" class="interactive-title"/>
+                    <ui:Label name="interactive-description-label" text="Open the interactive model for this lesson." class="interactive-description"/>
+                    <ui:Button name="launch-model-button" class="launch-model-button">
+                        <ui:VisualElement class="launch-model-icon icon-cube"/>
+                        <ui:Label text="Launch 3D Interactive Model" class="launch-model-text"/>
+                        <ui:VisualElement class="launch-model-arrow icon-chevron-right"/>
+                    </ui:Button>
+                    <ui:VisualElement class="model-mode-row">
+                        <ui:Button name="vr-mode-button" class="model-mode-button"><ui:VisualElement class="mode-icon icon-vr-white"/><ui:Label text="VR Mode" class="mode-text"/></ui:Button>
+                        <ui:Button name="ar-mode-button" class="model-mode-button"><ui:VisualElement class="mode-icon icon-camera-white"/><ui:Label text="AR Mode" class="mode-text"/></ui:Button>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="bottom-space"/>
+            </ui:VisualElement>
+        </ui:ScrollView>
+
+        <ui:Button name="ai-assistant-button" class="ai-assistant-button"><ui:VisualElement class="ai-button-icon icon-ai-sparkle-white"/></ui:Button>
+
+        <ui:VisualElement name="resource-modal-overlay" class="resource-modal-overlay hidden">
+            <ui:VisualElement class="resource-modal-card">
+                <ui:VisualElement class="resource-modal-header">
+                    <ui:Label name="resource-modal-title" text="Files" class="resource-modal-title"/>
+                    <ui:Button name="resource-modal-close" text="×" class="resource-modal-close"/>
+                </ui:VisualElement>
+                <ui:Label name="resource-modal-message" text="Choose a file to download." class="resource-modal-message"/>
+                <ui:ScrollView name="resource-file-list" class="resource-file-list" mode="Vertical" horizontal-scroller-visibility="Hidden"/>
+                <ui:Label name="download-status-label" text="" class="download-status-label"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,1219 @@
+/* =========================================================
+   FONT + TEXT COLOR GUIDE
+   Font file required:
+   Assets/UI/Fonts/PlusJakartaSans-Regular.ttf
+   Raw .ttf is loaded with -unity-font to avoid MissingAssetReference.
+
+   TEXT COLORS USED IN THIS SCENE
+   ---------------------------------------------------------
+   #0A1C44  Root/default dark navy text
+   #36507D  Header lesson code
+   #061C46  Header class title
+   #081C46  Main lesson title
+   #0C4DB5  "3D Interactive"
+   #7084A5  Status separator dot
+   #0EAA4C  "In Progress"
+   #607495  Video time
+   #5D7297  Lesson description
+   #4B638B  Section headings
+   #0D4EB5  Objective number
+   #122A52  Objective text
+   #094AB5  Resource button text
+   #657898  Inactive quiz number
+   #061C43  Quiz title
+   #6F84A7  Quiz subtitle
+   #7386A4  "Not attempted"
+   #058B3D  Completed score
+   #AACFFF  3D card small heading
+   #FFFFFF  3D card titles/buttons
+   #B2CFF9  3D card description
+   #0541AA  Launch-model button text
+   #FFD92C  Interactive badge text
+   ========================================================= */
+
+/* =========================================================
+   ROOT
+   ========================================================= */
+
+.show-lesson-page {
+        /* Global scene font: Plus Jakarta Sans */
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Regular.ttf");
+
+width: 100%;
+    height: 100%;
+    overflow: hidden;
+
+    background-color: rgb(247, 249, 253);
+
+    color: rgb(10, 28, 68);
+}
+
+.lesson-scroll-view {
+    width: 100%;
+    height: 100%;
+}
+
+.lesson-scroll-view .unity-scroll-view__horizontal-scroller {
+    display: none;
+    height: 0;
+    min-height: 0;
+    visibility: hidden;
+}
+
+.lesson-scroll-view .unity-scroll-view__vertical-scroller {
+    width: 0;
+    display: none;
+}
+
+.lesson-scroll-view .unity-scroll-view__content-container {
+    width: 100%;
+    min-width: 0;
+}
+
+
+/* =========================================================
+   ICON SOURCES
+   ========================================================= */
+
+.icon-back {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/back.png");
+}
+
+.icon-edit {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/edit.png");
+}
+
+.icon-atom {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/atom.png");
+}
+
+.icon-cube {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/cube.png");
+}
+
+.icon-trend-up {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/trend-up-green.png");
+}
+
+.icon-video-white {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/video-camera-white.png");
+}
+
+.icon-play {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/play.png");
+}
+
+.icon-replay {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/replay.png");
+}
+
+.icon-volume {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/volume.png");
+}
+
+.icon-fullscreen {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/fullscreen.png");
+}
+
+.icon-download {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/download.png");
+}
+
+.icon-chevron-right {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/chevron-right.png");
+}
+
+.icon-physics-white {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/physics-white.png");
+}
+
+.icon-vr-white {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/vr-glasses-white.png");
+}
+
+.icon-camera-white {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/camera-white.png");
+}
+
+.icon-ai-sparkle-white {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/ai-sparkle-white.png");
+}
+
+.button-icon,
+.play-icon,
+.small-icon,
+.tiny-icon,
+.control-icon,
+.resource-icon,
+.quiz-arrow,
+.model-main-icon,
+.launch-model-icon,
+.launch-model-arrow,
+.mode-icon,
+.ai-button-icon {
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.lesson-header {
+    width: auto;
+    height: 106px;
+
+    /* Chừa khoảng trống cho camera/notch và đẩy header xuống dưới. */
+    padding-top: 42px;
+    padding-right: 20px;
+    padding-bottom: 12px;
+    padding-left: 20px;
+
+    flex-direction: row;
+    align-items: center;
+
+    background-color: rgb(255, 255, 255);
+
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(229, 235, 245);
+}
+
+.circle-button {
+    width: 40px;
+    height: 40px;
+
+    min-width: 40px;
+    min-height: 40px;
+
+    padding: 0;
+
+    justify-content: center;
+    align-items: center;
+
+    border-width: 0;
+    border-radius: 20px;
+
+    background-color: rgb(241, 246, 255);
+}
+
+.circle-button:hover {
+    background-color: rgb(226, 236, 253);
+}
+
+.button-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.header-information {
+    flex-grow: 1;
+    margin-left: 13px;
+    margin-right: 10px;
+
+    justify-content: center;
+}
+
+.header-code {
+    font-size: 9px;
+    color: rgb(54, 80, 125);
+
+    -unity-font-style: bold;
+    letter-spacing: 0.4px;
+
+    margin-bottom: 2px;
+}
+
+.header-title {
+    font-size: 13px;
+
+    color: rgb(6, 28, 70);
+    -unity-font-style: bold;
+}
+
+
+/* =========================================================
+   MAIN CONTENT
+   ========================================================= */
+
+.lesson-content {
+    width: auto;
+    min-width: 0;
+
+    margin-right: 20px;
+    margin-left: 20px;
+    padding-top: 20px;
+}
+
+.lesson-main-title {
+    font-size: 22px;
+    color: rgb(8, 28, 70);
+
+    -unity-font-style: bold;
+
+    margin-bottom: 7px;
+}
+
+.lesson-status-row {
+    flex-direction: row;
+    align-items: center;
+
+    margin-bottom: 14px;
+}
+
+.status-item {
+    flex-direction: row;
+    align-items: center;
+}
+
+.small-icon {
+    width: 13px;
+    height: 13px;
+
+    margin-right: 5px;
+}
+
+.lesson-type-label {
+    font-size: 12px;
+    color: rgb(12, 77, 181);
+
+    -unity-font-style: bold;
+}
+
+.status-separator {
+    margin-left: 9px;
+    margin-right: 9px;
+
+    color: rgb(112, 132, 165);
+}
+
+.lesson-progress-label {
+    font-size: 12px;
+    color: rgb(14, 170, 76);
+
+    -unity-font-style: bold;
+}
+
+
+/* =========================================================
+   VIDEO
+   ========================================================= */
+
+.video-section {
+    position: relative;
+
+    width: 100%;
+    height: 205px;
+
+    overflow: hidden;
+
+    border-radius: 18px;
+
+    background-color: rgb(16, 62, 148);
+}
+
+.video-grid-background {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+
+    background-image:
+        url("project://database/Assets/UI/Images/video-grid-background.png");
+
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-and-crop;
+
+    opacity: 0.55;
+}
+
+.video-name-badge {
+    position: absolute;
+
+    left: 13px;
+    top: 13px;
+
+    height: 25px;
+
+    padding-left: 10px;
+    padding-right: 11px;
+
+    flex-direction: row;
+    align-items: center;
+
+    border-radius: 13px;
+
+    background-color: rgba(83, 133, 220, 0.72);
+}
+
+.tiny-icon {
+    width: 11px;
+    height: 11px;
+
+    margin-right: 5px;
+}
+
+.video-name-text {
+    font-size: 9px;
+    color: white;
+
+    -unity-font-style: bold;
+}
+
+.video-play-button {
+    position: absolute;
+
+    width: 58px;
+    height: 58px;
+
+    left: 50%;
+    top: 50%;
+
+    translate: -29px -29px;
+
+    padding: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    border-width: 0;
+    border-radius: 0;
+
+    background-color: rgba(255, 255, 255, 0);
+}
+
+.video-play-button:hover {
+    background-color: rgba(255, 255, 255, 0);
+}
+
+.play-icon {
+    width: 46px;
+    height: 46px;
+
+    margin-left: 2px;
+}
+
+.video-progress-track {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    height: 4px;
+
+    background-color: rgb(212, 220, 235);
+}
+
+.video-progress-fill {
+    width: 38%;
+    height: 100%;
+
+    background-color: rgb(255, 196, 58);
+}
+
+.video-control-row {
+    width: 100%;
+    height: 30px;
+
+    flex-direction: row;
+    align-items: center;
+
+    margin-bottom: 4px;
+}
+
+.video-time-label {
+    flex-grow: 1;
+
+    font-size: 11px;
+    color: rgb(96, 116, 149);
+}
+
+.video-actions {
+    flex-direction: row;
+    align-items: center;
+}
+
+.plain-icon-button {
+    width: 29px;
+    height: 29px;
+
+    min-width: 29px;
+    min-height: 29px;
+
+    padding: 0;
+    margin-left: 2px;
+
+    justify-content: center;
+    align-items: center;
+
+    border-width: 0;
+    background-color: rgba(255, 255, 255, 0);
+}
+
+.control-icon {
+    width: 16px;
+    height: 16px;
+}
+
+
+/* =========================================================
+   DESCRIPTION
+   ========================================================= */
+
+.lesson-description {
+    white-space: normal;
+
+    font-size: 14px;
+    line-height: 20px;
+
+    color: rgb(93, 114, 151);
+
+    margin-top: 0;
+    margin-bottom: 19px;
+}
+
+.section-heading {
+    font-size: 12px;
+
+    color: rgb(75, 99, 139);
+    -unity-font-style: bold;
+
+    letter-spacing: 0.5px;
+
+    margin-bottom: 10px;
+}
+
+
+/* =========================================================
+   OBJECTIVES
+   ========================================================= */
+
+.objectives-container {
+    width: 100%;
+}
+
+.objective-row {
+    width: 100%;
+
+    flex-direction: row;
+    align-items: flex-start;
+
+    margin-bottom: 10px;
+}
+
+.objective-number {
+    width: 22px;
+    height: 22px;
+
+    min-width: 22px;
+
+    justify-content: center;
+    align-items: center;
+
+    -unity-text-align: middle-center;
+
+    border-radius: 11px;
+
+    font-size: 11px;
+    color: rgb(13, 78, 181);
+
+    background-color: rgb(225, 236, 255);
+
+    margin-right: 10px;
+}
+
+.objective-text {
+    flex-grow: 1;
+
+    white-space: normal;
+
+    font-size: 14px;
+    line-height: 18px;
+
+    color: rgb(18, 42, 82);
+}
+
+.resource-heading {
+    margin-top: 8px;
+}
+
+
+/* =========================================================
+   RESOURCES
+   ========================================================= */
+
+.resources-container {
+    width: 100%;
+
+    flex-direction: row;
+    flex-wrap: wrap;
+
+    margin-bottom: 17px;
+}
+
+.resource-button {
+    height: 36px;
+
+    margin-right: 8px;
+    margin-bottom: 8px;
+
+    padding-left: 12px;
+    padding-right: 12px;
+
+    flex-direction: row;
+    align-items: center;
+
+    border-width: 1px;
+    border-color: rgb(195, 210, 235);
+    border-radius: 18px;
+
+    background-color: rgb(247, 250, 255);
+}
+
+.resource-button:hover {
+    background-color: rgb(231, 239, 253);
+}
+
+.resource-icon {
+    width: 14px;
+    height: 14px;
+
+    margin-right: 6px;
+}
+
+.resource-button-text {
+    font-size: 12px;
+    color: rgb(9, 74, 181);
+
+    -unity-font-style: bold;
+}
+
+
+/* =========================================================
+   QUIZ
+   ========================================================= */
+
+.quiz-heading {
+    margin-top: 3px;
+}
+
+.quiz-card {
+    width: 100%;
+
+    margin-bottom: 22px;
+
+    overflow: hidden;
+
+    border-width: 1px;
+    border-color: rgb(219, 226, 238);
+    border-radius: 17px;
+
+    background-color: white;
+}
+
+.quiz-row {
+    width: 100%;
+    min-height: 96px;
+
+    padding-top: 13px;
+    padding-right: 12px;
+    padding-bottom: 13px;
+    padding-left: 14px;
+
+    flex-direction: row;
+    align-items: center;
+
+    border-width: 0;
+    border-radius: 0;
+
+    background-color: white;
+
+    -unity-text-align: middle-left;
+}
+
+.quiz-row:hover {
+    background-color: rgb(248, 250, 254);
+}
+
+.quiz-number {
+    width: 42px;
+    height: 42px;
+
+    min-width: 42px;
+
+    margin-right: 7px;
+
+    justify-content: center;
+    align-items: center;
+
+    -unity-text-align: middle-center;
+
+    border-radius: 21px;
+
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.quiz-number-inactive {
+    color: rgb(101, 120, 152);
+    background-color: rgb(242, 246, 251);
+}
+
+.quiz-number-active {
+    color: white;
+    background-color: rgb(6, 69, 180);
+}
+
+.quiz-information {
+    flex-grow: 1;
+
+    padding-right: 3px;
+
+    align-items: flex-start;
+}
+
+.quiz-title {
+    font-size: 14px;
+
+    color: rgb(8, 28, 67);
+    -unity-font-style: bold;
+
+    margin-bottom: 3px;
+}
+
+.quiz-subtitle {
+    max-width: 130px;
+
+    white-space: normal;
+
+    font-size: 12px;
+    line-height: 15px;
+
+    color: rgb(111, 132, 167);
+}
+
+.quiz-status {
+    min-height: 25px;
+
+    padding-left: 10px;
+    padding-right: 10px;
+
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+
+    border-radius: 13px;
+
+    margin-right: 8px;
+}
+
+.quiz-status-dot {
+    width: 7px;
+    height: 7px;
+
+    min-width: 7px;
+    min-height: 7px;
+
+    margin-top: 1px;
+    margin-right: 3px;
+
+    border-radius: 4px;
+}
+
+.quiz-status-dot-muted {
+    background-color: rgb(150, 166, 191);
+}
+
+.quiz-status-dot-success {
+    background-color: rgb(5, 139, 61);
+}
+
+.quiz-status-text {
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+.quiz-status-not-attempted {
+    color: rgb(115, 134, 164);
+    background-color: rgb(240, 244, 249);
+}
+
+.quiz-status-completed {
+    color: rgb(5, 139, 61);
+
+    border-width: 1px;
+    border-color: rgb(140, 230, 176);
+
+    background-color: rgb(217, 251, 229);
+}
+
+.quiz-arrow {
+    width: 14px;
+    height: 14px;
+}
+
+.quiz-divider {
+    height: 1px;
+
+    margin-left: 56px;
+
+    background-color: rgb(234, 238, 245);
+}
+
+
+/* =========================================================
+   INTERACTIVE MODEL
+   ========================================================= */
+
+.interactive-model-card {
+    position: relative;
+
+    width: 100%;
+    min-height: 460px;
+
+    padding-top: 18px;
+    padding-right: 20px;
+    padding-bottom: 21px;
+    padding-left: 20px;
+
+    overflow: hidden;
+
+    border-radius: 22px;
+
+    background-color: rgb(10, 80, 190);
+}
+
+.interactive-grid-background {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+
+    background-image:
+        url("project://database/Assets/UI/Images/interactive-grid-background.png");
+
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-and-crop;
+
+    opacity: 0.35;
+}
+
+.interactive-badge {
+    position: absolute;
+
+    right: 13px;
+    top: 13px;
+
+    height: 25px;
+
+    padding-left: 10px;
+    padding-right: 10px;
+
+    justify-content: center;
+
+    border-radius: 13px;
+
+    background-color: rgba(155, 132, 56, 0.88);
+
+    color: rgb(255, 217, 44);
+    font-size: 10px;
+
+    -unity-font-style: bold;
+}
+
+.model-preview-area {
+    height: 190px;
+
+    justify-content: center;
+    align-items: center;
+}
+
+.model-icon-box {
+    width: 85px;
+    height: 85px;
+
+    justify-content: center;
+    align-items: center;
+
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.20);
+    border-radius: 17px;
+
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.model-main-icon {
+    width: 48px;
+    height: 48px;
+}
+
+.model-preview-label {
+    height: 24px;
+    min-height: 24px;
+
+    margin-top: 9px;
+
+    padding-left: 13px;
+    padding-right: 13px;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    justify-content: center;
+    align-items: center;
+
+    -unity-text-align: middle-center;
+
+    border-radius: 12px;
+
+    background-color: rgba(255, 255, 255, 0.13);
+
+    font-size: 9px;
+    color: white;
+}
+
+.interactive-divider {
+    width: auto;
+    height: 1px;
+
+    align-self: stretch;
+
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: 10px;
+
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.interactive-small-title {
+    width: auto;
+    align-self: stretch;
+
+    -unity-text-align: upper-left;
+    color: rgb(170, 206, 255);
+    font-size: 11px;
+
+    -unity-font-style: bold;
+
+    margin-bottom: 2px;
+}
+
+.interactive-title {
+    width: auto;
+    align-self: stretch;
+
+    -unity-text-align: upper-left;
+    color: white;
+    font-size: 19px;
+
+    -unity-font-style: bold;
+
+    margin-bottom: 4px;
+}
+
+.interactive-description {
+    width: auto;
+    align-self: stretch;
+
+    -unity-text-align: upper-left;
+    white-space: normal;
+
+    color: rgb(178, 207, 249);
+    font-size: 12px;
+    line-height: 15px;
+
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+.launch-model-button {
+    width: auto;
+    height: 55px;
+
+    align-self: stretch;
+
+    margin-left: 0;
+    margin-right: 0;
+
+    padding-left: 16px;
+    padding-right: 16px;
+
+    flex-direction: row;
+    align-items: center;
+
+    border-width: 0;
+    border-radius: 16px;
+
+    background-color: white;
+}
+
+.launch-model-button:hover {
+    background-color: rgb(237, 243, 255);
+}
+
+.launch-model-icon {
+    width: 19px;
+    height: 19px;
+
+    margin-right: 12px;
+}
+
+.launch-model-text {
+    flex-grow: 1;
+
+    font-size: 13px;
+
+    color: rgb(5, 65, 170);
+    -unity-font-style: bold;
+
+    -unity-text-align: middle-left;
+}
+
+.launch-model-arrow {
+    width: 14px;
+    height: 14px;
+}
+
+.model-mode-row {
+    width: auto;
+
+    align-self: stretch;
+    flex-direction: row;
+
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 11px;
+}
+
+.model-mode-button {
+    flex-grow: 1;
+    height: 40px;
+
+    margin-right: 5px;
+    margin-left: 5px;
+
+    padding: 0;
+
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.24);
+    border-radius: 20px;
+
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.model-mode-button:hover {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+.mode-icon {
+    width: 17px;
+    height: 17px;
+
+    margin-right: 7px;
+}
+
+.mode-text {
+    color: white;
+    font-size: 11px;
+
+    -unity-font-style: bold;
+}
+
+.bottom-space {
+    height: 95px;
+}
+
+
+/* =========================================================
+   FLOATING AI BUTTON
+   ========================================================= */
+
+.ai-assistant-button {
+    position: absolute;
+
+    right: 20px;
+    bottom: 18px;
+
+    width: 58px;
+    height: 58px;
+
+    min-width: 58px;
+    min-height: 58px;
+
+    padding: 0;
+
+    justify-content: center;
+    align-items: center;
+
+    border-width: 0;
+    border-radius: 17px;
+
+    background-color: rgb(255, 159, 17);
+}
+
+.ai-assistant-button:hover {
+    background-color: rgb(237, 140, 0);
+}
+
+.ai-button-icon {
+    width: 26px;
+    height: 26px;
+}
+
+
+/* =========================================================
+   SMALL MOBILE SCREENS
+   ========================================================= */
+
+@media (max-width: 370px) {
+
+    .lesson-content {
+        margin-right: 15px;
+        margin-left: 15px;
+    }
+
+    .lesson-header {
+        padding-right: 15px;
+        padding-left: 15px;
+    }
+
+    .quiz-subtitle {
+        max-width: 108px;
+    }
+
+    .quiz-status {
+        padding-left: 7px;
+        padding-right: 7px;
+    }
+}
+/* =========================================================
+   DYNAMIC DATA + RESOURCE MODAL
+   ========================================================= */
+.hidden { display: none; }
+.load-error-label {
+    margin-bottom: 10px;
+    padding: 9px 11px;
+    border-radius: 9px;
+    background-color: rgba(220, 38, 38, 0.10);
+    color: rgb(185, 28, 28);
+    font-size: 11px;
+    white-space: normal;
+}
+.video-fallback-label {
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: 24px;
+    color: rgba(255,255,255,0.75);
+    font-size: 9px;
+    -unity-text-align: middle-center;
+}
+.empty-section-label {
+    margin-top: 8px;
+    margin-bottom: 16px;
+    color: rgb(111, 130, 160);
+    font-size: 11px;
+}
+.resource-modal-overlay {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    justify-content: center;
+    align-items: center;
+    padding-left: 22px;
+    padding-right: 22px;
+    background-color: rgba(7, 18, 38, 0.55);
+}
+.resource-modal-card {
+    width: 100%;
+    max-height: 62%;
+    padding: 16px;
+    border-radius: 16px;
+    background-color: rgb(255,255,255);
+}
+.resource-modal-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+.resource-modal-title {
+    color: rgb(20, 42, 82);
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+.resource-modal-close {
+    width: 30px;
+    height: 30px;
+    border-width: 0;
+    border-radius: 15px;
+    background-color: rgb(242,246,252);
+    color: rgb(54,76,112);
+    font-size: 18px;
+}
+.resource-modal-message {
+    margin-bottom: 10px;
+    color: rgb(102,120,150);
+    font-size: 10px;
+}
+.resource-file-list {
+    max-height: 300px;
+}
+.resource-file-list .unity-scroll-view__vertical-scroller { display: none; }
+.resource-file-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 10px;
+    border-width: 1px;
+    border-color: rgb(220,229,243);
+    border-radius: 11px;
+    background-color: rgb(249,251,255);
+}
+.resource-file-info { flex-grow: 1; flex-shrink: 1; margin-right: 8px; }
+.resource-file-name { color: rgb(24,49,91); font-size: 11px; -unity-font-style: bold; white-space: normal; }
+.resource-file-size { margin-top: 2px; color: rgb(120,136,163); font-size: 9px; }
+.resource-download-button {
+    min-width: 72px;
+    height: 32px;
+    border-width: 0;
+    border-radius: 9px;
+    background-color: rgb(32,96,214);
+    color: white;
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+.download-status-label {
+    min-height: 16px;
+    margin-top: 6px;
+    color: rgb(32,96,214);
+    font-size: 10px;
+    white-space: normal;
+}
+.quiz-row { width: 100%; }

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+
+    <Style
+        src="project://database/Assets/UI/Components/Header/GeneralHeader.uss" />
+
+    <ui:VisualElement
+        name="general-header"
+        class="general-header general-header-home">
+
+        <!-- =====================================================
+             HOME HEADER
+             ===================================================== -->
+
+        <ui:VisualElement
+            name="home-header-layout"
+            class="home-header-layout">
+
+            <ui:VisualElement class="home-user-container">
+
+                <ui:Label
+                    name="header-welcome-label"
+                    text="Hello, Student"
+                    class="header-welcome-label" />
+
+                <ui:Label
+                    name="header-user-name-label"
+                    text="Nguyễn Văn A"
+                    class="header-user-name-label" />
+
+            </ui:VisualElement>
+
+            <ui:VisualElement class="home-header-actions">
+
+                <ui:Button
+                    name="header-notification-button"
+                    class="header-circle-button notification-header-button">
+
+                    <ui:VisualElement
+                        class="header-action-icon icon-header-notification" />
+
+                    <ui:VisualElement
+                        name="header-notification-dot"
+                        class="header-notification-dot" />
+
+                </ui:Button>
+
+                <ui:Button
+                    name="header-profile-button"
+                    class="header-circle-button profile-header-button">
+
+                    <ui:VisualElement
+                        class="header-action-icon icon-header-profile" />
+
+                </ui:Button>
+
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <!-- =====================================================
+             STANDARD PAGE HEADER
+             ===================================================== -->
+
+        <ui:VisualElement
+            name="page-header-layout"
+            class="page-header-layout">
+
+            <ui:Button
+                name="header-back-button"
+                class="header-back-button">
+
+                <ui:VisualElement
+                    class="header-back-icon icon-header-back" />
+
+            </ui:Button>
+
+            <ui:VisualElement class="page-header-information">
+
+                <ui:Label
+                    name="header-page-title-label"
+                    text="Page title"
+                    class="header-page-title-label" />
+
+                <ui:VisualElement
+                    name="header-subtitle-container"
+                    class="header-subtitle-container">
+
+                    <ui:VisualElement
+                        name="header-subtitle-icon"
+                        class="header-subtitle-icon icon-header-clock" />
+
+                    <ui:Label
+                        name="header-page-subtitle-label"
+                        text="Subtitle"
+                        class="header-page-subtitle-label" />
+
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+            <ui:Button
+                name="header-right-icon-button"
+                class="header-right-icon-button">
+
+                <ui:VisualElement
+                    name="header-right-icon"
+                    class="header-right-icon" />
+
+            </ui:Button>
+
+            <ui:Button
+                name="header-right-text-button"
+                class="header-right-text-button">
+
+                <ui:VisualElement class="header-right-text-content">
+
+                    <ui:Label
+                        name="header-right-text-prefix"
+                        text="+"
+                        class="header-right-text-prefix" />
+
+                    <ui:Label
+                        name="header-right-text-label"
+                        text="Action"
+                        class="header-right-text-label" />
+
+                </ui:VisualElement>
+
+            </ui:Button>
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+
+</ui:UXML>

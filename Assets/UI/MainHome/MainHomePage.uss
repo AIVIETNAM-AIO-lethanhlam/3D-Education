@@ -36,13 +36,6 @@
    ICON SOURCES
    ========================================================= */
 
-.icon-notification {
-    background-image: url("project://database/Assets/UI/Images/Icons/notification.png");
-}
-
-.icon-profile {
-    background-image: url("project://database/Assets/UI/Images/Icons/profile-white.png");
-}
 
 .icon-search {
     background-image: url("project://database/Assets/UI/Images/Icons/search.png");
@@ -79,127 +72,35 @@
     background-image: url("project://database/Assets/UI/Images/Icons/book.png");
 }
 
-.icon-nav-home {
-    background-image: url("project://database/Assets/UI/Images/Icons/home.png");
-}
 
-.icon-nav-classes {
-    background-image: url("project://database/Assets/UI/Images/Icons/category-all.png");
-}
-
-.icon-nav-ai {
-    background-image: url("project://database/Assets/UI/Images/Icons/ai-sparkle.png");
-}
-
-.icon-nav-settings {
-    background-image: url("project://database/Assets/UI/Images/Icons/settings.png");
-}
-
-.header-icon,
 .search-icon,
 .banner-book-icon,
 .category-icon,
-.course-book-icon,
-.nav-icon {
+.course-book-icon {
     background-repeat: no-repeat;
     background-position: center;
     -unity-background-scale-mode: scale-to-fit;
 }
 
+
 /* =========================================================
-   HEADER
+   HOME SEARCH SECTION
+   Header được tách thành GeneralHeader component.
+   Search bar vẫn là nội dung riêng của Main Home.
    ========================================================= */
 
-.home-header {
-    padding-top: 42px;
+.home-search-section {
+    flex-shrink: 0;
+
+    padding-top: 0;
     padding-right: 20px;
     padding-bottom: 20px;
     padding-left: 20px;
-    background-color: white;
+
+    background-color: rgb(255, 255, 255);
+
     border-bottom-width: 1px;
     border-bottom-color: rgb(224, 230, 241);
-}
-
-.header-top-row {
-    min-height: 61px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 17px;
-}
-
-.welcome-container {
-    flex-grow: 1;
-    justify-content: center;
-}
-
-.welcome-role-label {
-    margin-bottom: 1px;
-    font-size: 15px;
-    color: rgb(72, 86, 119);
-    -unity-text-align: middle-left;
-}
-
-.user-name-label {
-    font-size: 25px;
-    -unity-font-style: bold;
-    color: rgb(13, 31, 70);
-    -unity-text-align: middle-left;
-}
-
-.header-actions {
-    flex-direction: row;
-    align-items: center;
-}
-
-.header-icon-button {
-    position: relative;
-    width: 45px;
-    height: 45px;
-    flex-shrink: 0;
-    padding: 0;
-    align-items: center;
-    justify-content: center;
-    border-width: 0;
-    border-radius: 23px;
-}
-
-.notification-button {
-    margin-right: 10px;
-    background-color: rgb(241, 245, 253);
-}
-
-.profile-button {
-    background-color: rgb(0, 70, 180);
-}
-
-.header-icon {
-    width: 22px;
-    height: 22px;
-}
-
-.notification-button .header-icon {
-    -unity-background-image-tint-color: rgb(26, 48, 92);
-}
-
-.profile-button .header-icon,
-.profile-button .icon-profile {
-    /* Dùng trực tiếp icon PNG màu trắng vì tint không đổi được pixel đen thành trắng */
-    background-image: url("project://database/Assets/UI/Images/Icons/profile-white.png");
-    -unity-background-image-tint-color: rgb(255, 255, 255);
-    opacity: 1;
-}
-
-.notification-dot {
-    position: absolute;
-    width: 9px;
-    height: 9px;
-    top: 4px;
-    right: 4px;
-    background-color: rgb(255, 78, 87);
-    border-width: 2px;
-    border-color: white;
-    border-radius: 5px;
 }
 
 /* =========================================================
@@ -760,72 +661,108 @@
     height: 34px;
 }
 
-/* =========================================================
-   BOTTOM NAVIGATION
-   ========================================================= */
-
-.bottom-navigation {
-    height: 86px;
-    flex-shrink: 0;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-around;
-    padding-top: 6px;
-    padding-bottom: 5px;
-    background-color: white;
-    border-top-width: 1px;
-    border-top-color: rgb(216, 225, 240);
-}
-
-.nav-button {
-    width: 25%;
-    height: 75px;
-    padding: 0;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(255, 255, 255, 0);
-    border-width: 0;
-}
-
-.nav-icon {
-    width: 24px;
-    height: 24px;
-    margin-bottom: 6px;
-    -unity-background-image-tint-color: rgb(91, 107, 143);
-}
-
-.nav-label {
-    font-size: 12px;
-    color: rgb(70, 87, 123);
-}
-
-.nav-button-active .nav-icon {
-    -unity-background-image-tint-color: rgb(0, 70, 180);
-}
-
-.nav-button-active .nav-label {
-    -unity-font-style: bold;
-    color: rgb(0, 70, 180);
-}
 
 /* =========================================================
    INTERACTION
    ========================================================= */
 
-.header-icon-button:hover,
 .category-card:hover,
 .course-card:hover,
-.nav-button:hover,
 .see-all-button:hover,
 .my-classes-button:hover {
     opacity: 0.88;
 }
 
-.header-icon-button:active,
 .category-card:active,
 .course-card:active,
-.nav-button:active,
 .see-all-button:active,
 .my-classes-button:active {
+    opacity: 0.72;
+}
+
+/* =========================================================
+   RECENT CATEGORY FILTER + EMPTY STATE
+   ========================================================= */
+
+.recent-filter-label {
+    display: none;
+    margin-top: -9px;
+    margin-right: 20px;
+    margin-bottom: 12px;
+    margin-left: 20px;
+    font-size: 13px;
+    color: rgb(92, 106, 140);
+    -unity-text-align: middle-left;
+}
+
+.recent-empty-state {
+    display: none;
+    min-height: 285px;
+    margin-right: 20px;
+    margin-left: 20px;
+    padding-top: 38px;
+    padding-right: 24px;
+    padding-bottom: 38px;
+    padding-left: 24px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(255, 255, 255);
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 18px;
+}
+
+.empty-state-icon-container {
+    width: 70px;
+    height: 70px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    background-color: rgb(237, 243, 254);
+    border-radius: 22px;
+}
+
+.empty-state-book-icon {
+    width: 34px;
+    height: 34px;
+    background-image: url("project://database/Assets/UI/Images/Icons/book-blue.png");
+    -unity-background-image-tint-color: rgb(82, 105, 151);
+}
+
+.empty-state-title {
+    margin-bottom: 10px;
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: rgb(18, 35, 75);
+    -unity-text-align: middle-center;
+}
+
+.empty-state-description {
+    max-width: 310px;
+    margin-bottom: 22px;
+    font-size: 14px;
+    color: rgb(92, 106, 140);
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.empty-state-action-button {
+    min-width: 145px;
+    height: 46px;
+    padding-right: 24px;
+    padding-left: 24px;
+    background-color: rgb(5, 82, 198);
+    border-width: 0;
+    border-radius: 23px;
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: rgb(255, 255, 255);
+}
+
+.empty-state-action-button:hover {
+    opacity: 0.88;
+}
+
+.empty-state-action-button:active {
     opacity: 0.72;
 }

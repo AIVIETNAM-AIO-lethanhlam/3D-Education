@@ -230,7 +230,7 @@
                             name="register-password-field"
                             class="auth-input"
                             password="true"
-                            mask-character="●"
+                            mask-character="•"
                             placeholder-text="Password"/>
 
                         <ui:Button

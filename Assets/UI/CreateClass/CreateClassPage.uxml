@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/UI/CreateClass/CreateClassPage.uss" />
+
+    <ui:VisualElement name="create-class-page" class="create-class-page">
+        <ui:VisualElement class="wizard-header">
+            <ui:VisualElement class="header-main-row">
+                <ui:Button name="back-button" class="header-back-button">
+                    <ui:VisualElement class="back-icon" />
+                </ui:Button>
+
+                <ui:VisualElement class="header-title-group">
+                    <ui:Label name="step-label" text="Step 1 of 3" class="step-label" />
+                    <ui:Label name="page-title-label" text="Basic Info" class="page-title-label" />
+                </ui:VisualElement>
+
+                <ui:Button name="cancel-button" text="Cancel" class="cancel-button" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="progress-row">
+                <ui:VisualElement name="progress-step-1" class="progress-segment progress-segment-active" />
+                <ui:VisualElement name="progress-step-2" class="progress-segment progress-segment-middle" />
+                <ui:VisualElement name="progress-step-3" class="progress-segment progress-segment-end" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="body-container">
+            <!-- STEP 1 -->
+            <ui:ScrollView name="basic-info-step" class="step-panel clean-scroll" mode="Vertical">
+                <ui:VisualElement class="form-content">
+                    <ui:Label text="COURSE CODE" class="form-label" />
+                    <ui:TextField name="course-code-field" class="form-input" placeholder-text="e.g. CS101, EE301..." />
+
+                    <ui:Label text="COURSE NAME" class="form-label form-label-spacing" />
+                    <ui:TextField name="course-name-field" class="form-input" placeholder-text="e.g. Introduction to Circuits" />
+
+                    <ui:Label text="VISIBILITY" class="form-label form-label-spacing" />
+
+                    <ui:VisualElement name="visibility-dropdown-root" class="custom-visibility-dropdown">
+                        <ui:Button name="visibility-dropdown-button" class="custom-visibility-button">
+                            <ui:Label name="visibility-selected-label"
+                                      text="Select visibility..."
+                                      class="custom-visibility-selected-label" />
+                            <ui:VisualElement name="visibility-arrow"
+                                              class="custom-visibility-arrow" />
+                        </ui:Button>
+
+                        <ui:VisualElement name="visibility-options-panel"
+                                          class="custom-visibility-options hidden">
+                            <ui:Button name="visibility-public-button"
+                                       class="custom-visibility-option">
+                                <ui:VisualElement class="custom-visibility-option-icon visibility-public-icon" />
+                                <ui:VisualElement class="custom-visibility-option-text-group">
+                                    <ui:Label text="Public" class="custom-visibility-option-title" />
+                                    <ui:Label text="Anyone can discover and join this class"
+                                              class="custom-visibility-option-description" />
+                                </ui:VisualElement>
+                            </ui:Button>
+
+                            <ui:VisualElement class="custom-visibility-divider" />
+
+                            <ui:Button name="visibility-private-button"
+                                       class="custom-visibility-option">
+                                <ui:VisualElement class="custom-visibility-option-icon visibility-private-icon" />
+                                <ui:VisualElement class="custom-visibility-option-text-group">
+                                    <ui:Label text="Private" class="custom-visibility-option-title" />
+                                    <ui:Label text="Only invited students can access this class"
+                                              class="custom-visibility-option-description" />
+                                </ui:VisualElement>
+                            </ui:Button>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:Label text="CATEGORY" class="form-label form-label-spacing" />
+
+                    <ui:VisualElement name="category-dropdown-root"
+                                      class="custom-visibility-dropdown">
+                        <ui:Button name="category-dropdown-button"
+                                   class="custom-visibility-button">
+                            <ui:Label name="category-selected-label"
+                                      text="Select category..."
+                                      class="custom-visibility-selected-label" />
+                            <ui:VisualElement name="category-arrow"
+                                              class="custom-visibility-arrow" />
+                        </ui:Button>
+
+                        <ui:VisualElement name="category-options-panel"
+                                          class="custom-visibility-options category-options-panel hidden">
+                            <ui:Label name="category-loading-label"
+                                      text="Loading categories..."
+                                      class="category-state-label" />
+                            <ui:ScrollView name="category-options-scroll"
+                                           mode="Vertical"
+                                           vertical-scroller-visibility="Auto"
+                                           horizontal-scroller-visibility="Hidden"
+                                           class="category-options-scroll">
+                                <ui:VisualElement name="category-options-container"
+                                                  class="category-options-container" />
+                            </ui:ScrollView>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:Label name="basic-info-error-label" text="" class="validation-message" />
+                </ui:VisualElement>
+            </ui:ScrollView>
+
+            <!-- STEP 2 -->
+            <ui:ScrollView name="branding-step" class="step-panel clean-scroll hidden" mode="Vertical">
+                <ui:VisualElement class="form-content branding-content">
+                    <ui:Label text="COVER IMAGE" class="form-label" />
+
+                    <ui:Button name="upload-cover-button" class="upload-cover-button">
+                        <ui:VisualElement class="upload-content">
+                            <ui:Label text="⇧" class="upload-icon-text" />
+                            <ui:Label text="Upload Cover Image" class="upload-title" />
+                            <ui:Label text="PNG, JPG or SVG · max 5MB" class="upload-description" />
+                        </ui:VisualElement>
+                    </ui:Button>
+
+                    <ui:VisualElement name="selected-cover-preview" class="selected-cover-preview hidden">
+                        <ui:VisualElement name="selected-cover-image" class="selected-cover-image" />
+                        <ui:Button name="remove-cover-button" text="Remove" class="remove-cover-button" />
+                    </ui:VisualElement>
+
+                    <ui:Label text="OR CHOOSE A TEMPLATE" class="form-label template-heading" />
+
+                    <ui:ScrollView
+                        name="template-scroll-view"
+                        class="template-scroll-view"
+                        mode="Horizontal"
+                        horizontal-scroller-visibility="Hidden"
+                        vertical-scroller-visibility="Hidden">
+
+                        <ui:VisualElement class="template-row">
+                            <ui:Button name="template-blue-button" class="template-card template-blue" />
+                            <ui:Button name="template-dark-button" class="template-card template-dark" />
+                            <ui:Button name="template-purple-button" class="template-card template-purple" />
+                            <ui:Button name="template-red-button" class="template-card template-red template-card-end" />
+                        </ui:VisualElement>
+                    </ui:ScrollView>
+
+                    <ui:VisualElement class="template-custom-scrollbar">
+                        <ui:Button name="template-scroll-left-button" class="template-scroll-arrow template-scroll-arrow-left" />
+
+                        <ui:VisualElement name="template-scroll-track" class="template-scroll-track">
+                            <ui:VisualElement name="template-scroll-thumb" class="template-scroll-thumb" />
+                        </ui:VisualElement>
+
+                        <ui:Button name="template-scroll-right-button" class="template-scroll-arrow template-scroll-arrow-right" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="branding-preview-section" class="branding-preview-section hidden">
+                        <ui:Label text="PREVIEW" class="form-label preview-heading" />
+
+                        <ui:VisualElement class="brand-preview-card">
+                            <ui:VisualElement name="review-cover-image" class="brand-preview-background" />
+                            <ui:VisualElement class="brand-preview-overlay" />
+
+                            <ui:VisualElement class="brand-preview-text">
+                                <ui:Label name="review-course-name" text="" class="brand-preview-name" />
+
+                                <ui:VisualElement class="brand-preview-meta-row">
+                                    <ui:Label name="review-course-code" text="" class="brand-preview-meta" />
+                                    <ui:Label text=" · " class="brand-preview-meta brand-preview-separator" />
+                                    <ui:Label name="review-visibility" text="" class="brand-preview-meta" />
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:Label name="branding-error-label" text="" class="validation-message" />
+                </ui:VisualElement>
+            </ui:ScrollView>
+
+            <!-- STEP 3 -->
+            <ui:ScrollView name="review-step" class="step-panel clean-scroll hidden" mode="Vertical">
+                <ui:VisualElement class="form-content overview-content">
+
+                    <ui:Label text="COURSE DESCRIPTION" class="form-label" />
+
+                    <ui:Label
+                        text="Describe what students will learn, course structure, and any prerequisites."
+                        class="course-description-help" />
+
+                    <ui:VisualElement class="description-field-wrapper">
+                        <ui:TextField
+                            name="course-description-field"
+                            class="course-description-field"
+                            multiline="true"
+                            placeholder-text="This course introduces students to the fundamentals of..." />
+
+                        <ui:Button
+                            name="voice-input-button"
+                            class="voice-input-button">
+                            <ui:VisualElement class="voice-input-icon" />
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="class-summary-card">
+                        <ui:Label text="CLASS SUMMARY" class="class-summary-title" />
+
+                        <ui:VisualElement class="summary-row">
+                            <ui:VisualElement class="summary-icon summary-course-icon" />
+                            <ui:VisualElement class="summary-text-group">
+                                <ui:Label text="Course code" class="summary-caption" />
+                                <ui:Label
+                                    name="summary-course-code-label"
+                                    text="No code set"
+                                    class="summary-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="summary-row">
+                            <ui:VisualElement class="summary-icon summary-book-icon" />
+                            <ui:VisualElement class="summary-text-group">
+                                <ui:Label text="Course name" class="summary-caption" />
+                                <ui:Label
+                                    name="summary-course-name-label"
+                                    text="No name set"
+                                    class="summary-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="summary-row summary-row-last">
+                            <ui:VisualElement class="summary-icon summary-calendar-icon" />
+                            <ui:VisualElement class="summary-text-group">
+                                <ui:Label text="Visibility" class="summary-caption" />
+                                <ui:Label
+                                    name="summary-visibility-label"
+                                    text="No visibility set"
+                                    class="summary-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+            </ui:ScrollView>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="bottom-action-container">
+            <ui:Button name="next-button" text="Next" class="primary-button" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

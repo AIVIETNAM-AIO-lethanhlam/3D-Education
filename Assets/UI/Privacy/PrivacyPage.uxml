@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+
+    <ui:Template
+        name="GeneralHeader"
+        src="project://database/Assets/UI/Components/Header/GeneralHeader.uxml"/>
+
+    <Style
+        src="project://database/Assets/UI/Privacy/PrivacyPage.uss"/>
+
+    <ui:VisualElement
+        name="privacy-page-root"
+        class="privacy-page-root">
+
+        <!-- SHARED HEADER -->
+        <ui:Instance template="GeneralHeader"/>
+
+        <!-- SCROLLABLE CONTENT -->
+        <ui:ScrollView
+            name="privacy-scroll"
+            class="privacy-scroll"
+            mode="Vertical"
+            horizontal-scroller-visibility="Hidden"
+            vertical-scroller-visibility="Hidden">
+
+            <ui:VisualElement class="privacy-content">
+
+                <!-- INTRODUCTION -->
+                <ui:VisualElement class="privacy-intro-card">
+                    <ui:Label
+                        text="This Privacy Policy describes how Bách Khoa University Virtual Education collects, uses, and protects your personal information. Please read all sections carefully before proceeding."
+                        class="privacy-intro-text"/>
+                </ui:VisualElement>
+
+                <!-- SECTION 1 -->
+                <ui:VisualElement
+                    name="privacy-section-1"
+                    class="privacy-section privacy-section-expanded">
+
+                    <ui:Button
+                        name="privacy-section-1-button"
+                        class="privacy-section-header">
+
+                        <ui:Label
+                            text="1. Data Collection"
+                            class="privacy-section-title"/>
+
+                        <ui:Label
+                            name="privacy-section-1-arrow"
+                            text="⌃"
+                            class="privacy-section-arrow"/>
+                    </ui:Button>
+
+                    <ui:VisualElement
+                        name="privacy-section-1-content"
+                        class="privacy-section-content">
+
+                        <ui:Label
+                            text="We collect information you provide directly to us, including name, email address, institution affiliation, and usage data. This data is used solely to provide and improve the Virtual Education service. We do not sell personal information to third parties under any circumstances."
+                            class="privacy-section-body"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- SECTION 2 -->
+                <ui:VisualElement
+                    name="privacy-section-2"
+                    class="privacy-section">
+
+                    <ui:Button
+                        name="privacy-section-2-button"
+                        class="privacy-section-header">
+
+                        <ui:Label
+                            text="2. How We Use Your Data"
+                            class="privacy-section-title"/>
+
+                        <ui:Label
+                            name="privacy-section-2-arrow"
+                            text="⌄"
+                            class="privacy-section-arrow"/>
+                    </ui:Button>
+
+                    <ui:VisualElement
+                        name="privacy-section-2-content"
+                        class="privacy-section-content privacy-section-content-hidden">
+
+                        <ui:Label
+                            text="Your data is used to personalize your learning experience, deliver course content, track academic progress, generate AI-powered recommendations, and ensure platform security. Analytics are processed in aggregate and anonymized form."
+                            class="privacy-section-body"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- SECTION 3 -->
+                <ui:VisualElement
+                    name="privacy-section-3"
+                    class="privacy-section">
+
+                    <ui:Button
+                        name="privacy-section-3-button"
+                        class="privacy-section-header">
+
+                        <ui:Label
+                            text="3. Data Sharing &amp; Third Parties"
+                            class="privacy-section-title"/>
+
+                        <ui:Label
+                            name="privacy-section-3-arrow"
+                            text="⌄"
+                            class="privacy-section-arrow"/>
+                    </ui:Button>
+
+                    <ui:VisualElement
+                        name="privacy-section-3-content"
+                        class="privacy-section-content privacy-section-content-hidden">
+
+                        <ui:Label
+                            text="We share data with Bách Khoa University faculty and administration for academic purposes only. Third-party services such as authentication, cloud storage, and AI services are bound by data-processing agreements and applicable privacy standards."
+                            class="privacy-section-body"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- SECTION 4 -->
+                <ui:VisualElement
+                    name="privacy-section-4"
+                    class="privacy-section">
+
+                    <ui:Button
+                        name="privacy-section-4-button"
+                        class="privacy-section-header">
+
+                        <ui:Label
+                            text="4. Security &amp; Encryption"
+                            class="privacy-section-title"/>
+
+                        <ui:Label
+                            name="privacy-section-4-arrow"
+                            text="⌄"
+                            class="privacy-section-arrow"/>
+                    </ui:Button>
+
+                    <ui:VisualElement
+                        name="privacy-section-4-content"
+                        class="privacy-section-content privacy-section-content-hidden">
+
+                        <ui:Label
+                            text="Data is protected in transit and at rest using appropriate encryption. Authentication sessions expire according to security policy. We conduct regular security reviews and address reported vulnerabilities."
+                            class="privacy-section-body"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- SECTION 5 -->
+                <ui:VisualElement
+                    name="privacy-section-5"
+                    class="privacy-section">
+
+                    <ui:Button
+                        name="privacy-section-5-button"
+                        class="privacy-section-header">
+
+                        <ui:Label
+                            text="5. Your Rights"
+                            class="privacy-section-title"/>
+
+                        <ui:Label
+                            name="privacy-section-5-arrow"
+                            text="⌄"
+                            class="privacy-section-arrow"/>
+                    </ui:Button>
+
+                    <ui:VisualElement
+                        name="privacy-section-5-content"
+                        class="privacy-section-content privacy-section-content-hidden">
+
+                        <ui:Label
+                            text="You may request access, correction, export, or deletion of your personal data where applicable. Requests can be submitted through the application settings or the university support channel."
+                            class="privacy-section-body"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- SECTION 6 -->
+                <ui:VisualElement
+                    name="privacy-section-6"
+                    class="privacy-section">
+
+                    <ui:Button
+                        name="privacy-section-6-button"
+                        class="privacy-section-header">
+
+                        <ui:Label
+                            text="6. Terms of Academic Use"
+                            class="privacy-section-title"/>
+
+                        <ui:Label
+                            name="privacy-section-6-arrow"
+                            text="⌄"
+                            class="privacy-section-arrow"/>
+                    </ui:Button>
+
+                    <ui:VisualElement
+                        name="privacy-section-6-content"
+                        class="privacy-section-content privacy-section-content-hidden">
+
+                        <ui:Label
+                            text="The platform is provided for educational purposes only. Sharing login credentials, submitting AI-generated work as your own without disclosure, or attempting unauthorized access may result in academic or account-related action."
+                            class="privacy-section-body"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- SECTION 7 -->
+                <ui:VisualElement
+                    name="privacy-section-7"
+                    class="privacy-section">
+
+                    <ui:Button
+                        name="privacy-section-7-button"
+                        class="privacy-section-header">
+
+                        <ui:Label
+                            text="7. Cookie Policy"
+                            class="privacy-section-title"/>
+
+                        <ui:Label
+                            name="privacy-section-7-arrow"
+                            text="⌄"
+                            class="privacy-section-arrow"/>
+                    </ui:Button>
+
+                    <ui:VisualElement
+                        name="privacy-section-7-content"
+                        class="privacy-section-content privacy-section-content-hidden">
+
+                        <ui:Label
+                            text="We use essential session cookies and optional analytics cookies. Analytics preferences may be managed in Settings. Essential cookies are required for authentication and core application functionality."
+                            class="privacy-section-body"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="scroll-hint">
+                    <ui:Label text="⌄" class="scroll-hint-icon"/>
+                    <ui:Label
+                        text="Scroll to read all sections"
+                        class="scroll-hint-text"/>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="privacy-scroll-bottom-space"/>
+
+            </ui:VisualElement>
+        </ui:ScrollView>
+
+        <!-- FIXED CONSENT PANEL -->
+        <ui:VisualElement class="privacy-consent-panel">
+
+            <ui:Toggle
+                name="privacy-consent-toggle"
+                text="I have read and understood the policy"
+                class="privacy-consent-toggle"/>
+
+            <ui:Button
+                name="accept-continue-button"
+                text="Accept &amp; Continue"
+                class="accept-continue-button"/>
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

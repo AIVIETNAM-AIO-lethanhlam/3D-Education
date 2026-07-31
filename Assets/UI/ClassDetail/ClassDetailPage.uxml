@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="ClassDetailPage.uss" />
+
+    <ui:VisualElement name="page-root" class="page-root">
+        <ui:VisualElement name="class-header" class="class-header">
+            <ui:VisualElement class="safe-top-space" />
+
+            <ui:VisualElement class="header-navigation">
+                <ui:Button name="back-button" text="‹" class="round-header-button back-button" />
+
+                <ui:VisualElement class="class-title-container">
+                    <ui:Label name="semester-label" text="SEMESTER 2 · 2024–2025" class="semester-label" />
+                    <ui:Label name="class-title-label" text="EE301 – Circuit Analysis" class="class-title-label" />
+                </ui:VisualElement>
+
+                <ui:Button name="more-button" text="⋮" class="round-header-button more-button" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="teacher-card">
+                <ui:VisualElement class="teacher-avatar">
+                    <ui:Label name="teacher-initial-label" text="TQ" class="teacher-initial-label" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="teacher-information">
+                    <ui:Label name="teacher-name-label" text="Dr. Trần Minh Quân" class="teacher-name-label" />
+                    <ui:Label name="teacher-position-label" text="Associate Professor" class="teacher-position-label" />
+                </ui:VisualElement>
+
+                <ui:Button name="teacher-message-button" class="teacher-message-button">
+                    <ui:VisualElement class="teacher-message-icon" />
+                </ui:Button>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="statistics-row">
+                <ui:VisualElement class="statistic-item">
+                    <ui:Label name="student-count-label" text="34" class="statistic-value" />
+                    <ui:Label text="Students" class="statistic-name" />
+                </ui:VisualElement>
+                <ui:VisualElement class="statistic-item">
+                    <ui:Label name="module-count-label" text="5" class="statistic-value" />
+                    <ui:Label text="Modules" class="statistic-name" />
+                </ui:VisualElement>
+                <ui:VisualElement class="statistic-item statistic-last">
+                    <ui:Label name="average-score-label" text="89%" class="statistic-value" />
+                    <ui:Label text="Avg Score" class="statistic-name" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="tab-navigation">
+            <ui:Button name="syllabus-tab-button" text="Syllabus" class="tab-button tab-button-active" />
+            <ui:Button name="labs-tab-button" text="3D Labs" class="tab-button" />
+            <ui:Button name="student-list-tab-button" text="Student List" class="tab-button" />
+        </ui:VisualElement>
+
+        <ui:ScrollView name="content-scroll-view" mode="Vertical" class="content-scroll-view">
+            <ui:VisualElement name="syllabus-content" class="syllabus-content">
+                <ui:VisualElement class="progress-card">
+                    <ui:VisualElement class="progress-heading-row">
+                        <ui:Label text="Overall Progress" class="progress-title" />
+                        <ui:Label name="progress-percent-label" text="52%" class="progress-percent" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="progress-bottom-row">
+                        <ui:VisualElement class="progress-track">
+                            <ui:VisualElement name="progress-fill" class="progress-fill" />
+                        </ui:VisualElement>
+                        <ui:Label name="progress-detail-label" text="8 / 13 lessons" class="progress-detail" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="reorder-preview">
+                    <ui:VisualElement class="reorder-preview-icon" />
+                    <ui:Label text="Preview drag &amp; drop reordering" class="reorder-preview-text" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="chapter-list" class="chapter-list" />
+
+                <ui:Button name="add-chapter-button" class="add-chapter-card">
+                    <ui:VisualElement class="add-chapter-icon-circle">
+                        <ui:Label text="+" class="add-chapter-plus" />
+                    </ui:VisualElement>
+                    <ui:Label text="Add New Chapter" class="add-chapter-title" />
+                    <ui:Label text="Tap to create a new chapter section" class="add-chapter-description" />
+                </ui:Button>
+
+                <ui:Button name="edit-content-button"
+                           text="Chỉnh sửa"
+                           class="edit-content-button hidden" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="labs-content" class="empty-tab-content hidden">
+                <ui:Label text="3D Labs" class="empty-state-title" />
+                <ui:Label text="3D learning resources will be displayed here." class="empty-state-description" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="student-list-content" class="empty-tab-content hidden">
+                <ui:Label text="Student List" class="empty-state-title" />
+                <ui:Label text="Students enrolled in this class will be displayed here." class="empty-state-description" />
+            </ui:VisualElement>
+        </ui:ScrollView>
+
+        <ui:VisualElement name="editor-modal-overlay"
+                          class="editor-modal-overlay hidden">
+            <ui:VisualElement class="editor-modal-card">
+                <ui:Label name="editor-modal-title"
+                          text="Confirm"
+                          class="editor-modal-title" />
+                <ui:Label name="editor-modal-message"
+                          text=""
+                          class="editor-modal-message" />
+
+                <ui:TextField name="editor-modal-input"
+                              class="editor-modal-input hidden"
+                              multiline="false" />
+
+                <ui:VisualElement class="editor-modal-actions">
+                    <ui:Button name="editor-modal-cancel"
+                               text="No"
+                               class="editor-modal-button editor-modal-cancel" />
+                    <ui:Button name="editor-modal-confirm"
+                               text="Yes"
+                               class="editor-modal-button editor-modal-confirm" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

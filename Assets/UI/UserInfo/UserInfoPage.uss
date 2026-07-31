@@ -1,0 +1,459 @@
+/* =========================================================
+   USER INFO PAGE
+   Header is handled by the shared GeneralHeader component.
+   ========================================================= */
+
+/* =========================================================
+   ICON SOURCES
+   ========================================================= */
+
+.icon-camera {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/camera-white.png");
+}
+
+.icon-user {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/profile.png");
+}
+
+.icon-calendar {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/calendar.png");
+}
+
+.icon-email {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/globe.png");
+}
+
+.icon-lock {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/lock.png");
+}
+
+.icon-eye {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/eye.png");
+}
+
+.icon-eye-off {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/eye-off.png");
+}
+
+/* =========================================================
+   ROOT PAGE
+   ========================================================= */
+
+.user-info-page {
+    width: 100%;
+    height: 100%;
+
+    flex-direction: column;
+
+    background-color: rgb(247, 249, 253);
+    color: rgb(13, 35, 74);
+}
+
+/* The shared header template should be placed here in UXML. */
+.user-info-header-container {
+    width: 100%;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+/* =========================================================
+   SCROLL VIEW
+   ========================================================= */
+
+.user-info-scroll-view {
+    width: 100%;
+
+    flex-grow: 1;
+    flex-shrink: 1;
+
+    background-color: rgb(247, 249, 253);
+}
+
+.user-info-scroll-view > .unity-scroll-view__content-viewport {
+    width: 100%;
+}
+
+.user-info-scroll-view > .unity-scroll-view__content-viewport >
+.unity-scroll-view__content-container {
+    width: 100%;
+    flex-direction: column;
+}
+
+/* =========================================================
+   PROFILE SECTION
+   ========================================================= */
+
+.profile-section {
+    width: 100%;
+    min-height: 214px;
+
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    padding-top: 27px;
+    padding-bottom: 24px;
+
+    background-color: rgb(255, 255, 255);
+}
+
+.avatar-wrapper {
+    width: 108px;
+    height: 108px;
+
+    align-items: center;
+    justify-content: center;
+
+    position: relative;
+}
+
+.avatar-container {
+    width: 100px;
+    height: 100px;
+
+    align-items: center;
+    justify-content: center;
+
+    background-color: rgb(37, 99, 235);
+
+    border-top-left-radius: 50px;
+    border-top-right-radius: 50px;
+    border-bottom-left-radius: 50px;
+    border-bottom-right-radius: 50px;
+}
+
+.avatar-initial-label {
+    font-size: 31px;
+
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+
+    color: rgb(255, 255, 255);
+}
+
+/* Camera button: solid blue circular background like Figma. */
+.change-avatar-button {
+
+    width: 34px;
+    height: 34px;
+
+    position: absolute;
+
+    right: 6px;
+    bottom: 6px;
+
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    justify-content: center;
+    align-items: center;
+
+    background-color: rgb(7, 58, 166);
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    border-top-left-radius: 17px;
+    border-top-right-radius: 17px;
+    border-bottom-left-radius: 17px;
+    border-bottom-right-radius: 17px;
+}
+
+.change-avatar-button:hover {
+    background-color: rgb(0, 59, 157);
+}
+
+.change-avatar-button:active {
+    background-color: rgb(0, 49, 132);
+}
+
+.change-avatar-icon {
+    width: 16px;
+    height: 16px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    background-repeat: no-repeat;
+    background-position: center;
+
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(255, 255, 255);
+}
+
+.profile-name-label {
+    margin-top: 9px;
+
+    font-size: 15px;
+
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+
+    color: rgb(13, 35, 74);
+}
+
+.profile-role-label {
+    margin-top: 2px;
+
+    font-size: 13px;
+    -unity-text-align: middle-center;
+
+    color: rgb(103, 121, 153);
+}
+
+/* =========================================================
+   FORM SECTION
+   ========================================================= */
+
+.form-section {
+    width: 100%;
+
+    flex-direction: column;
+
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 16px;
+    padding-bottom: 18px;
+}
+
+.form-card {
+    width: 100%;
+    min-height: 82px;
+
+    flex-direction: column;
+    justify-content: center;
+
+    margin-bottom: 12px;
+
+    padding-left: 16px;
+    padding-right: 12px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+
+    background-color: rgb(255, 255, 255);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+
+    border-left-color: rgb(219, 226, 238);
+    border-right-color: rgb(219, 226, 238);
+    border-top-color: rgb(219, 226, 238);
+    border-bottom-color: rgb(219, 226, 238);
+
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+
+.field-title {
+    margin-bottom: 3px;
+
+    font-size: 12px;
+
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+
+    color: rgb(88, 110, 149);
+}
+
+.field-content {
+    width: 100%;
+    height: 36px;
+
+    flex-direction: row;
+    align-items: center;
+}
+
+.field-icon {
+    width: 17px;
+    height: 17px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    margin-right: 10px;
+
+    background-repeat: no-repeat;
+    background-position: center;
+
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(82, 106, 148);
+}
+
+/* =========================================================
+   TEXT FIELDS
+   ========================================================= */
+
+.input-field {
+    height: 36px;
+
+    flex-grow: 1;
+    flex-shrink: 1;
+
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    font-size: 14px;
+
+    color: rgb(20, 44, 83);
+    background-color: rgba(0, 0, 0, 0);
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.input-field > .unity-text-field__input,
+.input-field > .unity-text-input {
+    height: 36px;
+
+    padding-left: 0;
+    padding-right: 4px;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    -unity-text-align: middle-left;
+
+    color: rgb(20, 44, 83);
+    background-color: rgba(0, 0, 0, 0);
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.input-field:focus > .unity-text-field__input,
+.input-field:focus > .unity-text-input {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.password-field {
+    flex-grow: 1;
+}
+
+/* =========================================================
+   PASSWORD VISIBILITY BUTTON
+   ========================================================= */
+
+.password-visibility-button {
+    width: 34px;
+    height: 34px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    background-color: rgba(0, 0, 0, 0);
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    border-top-left-radius: 17px;
+    border-top-right-radius: 17px;
+    border-bottom-left-radius: 17px;
+    border-bottom-right-radius: 17px;
+}
+
+.password-visibility-button:hover {
+    background-color: rgb(241, 246, 255);
+}
+
+.password-visibility-icon {
+    width: 17px;
+    height: 17px;
+
+    background-repeat: no-repeat;
+    background-position: center;
+
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(82, 106, 148);
+}
+
+/* =========================================================
+   SAVE AREA
+   ========================================================= */
+
+.save-area {
+    width: 100%;
+    min-height: 82px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    justify-content: center;
+
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 11px;
+    padding-bottom: 11px;
+
+    background-color: rgb(255, 255, 255);
+
+    border-top-width: 1px;
+    border-top-color: rgb(229, 234, 243);
+}
+
+.save-changes-button {
+    width: 100%;
+    height: 54px;
+
+    font-size: 15px;
+
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+
+    color: rgb(255, 255, 255);
+    background-color: rgb(0, 78, 193);
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+}
+
+.save-changes-button:hover {
+    background-color: rgb(0, 65, 169);
+}
+
+.save-changes-button:active {
+    background-color: rgb(0, 53, 140);
+}
+
+

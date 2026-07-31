@@ -1,0 +1,775 @@
+/* =========================================================
+   PAGE
+   ========================================================= */
+
+.page-root {
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    background-color: rgb(248, 250, 255);
+}
+
+/* =========================================================
+   GENERAL HEADER VARIANT
+   ========================================================= */
+
+.general-header-page.enroll-class-header {
+    padding-top: 40px;
+    padding-right: 20px;
+    padding-bottom: 12px;
+    padding-left: 20px;
+    border-bottom-width: 0;
+}
+
+.enroll-class-header .page-header-layout {
+    min-height: 48px;
+}
+
+.enroll-class-header .header-back-button,
+.enroll-class-header .header-right-icon-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    background-color: rgb(239, 244, 253);
+}
+
+.enroll-class-header .header-back-button {
+    margin-right: 12px;
+}
+
+.enroll-class-header .header-right-icon-button {
+    margin-left: 10px;
+}
+
+.enroll-class-header .header-back-icon,
+.enroll-class-header .header-right-icon {
+    width: 18px;
+    height: 18px;
+    -unity-background-image-tint-color: rgb(18, 77, 177);
+}
+
+.enroll-class-header .header-page-title-label {
+    font-size: 20px;
+    color: rgb(10, 29, 66);
+}
+
+.enroll-class-header .header-subtitle-container {
+    margin-top: 1px;
+}
+
+.enroll-class-header .header-page-subtitle-label {
+    font-size: 12px;
+    color: rgb(100, 116, 151);
+}
+
+.icon-header-graduation-cap {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/graduation-cap.png");
+}
+
+/* =========================================================
+   SEARCH + FILTERS
+   ========================================================= */
+
+.discover-controls {
+    width: 100%;
+    padding-right: 20px;
+    padding-left: 20px;
+    background-color: rgb(255, 255, 255);
+}
+
+.search-container {
+    width: 100%;
+    height: 46px;
+    flex-direction: row;
+    align-items: center;
+    padding-right: 15px;
+    padding-left: 15px;
+    background-color: rgb(235, 241, 253);
+    border-radius: 23px;
+}
+
+.search-icon {
+    width: 18px;
+    height: 18px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin-right: 9px;
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/search.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(91, 110, 150);
+}
+
+.search-field {
+    height: 42px;
+    flex-grow: 1;
+    flex-shrink: 1;
+
+    padding: 0;
+    margin: 0;
+
+    border-width: 0;
+    border-radius: 0;
+
+    background-color: rgba(0, 0, 0, 0);
+
+    color: rgb(43, 60, 95);
+    font-size: 14px;
+}
+
+/*
+ * Unity 6 có thể dùng một trong các class nội bộ bên dưới
+ * tùy phiên bản UI Toolkit. Đặt cả ba selector để xóa hoàn toàn
+ * khung chữ nhật, viền và nền mặc định của TextField.
+ */
+.search-field > .unity-text-input,
+.search-field .unity-text-field__input,
+.search-field .unity-base-text-field__input {
+    width: 100%;
+    height: 42px;
+
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+
+    margin: 0;
+
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+
+    border-radius: 0;
+
+    background-color: rgba(0, 0, 0, 0);
+
+    color: rgb(43, 60, 95);
+
+    -unity-text-align: middle-left;
+}
+
+.search-field:hover,
+.search-field:focus,
+.search-field > .unity-text-input:hover,
+.search-field > .unity-text-input:focus,
+.search-field .unity-text-field__input:hover,
+.search-field .unity-text-field__input:focus,
+.search-field .unity-base-text-field__input:hover,
+.search-field .unity-base-text-field__input:focus {
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.category-section {
+    width: 100%;
+    height: 60px;
+    margin-top: 4px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-direction: column;
+}
+
+.category-scroll {
+    width: 100%;
+    height: 40px;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.category-scroll .unity-scroll-view__content-container {
+    flex-direction: row;
+    align-items: center;
+}
+
+.category-row {
+    height: 40px;
+    flex-direction: row;
+    align-items: center;
+    padding-right: 8px;
+}
+
+/* =========================================================
+   CUSTOM CATEGORY SCROLLBAR
+   Không dùng thanh cuộn mặc định của Unity để tránh sai giao diện.
+   ========================================================= */
+
+.category-custom-scrollbar {
+    width: 100%;
+    height: 16px;
+
+    margin-top: 0;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-direction: row;
+    align-items: center;
+
+    background-color: rgb(53, 53, 53);
+}
+
+.category-scroll-arrow {
+    width: 16px;
+    height: 16px;
+
+    min-width: 16px;
+    min-height: 16px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    padding: 0;
+    margin: 0;
+
+    border-width: 0;
+    border-radius: 0;
+
+    /* Chỉ đổi màu phần ảnh mũi tên, không tô nền button. */
+    background-color: rgba(0, 0, 0, 0);
+    background-repeat: no-repeat;
+    background-position: center;
+
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(190, 190, 190);
+
+    /* Không để Unity tự làm mờ khi button bị disable. */
+    opacity: 1;
+}
+
+.category-scroll-arrow:hover,
+.category-scroll-arrow:active,
+.category-scroll-arrow:focus,
+.category-scroll-arrow:disabled {
+    background-color: rgba(0, 0, 0, 0);
+    -unity-background-image-tint-color: rgb(190, 190, 190);
+    opacity: 1;
+}
+
+/* Unity có thể áp style disabled lên phần text/label nội bộ của Button. */
+.category-scroll-arrow:disabled > .unity-button__text,
+.category-scroll-arrow:disabled .unity-button__text {
+    opacity: 1;
+}
+
+.category-scroll-arrow-left {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/scroll-arrow-left.png");
+    -unity-background-image-tint-color: rgb(190, 190, 190);
+}
+
+.category-scroll-arrow-right {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/scroll-arrow-right.png");
+    -unity-background-image-tint-color: rgb(190, 190, 190);
+}
+
+.category-scroll-track {
+    height: 16px;
+
+    flex-grow: 1;
+    flex-shrink: 1;
+
+    justify-content: center;
+
+    padding-top: 4px;
+    padding-right: 2px;
+    padding-bottom: 4px;
+    padding-left: 2px;
+
+    background-color: rgb(53, 53, 53);
+}
+
+.category-scroll-thumb {
+    height: 8px;
+    min-width: 44px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    background-color: rgb(181, 181, 181);
+    border-radius: 4px;
+}
+
+
+.category-button {
+    height: 32px;
+    min-width: 0;
+    margin-right: 8px;
+    padding-right: 16px;
+    padding-left: 16px;
+    border-width: 1px;
+    border-color: rgb(202, 215, 241);
+    border-radius: 16px;
+    background-color: rgb(241, 245, 253);
+    color: rgb(84, 104, 146);
+    font-size: 12px;
+    -unity-font-style: bold;
+    white-space: nowrap;
+}
+
+.category-button-active {
+    border-color: rgb(18, 78, 184);
+    background-color: rgb(18, 78, 184);
+    color: rgb(255, 255, 255);
+}
+
+.section-divider {
+    width: 100%;
+    height: 1px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    background-color: rgb(224, 231, 243);
+}
+
+/* =========================================================
+   COURSE LIST
+   ========================================================= */
+
+.class-list-scroll {
+    flex-grow: 1;
+    flex-shrink: 1;
+    padding-top: 18px;
+    padding-right: 20px;
+    padding-left: 20px;
+}
+
+.class-list-container {
+    width: 100%;
+    padding-bottom: 28px;
+}
+
+.class-card {
+    width: 100%;
+    min-height: 154px;
+    margin-bottom: 14px;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: rgb(255, 255, 255);
+    border-width: 1px;
+    border-color: rgb(219, 227, 241);
+    border-radius: 18px;
+}
+
+.class-card-top-line {
+    width: 100%;
+    height: 6px;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.class-card-content {
+    padding-top: 15px;
+    padding-right: 16px;
+    padding-bottom: 13px;
+    padding-left: 16px;
+}
+
+.class-main-row {
+    min-height: 66px;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.class-icon-wrapper {
+    width: 52px;
+    height: 52px;
+    margin-top: 5px;
+    min-width: 52px;
+    min-height: 52px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-width: 1px;
+    border-radius: 26px;
+}
+
+.class-icon {
+    width: 25px;
+    height: 25px;
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.course-icon-cube {
+    background-image: url("project://database/Assets/UI/Images/Icons/cube.png");
+}
+
+.course-icon-physics {
+    background-image: url("project://database/Assets/UI/Images/Icons/physics.png");
+}
+
+.course-icon-ai-sparkle {
+    background-image: url("project://database/Assets/UI/Images/Icons/ai-sparkle.png");
+}
+
+.course-icon-chemistry {
+    background-image: url("project://database/Assets/UI/Images/Icons/chemistry.png");
+}
+
+.course-icon-document {
+    background-image: url("project://database/Assets/UI/Images/Icons/document.png");
+}
+
+.course-icon-trend-up {
+    background-image: url("project://database/Assets/UI/Images/Icons/trend-up.png");
+}
+
+.course-icon-student {
+    background-image: url("project://database/Assets/UI/Images/Icons/student.png");
+}
+
+.class-info {
+    min-width: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-left: 12px;
+    justify-content: flex-start;
+}
+
+.class-code-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.class-code-badge {
+    height: 21px;
+    padding-right: 8px;
+    padding-left: 8px;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+
+.class-name {
+    margin-top: 5px;
+    color: rgb(9, 28, 65);
+    font-size: 16px;
+    -unity-font-style: bold;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.teacher-row {
+    margin-top: 2px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.teacher-icon {
+    width: 13px;
+    height: 13px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin-right: 5px;
+    background-image: url("project://database/Assets/UI/Images/Icons/profile.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(98, 116, 153);
+}
+
+.teacher-name {
+    color: rgb(98, 115, 151);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.card-divider {
+    height: 1px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    background-color: rgb(226, 232, 242);
+}
+
+.card-bottom-row {
+    min-height: 36px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.card-meta-row {
+    min-width: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-direction: row;
+    align-items: center;
+}
+
+.meta-item {
+    min-width: 0;
+    margin-right: 13px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.meta-icon {
+    width: 14px;
+    height: 14px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin-right: 5px;
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(98, 116, 153);
+}
+
+.students-meta-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/students.png");
+}
+
+.category-meta-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/book.png");
+}
+
+.meta-label {
+    color: rgb(98, 116, 153);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.enroll-button {
+    width: 78px;
+    height: 36px;
+    min-width: 78px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin-left: 6px;
+    padding: 0;
+    border-width: 0;
+    border-radius: 18px;
+    color: rgb(255, 255, 255);
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+/* =========================================================
+   THEMES
+   ========================================================= */
+
+.theme-blue .class-card-top-line { background-color: rgb(27, 88, 197); }
+.theme-blue .class-icon-wrapper { background-color: rgb(237, 244, 255); border-color: rgb(190, 211, 247); }
+.theme-blue .class-icon { -unity-background-image-tint-color: rgb(24, 87, 203); }
+.theme-blue .class-code-badge { background-color: rgb(233, 241, 255); color: rgb(24, 87, 203); }
+.theme-blue .enroll-button { background-color: rgb(27, 88, 197); }
+
+.theme-purple .class-card-top-line { background-color: rgb(151, 92, 242); }
+.theme-purple .class-icon-wrapper { background-color: rgb(248, 240, 255); border-color: rgb(224, 202, 255); }
+.theme-purple .class-icon { -unity-background-image-tint-color: rgb(151, 92, 242); }
+.theme-purple .class-code-badge { background-color: rgb(247, 238, 255); color: rgb(151, 92, 242); }
+.theme-purple .enroll-button { background-color: rgb(151, 92, 242); }
+
+.theme-green .class-card-top-line { background-color: rgb(36, 199, 104); }
+.theme-green .class-icon-wrapper { background-color: rgb(235, 253, 242); border-color: rgb(189, 239, 208); }
+.theme-green .class-icon { -unity-background-image-tint-color: rgb(24, 190, 91); }
+.theme-green .class-code-badge { background-color: rgb(232, 252, 240); color: rgb(24, 190, 91); }
+.theme-green .enroll-button { background-color: rgb(36, 199, 104); }
+
+.theme-orange .class-card-top-line { background-color: rgb(255, 174, 37); }
+.theme-orange .class-icon-wrapper { background-color: rgb(255, 248, 232); border-color: rgb(255, 222, 159); }
+.theme-orange .class-icon { -unity-background-image-tint-color: rgb(243, 154, 12); }
+.theme-orange .class-code-badge { background-color: rgb(255, 246, 225); color: rgb(243, 154, 12); }
+.theme-orange .enroll-button { background-color: rgb(243, 154, 12); }
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.empty-state {
+    width: 100%;
+    margin-top: 70px;
+    align-items: center;
+}
+
+.empty-state-icon {
+    width: 48px;
+    height: 48px;
+    background-image: url("project://database/Assets/UI/Images/Icons/search.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(172, 186, 214);
+}
+
+.empty-state-title {
+    margin-top: 12px;
+    color: rgb(52, 70, 106);
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.empty-state-description {
+    margin-top: 4px;
+    color: rgb(126, 141, 172);
+    font-size: 12px;
+}
+
+
+/* Database has no classes: use the education/book empty-state icon. */
+.empty-state.database-empty {
+    margin-top: 92px;
+}
+
+.database-empty .empty-state-icon {
+    width: 72px;
+    height: 72px;
+    background-image: url("project://database/Assets/UI/Images/Icons/book.png");
+    -unity-background-image-tint-color: rgb(112, 137, 184);
+}
+
+.database-empty .empty-state-title {
+    margin-top: 18px;
+    font-size: 18px;
+    color: rgb(28, 48, 86);
+}
+
+.database-empty .empty-state-description {
+    width: 270px;
+    margin-top: 7px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    font-size: 13px;
+    line-height: 19px;
+}
+
+.loading-state .empty-state-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/book.png");
+    -unity-background-image-tint-color: rgb(172, 186, 214);
+}
+
+
+/* =========================================================
+   DATABASE / ENROLL STATES
+   ========================================================= */
+
+.enroll-button:disabled,
+.enroll-button.enrolled-button {
+    background-color: rgb(184, 190, 202);
+    border-color: rgb(184, 190, 202);
+    color: rgb(255, 255, 255);
+    opacity: 1;
+}
+
+.enroll-button.enrolling-button {
+    background-color: rgb(146, 157, 181);
+    border-color: rgb(146, 157, 181);
+    color: rgb(255, 255, 255);
+    opacity: 1;
+}
+
+.database-empty-state,
+.loading-state,
+.error-state {
+    width: 100%;
+    min-height: 320px;
+    align-items: center;
+    justify-content: center;
+    padding-right: 26px;
+    padding-left: 26px;
+}
+
+.database-empty-icon,
+.loading-state-icon,
+.error-state-icon {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 18px;
+    background-image: url("project://database/Assets/UI/Images/Icons/book.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(92, 119, 171);
+}
+
+.database-empty-title,
+.loading-state-title,
+.error-state-title {
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: rgb(24, 43, 81);
+    -unity-text-align: middle-center;
+}
+
+.database-empty-description,
+.loading-state-description,
+.error-state-description {
+    width: 280px;
+    margin-top: 8px;
+    white-space: normal;
+    font-size: 13px;
+    line-height: 19px;
+    color: rgb(111, 128, 162);
+    -unity-text-align: middle-center;
+}
+
+
+/* =========================================================
+   VISIBILITY BADGES
+   ========================================================= */
+
+.visibility-badge {
+    height: 21px;
+    margin-left: 7px;
+    padding-right: 8px;
+    padding-left: 8px;
+
+    justify-content: center;
+
+    border-width: 1px;
+    border-radius: 10px;
+
+    font-size: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.visibility-public {
+    background-color: rgb(232, 249, 238);
+    border-color: rgb(174, 229, 192);
+    color: rgb(31, 164, 82);
+}
+
+.visibility-private {
+    background-color: rgb(253, 237, 237);
+    border-color: rgb(241, 190, 190);
+    color: rgb(210, 67, 67);
+}
+
+/* =========================================================
+   ENROLLMENT BUTTON STATES
+   ========================================================= */
+
+.enrolled-button,
+.enrolled-button:hover,
+.enrolled-button:active,
+.enrolled-button:disabled,
+.pending-button,
+.pending-button:hover,
+.pending-button:active,
+.pending-button:disabled,
+.enrolling-button,
+.enrolling-button:hover,
+.enrolling-button:active,
+.enrolling-button:disabled {
+    background-color: rgb(176, 183, 196);
+    color: rgb(255, 255, 255);
+    opacity: 1;
+}
+
+.enrolled-button:disabled > .unity-button__text,
+.pending-button:disabled > .unity-button__text,
+.enrolling-button:disabled > .unity-button__text,
+.enrolled-button:disabled .unity-button__text,
+.pending-button:disabled .unity-button__text,
+.enrolling-button:disabled .unity-button__text {
+    color: rgb(255, 255, 255);
+    opacity: 1;
+}

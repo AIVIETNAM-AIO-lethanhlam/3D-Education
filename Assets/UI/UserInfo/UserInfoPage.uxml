@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:UXML
+    xmlns:ui="UnityEngine.UIElements"
+    xmlns:uie="UnityEditor.UIElements">
+
+    <!-- =====================================================
+         SHARED COMPONENTS
+         ===================================================== -->
+
+    <ui:Template
+        name="GeneralHeader"
+        src="project://database/Assets/UI/Components/Header/GeneralHeader.uxml" />
+
+    <!-- =====================================================
+         PAGE STYLE
+         ===================================================== -->
+
+    <Style
+        src="project://database/Assets/UI/UserInfo/UserInfoPage.uss" />
+
+    <!-- GeneralHeader.uxml đã tự liên kết GeneralHeader.uss.
+         Không cần khai báo lại GeneralHeader.uss tại đây. -->
+
+    <!-- =====================================================
+         ROOT PAGE
+         ===================================================== -->
+
+    <ui:VisualElement
+        name="user-info-page"
+        class="user-info-page">
+
+        <!-- =================================================
+             SHARED GENERAL HEADER
+             ================================================= -->
+
+        <ui:VisualElement
+            name="user-info-header-container"
+            class="user-info-header-container">
+
+            <ui:Instance
+                name="user-info-general-header"
+                template="GeneralHeader" />
+
+        </ui:VisualElement>
+
+        <!-- =================================================
+             MAIN CONTENT
+             ================================================= -->
+
+        <ui:ScrollView
+            name="user-info-scroll-view"
+            class="user-info-scroll-view"
+            mode="Vertical"
+            horizontal-scroller-visibility="Hidden"
+            vertical-scroller-visibility="Hidden">
+
+            <!-- =============================================
+                 PROFILE AREA
+                 ============================================= -->
+
+            <ui:VisualElement
+                name="profile-section"
+                class="profile-section">
+
+                <ui:VisualElement
+                    name="avatar-wrapper"
+                    class="avatar-wrapper">
+
+                    <ui:VisualElement
+                        name="avatar-container"
+                        class="avatar-container">
+
+                        <ui:Label
+                            name="avatar-initial-label"
+                            text="TB"
+                            class="avatar-initial-label" />
+
+                    </ui:VisualElement>
+
+                    <ui:Button
+                        name="change-avatar-button"
+                        class="change-avatar-button">
+
+                        <ui:VisualElement
+                            name="change-avatar-icon"
+                            class="change-avatar-icon icon-camera" />
+
+                    </ui:Button>
+
+                </ui:VisualElement>
+
+                <ui:Label
+                    name="profile-name-label"
+                    text="Trần Văn Bình"
+                    class="profile-name-label" />
+
+                <ui:Label
+                    name="profile-role-label"
+                    text="Student · HCMUT"
+                    class="profile-role-label" />
+
+            </ui:VisualElement>
+
+            <!-- =============================================
+                 FORM AREA
+                 ============================================= -->
+
+            <ui:VisualElement
+                name="form-section"
+                class="form-section">
+
+                <!-- USERNAME -->
+
+                <ui:VisualElement
+                    name="username-card"
+                    class="form-card">
+
+                    <ui:Label
+                        text="USERNAME"
+                        class="field-title" />
+
+                    <ui:VisualElement
+                        class="field-content">
+
+                        <ui:VisualElement
+                            name="username-icon"
+                            class="field-icon icon-user" />
+
+                        <ui:TextField
+                            name="username-field"
+                            value="Trần Văn Bình"
+                            class="input-field"
+                            label="" />
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+                <!-- DATE OF BIRTH -->
+
+                <ui:VisualElement
+                    name="date-of-birth-card"
+                    class="form-card">
+
+                    <ui:Label
+                        text="DATE OF BIRTH"
+                        class="field-title" />
+
+                    <ui:VisualElement
+                        class="field-content">
+
+                        <ui:VisualElement
+                            name="date-of-birth-icon"
+                            class="field-icon icon-calendar" />
+
+                        <ui:TextField
+                            name="date-of-birth-field"
+                            value="03/15/1999"
+                            class="input-field"
+                            label="" />
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+                <!-- EMAIL ADDRESS -->
+
+                <ui:VisualElement
+                    name="email-card"
+                    class="form-card">
+
+                    <ui:Label
+                        text="EMAIL ADDRESS"
+                        class="field-title" />
+
+                    <ui:VisualElement
+                        class="field-content">
+
+                        <ui:VisualElement
+                            name="email-icon"
+                            class="field-icon icon-email" />
+
+                        <ui:TextField
+                            name="email-field"
+                            value="binh.tran@hcmut.edu.vn"
+                            class="input-field"
+                            label="" />
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+                <!-- PASSWORD -->
+
+                <ui:VisualElement
+                    name="password-card"
+                    class="form-card">
+
+                    <ui:Label
+                        text="PASSWORD"
+                        class="field-title" />
+
+                    <ui:VisualElement
+                        class="field-content">
+
+                        <ui:VisualElement
+                            name="password-icon"
+                            class="field-icon icon-lock" />
+
+                        <ui:TextField
+                            name="password-field"
+                            value="123456789"
+                            class="input-field password-field"
+                            label=""
+                            is-password-field="true" />
+
+                        <ui:Button
+                            name="password-visibility-button"
+                            class="password-visibility-button">
+
+                            <ui:VisualElement
+                                name="password-visibility-icon"
+                                class="password-visibility-icon icon-eye" />
+
+                        </ui:Button>
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+        </ui:ScrollView>
+
+        <!-- =================================================
+             BOTTOM SAVE AREA
+             ================================================= -->
+
+        <ui:VisualElement
+            name="save-area"
+            class="save-area">
+
+            <ui:Button
+                name="save-changes-button"
+                text="Save Changes"
+                class="save-changes-button" />
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+
+</ui:UXML>

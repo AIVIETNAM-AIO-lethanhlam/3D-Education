@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+
+    <Style src="SplashPage.uss"/>
+
+    <ui:VisualElement
+        name="splash-root"
+        class="splash-root">
+
+        <!-- Logo và tên ứng dụng -->
+        <ui:VisualElement
+            name="branding-container"
+            class="branding-container">
+
+            <ui:VisualElement class="logo-shadow">
+
+                <ui:VisualElement class="logo-circle">
+
+                    <ui:VisualElement
+                        name="app-logo"
+                        class="app-logo"/>
+
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+            <ui:Label
+                name="app-title"
+                text="Virtual Education"
+                class="app-title"/>
+
+            <ui:Label
+                name="university-name"
+                text="BÁCH KHOA UNIVERSITY · HCMC"
+                class="university-name"/>
+
+        </ui:VisualElement>
+
+        <!-- Phần loading ở cuối màn hình -->
+        <ui:VisualElement
+            name="loading-container"
+            class="loading-container">
+
+            <ui:Label
+                name="loading-label"
+                text="Empowering spatial learning..."
+                class="loading-label"/>
+
+            <ui:VisualElement name="progress-track" class="progress-track">
+
+                <ui:VisualElement
+                    name="progress-fill"
+                    class="progress-fill"/>
+
+            </ui:VisualElement>
+
+            <ui:VisualElement class="loading-dots">
+
+                <ui:VisualElement
+                    name="loading-dot-1"
+                    class="loading-dot loading-dot-active"/>
+
+                <ui:VisualElement
+                    name="loading-dot-2"
+                    class="loading-dot"/>
+
+                <ui:VisualElement
+                    name="loading-dot-3"
+                    class="loading-dot"/>
+
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+
+</ui:UXML>

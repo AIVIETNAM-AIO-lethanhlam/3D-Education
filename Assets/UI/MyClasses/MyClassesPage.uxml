@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+
+    <Style src="project://database/Assets/UI/MyClasses/MyClassesPage.uss"/>
+
+    <ui:Template
+        name="GeneralHeader"
+        src="project://database/Assets/UI/Components/Header/GeneralHeader.uxml"/>
+
+    <ui:Template
+        name="BottomNavigation"
+        src="project://database/Assets/UI/Components/Footer/BottomNavigation.uxml"/>
+
+    <ui:VisualElement name="my-classes-page" class="my-classes-page">
+
+        <ui:Instance template="GeneralHeader"/>
+
+        <ui:ScrollView
+            name="my-classes-scroll-view"
+            class="my-classes-scroll-view"
+            mode="Vertical"
+            horizontal-scroller-visibility="Hidden"
+            vertical-scroller-visibility="Hidden">
+
+            <!-- =================================================
+                 TEACHER CONTENT
+                 ================================================= -->
+
+            <ui:VisualElement
+                name="teacher-content"
+                class="role-content">
+
+                <ui:VisualElement class="teacher-card teacher-card-blue">
+                    <ui:VisualElement class="teacher-card-top-line card-line-blue"/>
+
+                    <ui:VisualElement class="teacher-card-header">
+                        <ui:VisualElement class="course-icon-shell course-icon-blue">
+                            <ui:VisualElement class="course-icon icon-course-circuit"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="teacher-course-info">
+                            <ui:VisualElement class="course-meta-row">
+                                <ui:Label text="EE301" class="course-code course-code-blue"/>
+                                <ui:VisualElement class="status-dot status-dot-active"/>
+                                <ui:Label text="Active" class="status-label status-active"/>
+                            </ui:VisualElement>
+
+                            <ui:VisualElement class="course-title-row">
+                                <ui:Label text="Circuit Analysis" class="course-title"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="teacher-header-actions">
+                            <ui:Button name="teacher-edit-circuit-button" class="round-edit-button">
+                                <ui:VisualElement class="round-edit-symbol"/>
+                            </ui:Button>
+
+                            <ui:Button name="teacher-delete-circuit-button" class="delete-button">
+                                <ui:VisualElement class="delete-icon"/>
+                                <ui:Label text="Delete" class="delete-label"/>
+                            </ui:Button>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="teacher-stats-row">
+                        <ui:VisualElement class="stat-box">
+                            <ui:VisualElement class="stat-image-icon icon-stat-students"/>
+                            <ui:Label text="34" class="stat-value"/>
+                            <ui:Label text="Students" class="stat-caption"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="stat-box">
+                            <ui:VisualElement class="stat-image-icon icon-stat-modules"/>
+                            <ui:Label text="5" class="stat-value"/>
+                            <ui:Label text="Active Modules" class="stat-caption"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="stat-box">
+                            <ui:VisualElement class="stat-image-icon icon-stat-score"/>
+                            <ui:Label text="89%" class="stat-value"/>
+                            <ui:Label text="Avg Score" class="stat-caption"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="card-divider"/>
+
+                    <ui:Button name="teacher-manage-circuit-button" class="manage-button manage-button-blue">
+                        <ui:Label text="▥" class="manage-icon"/>
+                        <ui:Label text="Manage" class="manage-label"/>
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="teacher-card teacher-card-purple">
+                    <ui:VisualElement class="teacher-card-top-line card-line-purple"/>
+
+                    <ui:VisualElement class="teacher-card-header">
+                        <ui:VisualElement class="course-icon-shell course-icon-purple">
+                            <ui:VisualElement class="course-icon icon-course-physics"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="teacher-course-info">
+                            <ui:VisualElement class="course-meta-row">
+                                <ui:Label text="ME201" class="course-code course-code-purple"/>
+                                <ui:VisualElement class="status-dot status-dot-active"/>
+                                <ui:Label text="Active" class="status-label status-active"/>
+                            </ui:VisualElement>
+
+                            <ui:VisualElement class="course-title-row">
+                                <ui:Label text="Fluid Mechanics" class="course-title"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="teacher-header-actions">
+                            <ui:Button name="teacher-edit-fluid-button" class="round-edit-button">
+                                <ui:VisualElement class="round-edit-symbol"/>
+                            </ui:Button>
+
+                            <ui:Button name="teacher-delete-fluid-button" class="delete-button">
+                                <ui:VisualElement class="delete-icon"/>
+                                <ui:Label text="Delete" class="delete-label"/>
+                            </ui:Button>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="teacher-stats-row">
+                        <ui:VisualElement class="stat-box">
+                            <ui:VisualElement class="stat-image-icon icon-stat-students"/>
+                            <ui:Label text="28" class="stat-value"/>
+                            <ui:Label text="Students" class="stat-caption"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="stat-box">
+                            <ui:VisualElement class="stat-image-icon icon-stat-modules"/>
+                            <ui:Label text="4" class="stat-value"/>
+                            <ui:Label text="Active Modules" class="stat-caption"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="stat-box">
+                            <ui:VisualElement class="stat-image-icon icon-stat-score"/>
+                            <ui:Label text="82%" class="stat-value"/>
+                            <ui:Label text="Avg Score" class="stat-caption"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="card-divider"/>
+
+                    <ui:Button name="teacher-manage-fluid-button" class="manage-button manage-button-purple">
+                        <ui:Label text="▥" class="manage-icon"/>
+                        <ui:Label text="Manage" class="manage-label"/>
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="teacher-card teacher-card-green">
+                    <ui:VisualElement class="teacher-card-top-line card-line-green"/>
+
+                    <ui:VisualElement class="teacher-card-header">
+                        <ui:VisualElement class="course-icon-shell course-icon-green">
+                            <ui:VisualElement class="course-icon icon-course-ai"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="teacher-course-info">
+                            <ui:VisualElement class="course-meta-row">
+                                <ui:Label text="CS401" class="course-code course-code-green"/>
+                                <ui:VisualElement class="status-dot status-dot-draft"/>
+                                <ui:Label text="Draft" class="status-label status-draft"/>
+                            </ui:VisualElement>
+
+                            <ui:VisualElement class="course-title-row">
+                                <ui:Label text="Machine Learning" class="course-title"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="teacher-header-actions">
+                            <ui:Button name="teacher-edit-ml-button" class="round-edit-button">
+                                <ui:VisualElement class="round-edit-symbol"/>
+                            </ui:Button>
+
+                            <ui:Button name="teacher-delete-ml-button" class="delete-button">
+                                <ui:VisualElement class="delete-icon"/>
+                                <ui:Label text="Delete" class="delete-label"/>
+                            </ui:Button>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="teacher-stats-row">
+                        <ui:VisualElement class="stat-box">
+                            <ui:VisualElement class="stat-image-icon icon-stat-students"/>
+                            <ui:Label text="42" class="stat-value"/>
+                            <ui:Label text="Students" class="stat-caption"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="stat-box">
+                            <ui:VisualElement class="stat-image-icon icon-stat-modules"/>
+                            <ui:Label text="3" class="stat-value"/>
+                            <ui:Label text="Active Modules" class="stat-caption"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="stat-box">
+                            <ui:VisualElement class="stat-image-icon icon-stat-score"/>
+                            <ui:Label text="91%" class="stat-value"/>
+                            <ui:Label text="Avg Score" class="stat-caption"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="card-divider"/>
+
+                    <ui:Button name="teacher-manage-ml-button" class="manage-button manage-button-green">
+                        <ui:Label text="▥" class="manage-icon"/>
+                        <ui:Label text="Manage" class="manage-label"/>
+                    </ui:Button>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- =================================================
+                 STUDENT CONTENT
+                 Các class và quiz của student sẽ được tạo động từ Supabase.
+                 ================================================= -->
+
+            <ui:VisualElement
+                name="student-content"
+                class="role-content">
+
+                <ui:VisualElement
+                    name="student-state-container"
+                    class="student-state-container">
+
+                    <ui:VisualElement
+                        name="student-empty-state"
+                        class="classes-state-card">
+
+                        <ui:VisualElement
+                            class="classes-state-icon"/>
+
+                        <ui:Label
+                            text="No classes enrolled yet"
+                            class="classes-state-title"/>
+
+                        <ui:Label
+                            text="You haven't enrolled in any classes yet. Use the Enroll New Class button above to join your first class."
+                            class="classes-state-description"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement
+                    name="student-classes-container"
+                    class="student-classes-container"/>
+
+                <!-- Active Quizzes luôn hiển thị khi student đã có class. -->
+                <ui:VisualElement
+                    name="student-quizzes-section"
+                    class="student-quizzes-section">
+
+                    <ui:Label
+                        text="Active Quizzes"
+                        class="section-title"/>
+
+                    <ui:VisualElement
+                        name="student-quizzes-container"
+                        class="student-quizzes-container"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="page-bottom-space"/>
+
+        </ui:ScrollView>
+
+        <ui:Instance template="BottomNavigation"/>
+
+    </ui:VisualElement>
+
+</ui:UXML>

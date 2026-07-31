@@ -1,0 +1,295 @@
+.privacy-page-root {
+    flex-grow: 1;
+    flex-direction: column;
+
+    background-color: rgb(247, 249, 253);
+    color: rgb(16, 34, 73);
+
+    -unity-font-definition:
+        resource("Fonts/Inter_24pt-Regular");
+}
+
+/* =========================================================
+   SCROLL VIEW
+   ========================================================= */
+
+.privacy-scroll {
+    flex-grow: 1;
+}
+
+.privacy-scroll .unity-scroll-view__content-container {
+    flex-grow: 1;
+    min-height: 100%;
+}
+
+.privacy-scroll .unity-scroller,
+.privacy-scroll .unity-scroll-view__vertical-scroller,
+.privacy-scroll .unity-scroll-view__horizontal-scroller {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.privacy-scroll .unity-scroll-view__content-viewport {
+    margin-right: 0;
+    margin-bottom: 0;
+}
+
+.privacy-content {
+    padding-top: 18px;
+    padding-right: 18px;
+    padding-left: 18px;
+}
+
+/* =========================================================
+   INTRO CARD
+   ========================================================= */
+
+.privacy-intro-card {
+    margin-bottom: 16px;
+
+    padding-top: 18px;
+    padding-right: 17px;
+    padding-bottom: 18px;
+    padding-left: 17px;
+
+    background-color: rgb(236, 242, 251);
+
+    border-width: 1px;
+    border-color: rgb(177, 198, 232);
+    border-radius: 18px;
+}
+
+.privacy-intro-text {
+    margin: 0;
+    padding: 0;
+
+    font-size: 15px;
+    line-height: 22px;
+
+    color: rgb(25, 45, 84);
+
+    white-space: normal;
+    -unity-text-align: upper-left;
+}
+
+/* =========================================================
+   ACCORDION
+   ========================================================= */
+
+.privacy-section {
+    margin-bottom: 12px;
+
+    background-color: rgb(255, 255, 255);
+
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 17px;
+
+    overflow: hidden;
+}
+
+.privacy-section-header {
+    width: 100%;
+    min-height: 58px;
+
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+
+    margin: 0;
+    padding-top: 0;
+    padding-right: 14px;
+    padding-bottom: 0;
+    padding-left: 16px;
+
+    background-color: rgba(255, 255, 255, 0);
+
+    border-width: 0;
+    border-radius: 0;
+}
+
+.privacy-section-title {
+    flex-grow: 1;
+
+    margin: 0;
+    padding: 0;
+
+    font-size: 15px;
+    -unity-font-style: bold;
+
+    color: rgb(10, 31, 70);
+    -unity-text-align: middle-left;
+
+    white-space: normal;
+}
+
+.privacy-section-arrow {
+    width: 32px;
+    height: 32px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    margin-left: 10px;
+    padding: 0;
+
+    background-color: rgb(238, 244, 253);
+    border-radius: 16px;
+
+    font-size: 17px;
+    color: rgb(83, 105, 147);
+
+    -unity-text-align: middle-center;
+}
+
+.privacy-section-content {
+    padding-top: 12px;
+    padding-right: 17px;
+    padding-bottom: 16px;
+    padding-left: 17px;
+
+    border-top-width: 1px;
+    border-top-color: rgb(222, 229, 241);
+}
+
+.privacy-section-content-hidden {
+    display: none;
+}
+
+.privacy-section-body {
+    margin: 0;
+    padding: 0;
+
+    font-size: 14px;
+    line-height: 21px;
+
+    color: rgb(92, 107, 142);
+
+    white-space: normal;
+    -unity-text-align: upper-left;
+}
+
+/* =========================================================
+   SCROLL HINT
+   ========================================================= */
+
+.scroll-hint {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+
+    margin-top: 12px;
+    margin-bottom: 10px;
+}
+
+.scroll-hint-icon {
+    margin-right: 8px;
+
+    font-size: 16px;
+    color: rgb(90, 109, 147);
+}
+
+.scroll-hint-text {
+    font-size: 13px;
+    color: rgb(91, 107, 142);
+}
+
+.privacy-scroll-bottom-space {
+    height: 26px;
+}
+
+/* =========================================================
+   CONSENT PANEL
+   ========================================================= */
+
+.privacy-consent-panel {
+    flex-shrink: 0;
+
+    padding-top: 14px;
+    padding-right: 18px;
+    padding-bottom: 15px;
+    padding-left: 18px;
+
+    background-color: rgb(255, 255, 255);
+
+    border-top-width: 1px;
+    border-top-color: rgb(216, 225, 240);
+}
+
+.privacy-consent-toggle {
+    min-height: 32px;
+
+    margin: 0;
+    margin-bottom: 12px;
+    padding: 0;
+
+    font-size: 13px;
+    -unity-font-style: bold;
+
+    color: rgb(28, 46, 84);
+}
+
+.privacy-consent-toggle .unity-toggle__input {
+    width: 26px;
+    height: 26px;
+
+    margin-right: 10px;
+
+    background-color: rgb(255, 255, 255);
+
+    border-width: 2px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 13px;
+}
+
+.privacy-consent-toggle:checked .unity-toggle__input {
+    background-color: rgb(0, 70, 180);
+    border-color: rgb(0, 70, 180);
+}
+
+.privacy-consent-toggle:checked .unity-toggle__checkmark {
+    -unity-background-image-tint-color: rgb(255, 255, 255);
+}
+
+.accept-continue-button {
+    width: 100%;
+    height: 54px;
+
+    margin: 0;
+    padding: 0;
+
+    background-color: rgb(0, 70, 180);
+
+    border-width: 0;
+    border-radius: 27px;
+
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: rgb(255, 255, 255);
+}
+
+.accept-continue-button:disabled {
+    background-color: rgb(241, 244, 249);
+    color: rgb(176, 184, 201);
+}
+
+/* =========================================================
+   INTERACTION
+   ========================================================= */
+
+.privacy-section-header:hover {
+    background-color: rgb(249, 251, 255);
+}
+
+.privacy-section-header:active {
+    opacity: 0.74;
+}
+
+.accept-continue-button:hover:enabled {
+    opacity: 0.9;
+}
+
+.accept-continue-button:active:enabled {
+    opacity: 0.72;
+}

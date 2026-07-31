@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload YouTube Player</title>
+</head>
+<body>
+    <h2>Upload youtube-player.html</h2>
+
+    <input id="fileInput" type="file" accept=".html,text/html">
+    <button id="uploadButton">Upload</button>
+
+    <pre id="result"></pre>
+
+    <script type="module">
+        import {
+            createClient
+        } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+        const supabaseUrl =
+            "https://nfribubvehdzjyguxejq.supabase.co";
+
+        const supabaseKey =
+            "DÁN_PUBLISHABLE_KEY_CỦA_BẠN_Ở_ĐÂY";
+
+        const supabase = createClient(
+            supabaseUrl,
+            supabaseKey
+        );
+
+        const fileInput =
+            document.getElementById("fileInput");
+
+        const uploadButton =
+            document.getElementById("uploadButton");
+
+        const result =
+            document.getElementById("result");
+
+        uploadButton.addEventListener("click", async () => {
+            const file = fileInput.files[0];
+
+            if (!file) {
+                result.textContent =
+                    "Please choose youtube-player.html.";
+                return;
+            }
+
+            const htmlText = await file.text();
+
+            const htmlBlob = new Blob(
+                [htmlText],
+                {
+                    type: "text/html; charset=utf-8"
+                }
+            );
+
+            const {
+                data,
+                error
+            } = await supabase.storage
+                .from("web-player")
+                .upload(
+                    "youtube-player.html",
+                    htmlBlob,
+                    {
+                        contentType:
+                            "text/html; charset=utf-8",
+
+                        cacheControl: "0",
+
+                        upsert: true
+                    }
+                );
+
+            if (error) {
+                result.textContent =
+                    "Upload error:\n" +
+                    JSON.stringify(error, null, 2);
+
+                return;
+            }
+
+            result.textContent =
+                "Upload successful:\n" +
+                JSON.stringify(data, null, 2);
+        });
+    </script>
+</body>
+</html>

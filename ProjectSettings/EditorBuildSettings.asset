@@ -5,17 +5,60 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
-    path: Assets/Scenes/AuthScene.unity
-    guid: a8890faa3433d4c49b8528ecc649016c
+    path: Assets/Scenes/SplashScene.unity
+    guid: f3af9cb6dfa139c46a7e83618ab16d18
   - enabled: 1
     path: Assets/Scenes/HomeScene.unity
     guid: d944cd8115e5faa47b2327e88da0c5f1
   - enabled: 1
+    path: Assets/Scenes/AuthScene.unity
+    guid: a8890faa3433d4c49b8528ecc649016c
+  - enabled: 1
     path: Assets/Scenes/MainHomeScene.unity
     guid: bd3da37e9cb9c804a9306e73b205d7f6
+  - enabled: 1
+    path: Assets/Scenes/PrivacyScene.unity
+    guid: aa903634e26c34d4da20d6a268f8fce1
+  - enabled: 1
+    path: Assets/Scenes/SettingScene.unity
+    guid: d8f29c23b8730ce468e539fc28081d76
+  - enabled: 1
+    path: Assets/Scenes/UserInfoScene.unity
+    guid: 0b646b04ad20b174b9e68eddf709e793
+  - enabled: 1
+    path: Assets/Scenes/MyClassesScene.unity
+    guid: e9844e326b6df514886d2ba65b2a57bb
+  - enabled: 1
+    path: Assets/Scenes/CreateClassScene.unity
+    guid: 924a86f84d34d0249a929b9cbfa555f8
+  - enabled: 1
+    path: Assets/Scenes/EnrollClassScene.unity
+    guid: 09c09ddc998a63140bd9fdf85d45b4be
+  - enabled: 1
+    path: Assets/Scenes/ClassDetailScene.unity
+    guid: 9db922d4f94ea5345a3f8dbccb6a7a4b
+  - enabled: 1
+    path: Assets/Scenes/CreateLessonScene.unity
+    guid: 2b0cec1b2ace229489040a0ade5a85d9
+  - enabled: 1
+    path: Assets/Scenes/ShowLessonScene.unity
+    guid: 35d2eb2e61289db43a1912fe8ef98e1c
+  - enabled: 1
+    path: Assets/Scenes/StartQuizScene.unity
+    guid: f805fdfd1a2c1124dae488f08234789f
+  - enabled: 1
+    path: Assets/Scenes/DoQuizScene.unity
+    guid: 1397b41399d14474cb855b9da051aa58
+  - enabled: 1
+    path: Assets/Scenes/ARModelScene.unity
+    guid: 6daf868080e7101478b86d303e226b8e
   m_configObjects:
+    Unity.XR.Oculus.Settings: {fileID: 11400000, guid: ac4a33b71edaaed4a8cf7efbca392c0b, type: 2}
+    UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: bdc425842afcfcf4f83ed3deeca353d0, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 9064d2f3d57d72f4295bff5897b23967, type: 2}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 6da80fd6f1097be4ca1b0cbc7f4478b2, type: 2}

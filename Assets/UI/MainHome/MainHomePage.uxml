@@ -1,10 +1,21 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
 
-    <Style src="MainHomePage.uss"/>
+    <ui:Template
+        name="GeneralHeader"
+        src="project://database/Assets/UI/Components/Header/GeneralHeader.uxml"/>
+
+    <ui:Template
+        name="BottomNavigation"
+        src="project://database/Assets/UI/Components/Footer/BottomNavigation.uxml"/>
+
+    <Style src="project://database/Assets/UI/MainHome/MainHomePage.uss"/>
 
     <ui:VisualElement
         name="main-home-root"
         class="main-home-root">
+
+        <!-- SHARED GENERAL HEADER COMPONENT -->
+        <ui:Instance template="GeneralHeader"/>
 
         <ui:ScrollView
             name="main-home-scroll"
@@ -13,51 +24,8 @@
             horizontal-scroller-visibility="Hidden"
             vertical-scroller-visibility="Hidden">
 
-            <!-- HEADER -->
-            
-            <ui:VisualElement class="home-header">
-
-                <ui:VisualElement class="header-top-row">
-
-                    <ui:VisualElement class="welcome-container">
-
-                        <ui:Label
-                            name="welcome-role-label"
-                            text="Hello"
-                            class="welcome-role-label"/>
-
-                        <ui:Label
-                            name="user-name-label"
-                            text="User"
-                            class="user-name-label"/>
-
-                    </ui:VisualElement>
-
-                    <ui:VisualElement class="header-actions">
-
-                        <ui:Button
-                            name="notification-button"
-                            class="header-icon-button notification-button">
-
-                            <ui:VisualElement
-                                class="header-icon icon-notification"/>
-
-                            <ui:VisualElement
-                                name="notification-dot"
-                                class="notification-dot"/>
-                        </ui:Button>
-
-                        <ui:Button
-                            name="profile-button"
-                            class="header-icon-button profile-button">
-
-                            <ui:VisualElement
-                                class="header-icon icon-profile"/>
-                        </ui:Button>
-
-                    </ui:VisualElement>
-
-                </ui:VisualElement>
+            <!-- MAIN HOME SEARCH -->
+            <ui:VisualElement class="home-search-section">
 
                 <ui:VisualElement class="search-container">
 
@@ -197,7 +165,10 @@
 
             <!-- RECENTLY VIEWED -->
             <ui:VisualElement class="section-header recently-header">
-                <ui:Label text="Recently Viewed" class="section-title"/>
+                <ui:Label
+                    name="recent-section-title"
+                    text="Recently Viewed"
+                    class="section-title"/>
 
                 <ui:Button
                     name="see-all-recent-button"
@@ -209,6 +180,11 @@
                     </ui:VisualElement>
                 </ui:Button>
             </ui:VisualElement>
+
+            <ui:Label
+                name="recent-filter-label"
+                text="Filtered: Chemistry"
+                class="recent-filter-label"/>
 
             <ui:VisualElement
                 name="recent-course-list"
@@ -360,46 +336,37 @@
 
             </ui:VisualElement>
 
+            <ui:VisualElement
+                name="recent-empty-state"
+                class="recent-empty-state">
+
+                <ui:VisualElement class="empty-state-icon-container">
+                    <ui:VisualElement class="empty-state-book-icon icon-book"/>
+                </ui:VisualElement>
+
+                <ui:Label
+                    name="empty-state-title"
+                    text="No classes yet"
+                    class="empty-state-title"/>
+
+                <ui:Label
+                    name="empty-state-description"
+                    text="You haven't enrolled in any classes yet."
+                    class="empty-state-description"/>
+
+                <ui:Button
+                    name="empty-state-action-button"
+                    text="Enroll Class"
+                    class="empty-state-action-button"/>
+
+            </ui:VisualElement>
+
             <ui:VisualElement class="scroll-bottom-space"/>
 
         </ui:ScrollView>
 
-        <!-- BOTTOM NAVIGATION -->
-        <ui:VisualElement class="bottom-navigation">
-
-            <ui:Button
-                name="home-nav-button"
-                class="nav-button nav-button-active">
-
-                <ui:VisualElement class="nav-icon icon-nav-home"/>
-                <ui:Label text="Home" class="nav-label"/>
-            </ui:Button>
-
-            <ui:Button
-                name="classes-nav-button"
-                class="nav-button">
-
-                <ui:VisualElement class="nav-icon icon-nav-classes"/>
-                <ui:Label text="My" class="nav-label"/>
-            </ui:Button>
-
-            <ui:Button
-                name="ai-nav-button"
-                class="nav-button">
-
-                <ui:VisualElement class="nav-icon icon-nav-ai"/>
-                <ui:Label text="AI" class="nav-label"/>
-            </ui:Button>
-
-            <ui:Button
-                name="settings-nav-button"
-                class="nav-button">
-
-                <ui:VisualElement class="nav-icon icon-nav-settings"/>
-                <ui:Label text="Settings" class="nav-label"/>
-            </ui:Button>
-
-        </ui:VisualElement>
+        <!-- SHARED BOTTOM NAVIGATION COMPONENT -->
+        <ui:Instance template="BottomNavigation"/>
 
     </ui:VisualElement>
 </ui:UXML>

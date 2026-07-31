@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML
+    xmlns:ui="UnityEngine.UIElements"
+    xmlns:uie="UnityEditor.UIElements">
+
+    <Style src="project://database/Assets/UI/DoQuiz/DoQuizPage.uss"/>
+
+    <ui:VisualElement name="do-quiz-page" class="do-quiz-page">
+
+        <!-- Header -->
+        <ui:VisualElement class="quiz-header">
+
+            <ui:Button
+                name="back-button"
+                text="‹"
+                class="back-button"/>
+
+            <ui:VisualElement class="header-content">
+
+                <ui:Label
+                    name="quiz-name-label"
+                    text="Lesson 8 Mini-Quiz"
+                    class="quiz-name-label"/>
+
+                <ui:Label
+                    name="question-number-label"
+                    text="Question 1 of 5"
+                    class="question-number-label"/>
+
+            </ui:VisualElement>
+
+            <!-- Giữ header cân bằng -->
+            <ui:VisualElement class="header-placeholder"/>
+
+        </ui:VisualElement>
+
+        <!-- Progress -->
+        <ui:VisualElement class="progress-section">
+
+            <ui:VisualElement class="progress-track">
+                <ui:VisualElement
+                    name="progress-fill"
+                    class="progress-fill"/>
+            </ui:VisualElement>
+
+            <ui:VisualElement
+                name="progress-dots-container"
+                class="progress-dots-container">
+
+                <ui:VisualElement class="progress-dot progress-dot-active"/>
+                <ui:VisualElement class="progress-dot"/>
+                <ui:VisualElement class="progress-dot"/>
+                <ui:VisualElement class="progress-dot"/>
+                <ui:VisualElement class="progress-dot"/>
+
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <!-- Main scroll area -->
+        <ui:ScrollView
+            name="quiz-scroll-view"
+            class="quiz-scroll-view"
+            mode="Vertical">
+
+            <ui:VisualElement class="quiz-content">
+
+                <!-- Question card -->
+                <ui:VisualElement class="question-card">
+
+                    <ui:VisualElement class="question-meta-row">
+
+                        <ui:Label
+                            name="question-badge-label"
+                            text="Q1"
+                            class="question-badge"/>
+
+                        <ui:Label
+                            name="question-category-label"
+                            text="Electronics · Fundamentals"
+                            class="question-category-label"/>
+
+                    </ui:VisualElement>
+
+                    <ui:Label
+                        name="question-text-label"
+                        text="Which component is primarily responsible for voltage regulation in a power supply circuit?"
+                        class="question-text-label"/>
+
+                </ui:VisualElement>
+
+                <!-- Answers -->
+                <ui:VisualElement
+                    name="answers-container"
+                    class="answers-container">
+
+                    <ui:Button
+                        name="answer-a-button"
+                        class="answer-button">
+
+                        <ui:VisualElement class="answer-content">
+
+                            <ui:Label
+                                text="A"
+                                class="answer-letter"/>
+
+                            <ui:Label
+                                name="answer-a-label"
+                                text="Capacitor"
+                                class="answer-text"/>
+
+                        </ui:VisualElement>
+
+                    </ui:Button>
+
+                    <ui:Button
+                        name="answer-b-button"
+                        class="answer-button">
+
+                        <ui:VisualElement class="answer-content">
+
+                            <ui:Label
+                                text="B"
+                                class="answer-letter"/>
+
+                            <ui:Label
+                                name="answer-b-label"
+                                text="Voltage Regulator"
+                                class="answer-text"/>
+
+                        </ui:VisualElement>
+
+                    </ui:Button>
+
+                    <ui:Button
+                        name="answer-c-button"
+                        class="answer-button">
+
+                        <ui:VisualElement class="answer-content">
+
+                            <ui:Label
+                                text="C"
+                                class="answer-letter"/>
+
+                            <ui:Label
+                                name="answer-c-label"
+                                text="Diode"
+                                class="answer-text"/>
+
+                        </ui:VisualElement>
+
+                    </ui:Button>
+
+                    <ui:Button
+                        name="answer-d-button"
+                        class="answer-button">
+
+                        <ui:VisualElement class="answer-content">
+
+                            <ui:Label
+                                text="D"
+                                class="answer-letter"/>
+
+                            <ui:Label
+                                name="answer-d-label"
+                                text="Resistor"
+                                class="answer-text"/>
+
+                        </ui:VisualElement>
+
+                    </ui:Button>
+
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+        </ui:ScrollView>
+
+        <!-- Bottom action -->
+        <ui:VisualElement class="bottom-action-container">
+
+            <ui:Button
+                name="next-question-button"
+                text="Next Question →"
+                class="next-question-button"/>
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+
+</ui:UXML>

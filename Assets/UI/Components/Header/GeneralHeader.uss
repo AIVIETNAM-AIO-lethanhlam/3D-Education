@@ -1,0 +1,610 @@
+/* =========================================================
+   ICON SOURCES
+   ========================================================= */
+
+.icon-header-notification {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/notification.png");
+}
+
+.icon-header-profile {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/profile-white.png");
+}
+
+.icon-header-back {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/back.png");
+}
+
+.icon-header-clock {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/clock.png");
+}
+
+.icon-header-document {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/document.png");
+}
+
+.header-action-icon,
+.header-back-icon,
+.header-subtitle-icon,
+.header-right-icon {
+    background-repeat: no-repeat;
+    background-position: center;
+
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(0, 70, 180);
+}
+
+
+/* =========================================================
+   GENERAL HEADER
+   ========================================================= */
+
+.general-header {
+    width: 100%;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    padding-right: 20px;
+    padding-left: 20px;
+
+    background-color: rgb(255, 255, 255);
+
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(216, 225, 240);
+}
+
+/*
+   Dùng cùng một safe-area phía trên cho tất cả header.
+   Nhờ đó MainHomeScene, SettingsScene và PrivacyScene
+   bắt đầu tại cùng một vị trí theo chiều dọc.
+*/
+
+.general-header-home,
+.general-header-page {
+    padding-top: 40px;
+}
+
+/*
+   Padding dưới khác nhau vì nội dung Home header
+   và Page header có cấu trúc khác nhau.
+*/
+
+.general-header-home {
+    padding-bottom: 17px;
+}
+
+.general-header-page {
+    padding-bottom: 16px;
+}
+
+
+/* =========================================================
+   HOME HEADER
+   ========================================================= */
+
+.home-header-layout {
+    width: 100%;
+    min-height: 64px;
+
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.home-user-container {
+    min-width: 0;
+
+    flex-grow: 1;
+    flex-shrink: 1;
+
+    justify-content: center;
+}
+
+.header-welcome-label {
+    margin: 0;
+    padding: 0;
+
+    font-size: 15px;
+    color: rgb(78, 93, 128);
+
+    -unity-text-align: middle-left;
+}
+
+.header-user-name-label {
+    margin-top: 2px;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+
+    padding: 0;
+
+    font-size: 25px;
+    color: rgb(10, 29, 68);
+
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.home-header-actions {
+    flex-direction: row;
+    align-items: center;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.header-circle-button {
+    position: relative;
+
+    width: 40px;
+    height: 40px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    margin: 0;
+    padding: 0;
+
+    border-width: 0;
+    border-radius: 20px;
+}
+
+.notification-header-button {
+    margin-right: 8px;
+
+    background-color: rgb(240, 244, 253);
+}
+
+.profile-header-button {
+    background-color: rgb(0, 70, 180);
+}
+
+.header-action-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.notification-header-button .header-action-icon {
+    width: 20px;
+    height: 20px;
+
+    -unity-background-image-tint-color: rgb(21, 45, 91);
+}
+
+.profile-header-button .header-action-icon {
+    width: 18px;
+    height: 18px;
+
+    -unity-background-image-tint-color: rgb(255, 255, 255);
+}
+
+.header-notification-dot {
+    position: absolute;
+
+    width: 8px;
+    height: 8px;
+
+    top: 4px;
+    right: 4px;
+
+    background-color: rgb(244, 70, 78);
+
+    border-width: 1.5px;
+    border-color: rgb(255, 255, 255);
+    border-radius: 5px;
+}
+
+
+/* =========================================================
+   PAGE HEADER
+   ========================================================= */
+
+.page-header-layout {
+    display: none;
+
+    width: 100%;
+    min-height: 44px;
+
+    flex-direction: row;
+    align-items: center;
+}
+
+.header-back-button {
+    width: 38px;
+    height: 38px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    margin: 0;
+    margin-right: 12px;
+
+    padding: 0;
+
+    background-color: rgb(239, 244, 253);
+
+    border-width: 0;
+    border-radius: 19px;
+}
+
+.header-back-icon {
+    width: 17px;
+    height: 17px;
+
+    -unity-background-image-tint-color: rgb(17, 40, 82);
+}
+
+.page-header-information {
+    min-width: 0;
+
+    flex-grow: 1;
+    flex-shrink: 1;
+
+    justify-content: center;
+}
+
+.header-page-title-label {
+    margin: 0;
+    padding: 0;
+
+    font-size: 22px;
+    color: rgb(8, 27, 65);
+
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.header-subtitle-container {
+    flex-direction: row;
+    align-items: center;
+
+    margin-top: 3px;
+}
+
+.header-subtitle-icon {
+    width: 14px;
+    height: 14px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    margin-right: 5px;
+
+    -unity-background-image-tint-color: rgb(93, 108, 141);
+}
+
+.header-page-subtitle-label {
+    margin: 0;
+    padding: 0;
+
+    font-size: 13px;
+    color: rgb(91, 106, 140);
+
+    -unity-text-align: middle-left;
+
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   RIGHT ICON BUTTON
+   ========================================================= */
+
+.header-right-icon-button {
+    display: none;
+
+    width: 38px;
+    height: 38px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    margin: 0;
+    margin-left: 10px;
+
+    padding: 0;
+
+    background-color: rgb(239, 244, 253);
+
+    border-width: 0;
+    border-radius: 19px;
+}
+
+.header-right-icon {
+    width: 17px;
+    height: 17px;
+
+    -unity-background-image-tint-color: rgb(0, 70, 180);
+}
+
+
+/* =========================================================
+   RIGHT TEXT ACTION BUTTON
+   ========================================================= */
+
+.header-right-text-button {
+    display: none;
+
+    min-width: 150px;
+    height: 46px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    margin: 0;
+    margin-left: 14px;
+
+    padding-top: 0;
+    padding-right: 18px;
+    padding-bottom: 0;
+    padding-left: 18px;
+
+    background-color: rgb(0, 70, 180);
+
+    border-width: 0;
+    border-radius: 23px;
+
+    -unity-font-definition:
+        resource("Fonts/Inter_24pt-Regular");
+}
+
+.header-right-text-content {
+    flex-grow: 1;
+
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-right-text-prefix {
+    margin: 0;
+    margin-right: 9px;
+
+    padding: 0;
+
+    font-size: 24px;
+    color: rgb(255, 255, 255);
+
+    -unity-text-align: middle-center;
+}
+
+.header-right-text-label {
+    margin: 0;
+    padding: 0;
+
+    font-size: 15px;
+    color: rgb(255, 255, 255);
+
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+
+    white-space: nowrap;
+}
+
+.header-action-create-class {
+    min-width: 158px;
+}
+
+.header-action-enroll-class {
+    min-width: 178px;
+}
+
+
+/* =========================================================
+   HEADER MODIFIERS
+   ========================================================= */
+
+.header-no-bottom-border {
+    border-bottom-width: 0;
+}
+
+/*
+   Compact chỉ giảm khoảng cách phía dưới.
+   Không thay đổi padding-top để các Scene luôn thẳng hàng.
+*/
+
+.general-header-home.header-compact {
+    padding-top: 40px;
+    padding-bottom: 13px;
+}
+
+.general-header-page.header-compact {
+    padding-top: 40px;
+    padding-bottom: 13px;
+}
+
+/*
+   Chỉ dùng cho trường hợp đặc biệt trên thiết bị thật
+   có safe area lớn hơn bình thường.
+*/
+
+.general-header-page.header-large-safe-area,
+.general-header-home.header-large-safe-area {
+    padding-top: 48px;
+}
+
+
+/* =========================================================
+   INTERACTION
+   ========================================================= */
+
+.header-circle-button:hover,
+.header-back-button:hover,
+.header-right-icon-button:hover,
+.header-right-text-button:hover {
+    opacity: 0.87;
+}
+
+.header-circle-button:active,
+.header-back-button:active,
+.header-right-icon-button:active,
+.header-right-text-button:active {
+    opacity: 0.69;
+}
+/* =========================================================
+   TEMPLATE / PAGE HOST SAFETY
+   ========================================================= */
+
+.unity-template-container > .general-header,
+.general-header {
+    align-self: stretch;
+}
+
+/* Page headers should not reserve the larger Home header height. */
+.general-header-page .home-header-layout {
+    display: none;
+}
+
+.general-header-page .page-header-layout {
+    display: flex;
+}
+
+.general-header-home .home-header-layout {
+    display: flex;
+}
+
+.general-header-home .page-header-layout {
+    display: none;
+}
+
+.header-no-bottom-border {
+    border-bottom-width: 0;
+}
+
+.general-header-page.header-compact {
+    padding-top: 18px;
+    padding-bottom: 14px;
+}
+
+.general-header-home.header-compact {
+    padding-top: 22px;
+    padding-bottom: 13px;
+}
+
+.general-header-page.header-large-safe-area {
+    padding-top: 40px;
+}
+
+.header-back-button:hover {
+    background-color: rgb(228, 236, 250);
+}
+
+.header-back-button:active {
+    background-color: rgb(214, 225, 244);
+}
+
+.profile-header-button:hover {
+    background-color: rgb(0, 59, 157);
+}
+
+.profile-header-button:active {
+    background-color: rgb(0, 48, 132);
+}
+
+
+/* =========================================================
+   MY CLASSES PAGE HEADER VARIANT
+   Keeps the shared header, but fits narrow mobile screens.
+   ========================================================= */
+
+.general-header-page.my-classes-header {
+    padding-top: 40px;
+    padding-right: 18px;
+    padding-bottom: 14px;
+    padding-left: 18px;
+}
+
+.my-classes-header .page-header-layout {
+    min-height: 50px;
+}
+
+.my-classes-header .header-back-button {
+    width: 38px;
+    height: 38px;
+
+    margin-right: 10px;
+
+    border-radius: 19px;
+}
+
+.my-classes-header .page-header-information {
+    min-width: 86px;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.my-classes-header .header-page-title-label {
+    font-size: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.my-classes-header .header-subtitle-container {
+    margin-top: 1px;
+}
+
+.my-classes-header .header-page-subtitle-label {
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.my-classes-header .header-right-text-button {
+    min-width: 0;
+    width: 122px;
+    height: 38px;
+
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    margin-left: 8px;
+
+    padding-right: 9px;
+    padding-left: 9px;
+
+    border-radius: 19px;
+}
+
+.my-classes-header .header-action-create-class {
+    min-width: 0;
+    width: 110px;
+}
+
+.my-classes-header .header-action-enroll-class {
+    min-width: 0;
+    width: 122px;
+}
+
+.my-classes-header .header-right-text-prefix {
+    margin-right: 5px;
+    font-size: 17px;
+}
+
+.my-classes-header .header-right-text-label {
+    font-size: 10px;
+    white-space: nowrap;
+}

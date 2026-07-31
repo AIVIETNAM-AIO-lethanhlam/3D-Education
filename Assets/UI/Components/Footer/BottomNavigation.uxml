@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+
+    <Style
+        src="project://database/Assets/UI/Components/Footer/BottomNavigation.uss"/>
+
+    <ui:VisualElement
+        name="bottom-navigation"
+        class="bottom-navigation">
+
+        <!-- HOME -->
+        <ui:Button
+            name="home-nav-button"
+            class="nav-button">
+
+            <ui:VisualElement class="nav-button-content">
+
+                <ui:VisualElement
+                    name="home-nav-icon"
+                    class="nav-icon icon-nav-home"/>
+
+                <ui:Label
+                    name="home-nav-label"
+                    text="Home"
+                    class="nav-label"/>
+
+            </ui:VisualElement>
+
+        </ui:Button>
+
+        <!-- MY CLASSES -->
+        <ui:Button
+            name="classes-nav-button"
+            class="nav-button">
+
+            <ui:VisualElement class="nav-button-content">
+
+                <ui:VisualElement
+                    name="classes-nav-icon"
+                    class="nav-icon icon-nav-classes"/>
+
+                <ui:Label
+                    name="classes-nav-label"
+                    text="My"
+                    class="nav-label"/>
+
+            </ui:VisualElement>
+
+        </ui:Button>
+
+        <!-- AI -->
+        <ui:Button
+            name="ai-nav-button"
+            class="nav-button">
+
+            <ui:VisualElement class="nav-button-content">
+
+                <ui:VisualElement
+                    name="ai-nav-icon"
+                    class="nav-icon icon-nav-ai"/>
+
+                <ui:Label
+                    name="ai-nav-label"
+                    text="AI"
+                    class="nav-label"/>
+
+            </ui:VisualElement>
+
+        </ui:Button>
+
+        <!-- SETTINGS -->
+        <ui:Button
+            name="settings-nav-button"
+            class="nav-button">
+
+            <ui:VisualElement class="nav-button-content">
+
+                <ui:VisualElement
+                    name="settings-nav-icon"
+                    class="nav-icon icon-nav-settings"/>
+
+                <ui:Label
+                    name="settings-nav-label"
+                    text="Settings"
+                    class="nav-label"/>
+
+            </ui:VisualElement>
+
+        </ui:Button>
+
+    </ui:VisualElement>
+
+</ui:UXML>

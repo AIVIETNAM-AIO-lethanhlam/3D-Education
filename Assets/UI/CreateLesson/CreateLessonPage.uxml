@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/UI/CreateLesson/CreateLessonPage.uss" />
+
+    <ui:VisualElement name="create-lesson-page" class="create-lesson-page">
+        <ui:VisualElement class="wizard-header">
+            <ui:VisualElement class="header-main-row">
+                <ui:Button name="back-button" class="header-back-button">
+                    <ui:VisualElement class="back-icon" />
+                </ui:Button>
+
+                <ui:VisualElement class="header-title-group">
+                    <ui:Label name="step-label" text="Step 1 of 3" class="step-label" />
+                    <ui:Label name="page-title-label" text="Location &amp; Format" class="page-title-label" />
+                </ui:VisualElement>
+
+                <ui:Button name="cancel-button" text="Cancel" class="cancel-button" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="progress-row">
+                <ui:VisualElement name="progress-step-1" class="progress-segment progress-current" />
+                <ui:VisualElement name="progress-step-2" class="progress-segment" />
+                <ui:VisualElement name="progress-step-3" class="progress-segment progress-segment-end" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="body-container">
+            <!-- STEP 1 -->
+            <ui:ScrollView name="format-step" class="step-panel clean-scroll" mode="Vertical" vertical-scroller-visibility="Hidden" horizontal-scroller-visibility="Hidden">
+                <ui:VisualElement class="form-content">
+                    <ui:Label text="CHAPTER" class="form-label" />
+
+                    <ui:DropdownField name="chapter-dropdown"
+                                      class="chapter-dropdown"
+                                      value="Chapter 1 – Introduction" />
+
+                    <ui:VisualElement class="lesson-name-section">
+                        <ui:Label text="CLASS NAME" class="form-label" />
+                        <ui:TextField name="lesson-title-field"
+                                      class="lesson-name-input"
+                                      placeholder-text="Enter lesson name" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="section-title-row">
+                        <ui:Label text="LESSON FORMAT" class="form-label section-title-label" />
+                        <ui:Button name="select-all-formats-button" text="Select all that apply" class="section-action-button" />
+                    </ui:VisualElement>
+                    <ui:Label text="A lesson can combine multiple formats." class="helper-label" />
+
+                    <ui:Button name="video-format-button" class="format-card">
+                        <ui:VisualElement class="format-icon-wrap">
+                            <ui:VisualElement class="format-icon icon-video" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="format-text-group">
+                            <ui:Label text="Video Lecture" class="format-title" />
+                            <ui:Label text="Upload or link a recorded video lesson" class="format-description" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="video-radio" class="format-radio" />
+                    </ui:Button>
+
+                    <ui:Button name="model-format-button" class="format-card">
+                        <ui:VisualElement class="format-icon-wrap">
+                            <ui:VisualElement class="format-icon icon-model" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="format-text-group">
+                            <ui:Label text="3D Interactive" class="format-title" />
+                            <ui:Label text="Attach a 3D model or simulation" class="format-description" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="model-radio" class="format-radio" />
+                    </ui:Button>
+
+                    <ui:Button name="document-format-button" class="format-card">
+                        <ui:VisualElement class="format-icon-wrap">
+                            <ui:VisualElement class="format-icon icon-document" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="format-text-group">
+                            <ui:Label text="Document" class="format-title" />
+                            <ui:Label text="PDF reading, slides, or study notes" class="format-description" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="document-radio" class="format-radio" />
+                    </ui:Button>
+
+                    <ui:Label name="format-error-label" text="" class="validation-message" />
+                </ui:VisualElement>
+            </ui:ScrollView>
+
+            <!-- STEP 2 -->
+            <ui:ScrollView name="asset-step" class="step-panel clean-scroll hidden" mode="Vertical" vertical-scroller-visibility="Hidden" horizontal-scroller-visibility="Hidden">
+                <ui:VisualElement class="form-content asset-content">
+                    <ui:Label text="Upload assets for each format selected. You can skip blocks that don't apply." class="asset-intro" />
+
+                    <ui:VisualElement name="video-upload-card" class="upload-card upload-card-video hidden">
+                        <ui:VisualElement class="upload-card-header">
+                            <ui:VisualElement class="upload-type-icon-wrap upload-type-video-wrap">
+                                <ui:VisualElement class="upload-type-icon icon-video" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="upload-title-group">
+                                <ui:Label text="Video Lecture" class="upload-card-title" />
+                                <ui:Label text="Paste one YouTube video URL" class="upload-card-subtitle" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:TextField name="youtube-url-field"
+                                      class="youtube-url-field"
+                                      placeholder-text="https://www.youtube.com/watch?v=..." />
+
+                        <ui:Button name="confirm-video-link-button"
+                                   class="upload-action-button upload-action-video">
+                            <ui:VisualElement class="button-icon link-icon" />
+                            <ui:Label text="Confirm YouTube Link" class="upload-button-label" />
+                        </ui:Button>
+
+                        <ui:Label name="video-link-status-label"
+                                  text=""
+                                  class="video-link-status-label" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="document-upload-card" class="upload-card upload-card-document hidden">
+                        <ui:VisualElement class="upload-card-header">
+                            <ui:VisualElement class="upload-type-icon-wrap upload-type-document-wrap">
+                                <ui:VisualElement class="upload-type-icon icon-document" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="upload-title-group">
+                                <ui:Label text="Documents" class="upload-card-title" />
+                                <ui:Label text="Upload one or more PDF documents" class="upload-card-subtitle" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="document-chip-container" class="document-chip-container" />
+                        <ui:Button name="upload-documents-button" class="upload-action-button upload-action-document">
+                            <ui:VisualElement class="button-icon upload-icon" />
+                            <ui:Label text="Select PDF Documents" class="upload-button-label" />
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="exercise-upload-card" class="upload-card upload-card-exercise hidden">
+                        <ui:VisualElement class="upload-card-header">
+                            <ui:VisualElement class="upload-type-icon-wrap upload-type-exercise-wrap">
+                                <ui:VisualElement class="upload-type-icon icon-document" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="upload-title-group">
+                                <ui:Label text="Exercise PDF" class="upload-card-title" />
+                                <ui:Label text="Upload one exercise PDF file (Max 1 file)" class="upload-card-subtitle" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement name="exercise-file-row"
+                                          class="single-file-row hidden">
+                            <ui:Label name="exercise-file-label"
+                                      text="No exercise PDF selected"
+                                      class="single-file-name" />
+                            <ui:Button name="remove-exercise-button"
+                                       text="×"
+                                       class="remove-file-button single-file-remove" />
+                        </ui:VisualElement>
+
+                        <ui:Button name="upload-exercise-button"
+                                   class="upload-action-button upload-action-exercise">
+                            <ui:VisualElement class="button-icon upload-icon" />
+                            <ui:Label text="Select Exercise PDF" class="upload-button-label" />
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="model-upload-card" class="upload-card upload-card-model hidden">
+                        <ui:VisualElement class="upload-card-header">
+                            <ui:VisualElement class="upload-type-icon-wrap upload-type-model-wrap">
+                                <ui:VisualElement class="upload-type-icon icon-model" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="upload-title-group">
+                                <ui:Label text="3D Interactive Model" class="upload-card-title" />
+                                <ui:Label text="Upload one GLB model (Max 1 file)" class="upload-card-subtitle" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="model-file-row"
+                                          class="single-file-row hidden">
+                            <ui:Label name="model-file-label"
+                                      text="No 3D asset selected"
+                                      class="single-file-name" />
+                            <ui:Button name="remove-model-button"
+                                       text="×"
+                                       class="remove-file-button single-file-remove" />
+                        </ui:VisualElement>
+                        <ui:Button name="upload-model-button" class="upload-action-button upload-action-model">
+                            <ui:VisualElement class="button-icon upload-icon" />
+                            <ui:Label text="Select GLB Model" class="upload-button-label" />
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:Label name="asset-error-label" text="" class="validation-message" />
+                </ui:VisualElement>
+            </ui:ScrollView>
+
+            <!-- STEP 3 -->
+            <ui:ScrollView name="details-step" class="step-panel clean-scroll hidden" mode="Vertical" vertical-scroller-visibility="Hidden" horizontal-scroller-visibility="Hidden">
+                <ui:VisualElement class="form-content details-content">
+                    <ui:Button name="generate-ai-button" class="generate-ai-button">
+                        <ui:VisualElement class="ai-icon" />
+                        <ui:Label text="Generate Description &amp; Objectives with AI" class="generate-ai-label" />
+                    </ui:Button>
+
+                    <ui:VisualElement class="details-card">
+                        <ui:VisualElement class="details-card-header">
+                            <ui:VisualElement class="details-header-icon description-icon" />
+                            <ui:Label text="LESSON DESCRIPTION" class="details-card-title" />
+                        </ui:VisualElement>
+                        <ui:TextField name="lesson-description-field"
+                                      class="details-text-area"
+                                      multiline="true"
+                                      placeholder-text="Describe what this lesson is about, its structure, and any prerequisites students should know before starting..." />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="details-card objectives-card">
+                        <ui:VisualElement class="details-card-header">
+                            <ui:VisualElement class="details-header-icon objective-icon" />
+                            <ui:Label text="LEARNING OBJECTIVES" class="details-card-title" />
+                        </ui:VisualElement>
+
+                        <ui:VisualElement name="objectives-container" class="objectives-container" />
+
+                        <ui:Button name="add-objective-button" class="add-objective-button">
+                            <ui:VisualElement class="add-objective-icon" />
+                            <ui:Label text="Add New Objective" class="add-objective-label" />
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:Label name="details-error-label" text="" class="validation-message" />
+                </ui:VisualElement>
+            </ui:ScrollView>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="bottom-action-container">
+            <ui:VisualElement name="save-progress-container" class="save-progress-container hidden">
+                <ui:ProgressBar name="save-progress-bar"
+                                class="save-progress-bar"
+                                low-value="0"
+                                high-value="100"
+                                value="0" />
+                <ui:Label name="save-progress-label"
+                          text="Preparing lesson..."
+                          class="save-progress-label" />
+            </ui:VisualElement>
+
+            <ui:Button name="next-button" class="primary-button">
+                <ui:Label name="next-button-label" text="Next" class="primary-button-label" />
+                <ui:VisualElement name="next-button-icon" class="next-button-icon" />
+            </ui:Button>
+            <ui:Button name="save-draft-button" text="Save Draft" class="secondary-button hidden" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

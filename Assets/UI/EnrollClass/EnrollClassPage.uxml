@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements"
+         xmlns:uie="UnityEditor.UIElements">
+
+    <ui:Style src="project://database/Assets/UI/EnrollClass/EnrollClassPage.uss" />
+
+    <ui:VisualElement name="page-root" class="page-root">
+
+        <ui:Template name="GeneralHeader"
+                     src="project://database/Assets/UI/Components/Header/GeneralHeader.uxml" />
+
+        <ui:Instance template="GeneralHeader" />
+
+        <ui:VisualElement class="discover-controls">
+
+            <ui:VisualElement class="search-container">
+                <ui:VisualElement class="search-icon" />
+
+                <ui:TextField name="search-field"
+                              class="search-field"
+                              placeholder-text="Search courses, codes, instructors..." />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="category-section">
+
+                <ui:ScrollView name="category-scroll"
+                               mode="Horizontal"
+                               horizontal-scroller-visibility="Hidden"
+                               vertical-scroller-visibility="Hidden"
+                               class="category-scroll">
+
+                    <ui:VisualElement name="category-row" class="category-row" />
+                </ui:ScrollView>
+
+                <!-- Custom scrollbar giống thiết kế Figma -->
+                <ui:VisualElement name="category-scrollbar"
+                                  class="category-custom-scrollbar">
+
+                    <ui:Button name="category-scroll-left-button"
+                               class="category-scroll-arrow category-scroll-arrow-left" />
+
+                    <ui:VisualElement name="category-scroll-track"
+                                      class="category-scroll-track">
+
+                        <ui:VisualElement name="category-scroll-thumb"
+                                          class="category-scroll-thumb" />
+                    </ui:VisualElement>
+
+                    <ui:Button name="category-scroll-right-button"
+                               class="category-scroll-arrow category-scroll-arrow-right" />
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <ui:VisualElement class="section-divider" />
+
+        <ui:ScrollView name="class-list-scroll"
+                       mode="Vertical"
+                       horizontal-scroller-visibility="Hidden"
+                       vertical-scroller-visibility="Hidden"
+                       class="class-list-scroll">
+
+            <ui:VisualElement name="class-list-container"
+                              class="class-list-container" />
+        </ui:ScrollView>
+
+    </ui:VisualElement>
+</ui:UXML>

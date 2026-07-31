@@ -1,0 +1,438 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+
+    <ui:Template
+        name="GeneralHeader"
+        src="project://database/Assets/UI/Components/Header/GeneralHeader.uxml" />
+
+    <Style src="SettingPage.uss" />
+
+    <Style
+        src="project://database/Assets/UI/Components/Footer/BottomNavigation.uss" />
+
+    <ui:VisualElement
+        name="setting-page-root"
+        class="setting-page">
+
+        <!-- HEADER -->
+        <ui:Instance template="GeneralHeader" />
+
+        <!-- SCROLLABLE CONTENT -->
+        <ui:ScrollView
+            name="setting-scroll-view"
+            class="setting-scroll-view"
+            mode="Vertical"
+            horizontal-scroller-visibility="Hidden"
+            vertical-scroller-visibility="Hidden">
+
+            <ui:VisualElement class="setting-content">
+
+                <!-- PROFILE -->
+                <ui:VisualElement class="setting-card profile-card">
+
+                    <ui:VisualElement class="profile-avatar">
+                        <ui:VisualElement class="profile-avatar-icon" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="profile-info">
+
+                        <ui:Label
+                            name="profile-name-label"
+                            text="Nguyễn Văn A"
+                            class="profile-name" />
+
+                        <ui:Label
+                            name="profile-email-label"
+                            text="nguyenvan.a@hcmut.edu.vn"
+                            class="profile-email" />
+
+                        <ui:VisualElement class="profile-badge-row">
+
+                            <ui:Label
+                                name="profile-role-label"
+                                text="Student"
+                                class="profile-badge role-badge" />
+
+                            <ui:Label
+                                text="● Active"
+                                class="profile-badge active-badge" />
+
+                        </ui:VisualElement>
+
+                    </ui:VisualElement>
+
+                    <ui:Button
+                        name="edit-profile-button"
+                        class="profile-edit-button">
+
+                        <ui:VisualElement class="profile-edit-icon" />
+
+                    </ui:Button>
+
+                </ui:VisualElement>
+
+                <!-- ACCOUNT -->
+                <ui:VisualElement class="setting-card section-card">
+
+                    <ui:Label
+                        text="ACCOUNT"
+                        class="section-title" />
+
+                    <ui:VisualElement class="section-divider" />
+
+                    <ui:Button
+                        name="user-information-button"
+                        class="setting-row">
+
+                        <ui:VisualElement class="row-icon user-icon" />
+
+                        <ui:VisualElement class="row-text-container">
+
+                            <ui:Label
+                                text="User Information"
+                                class="row-title" />
+
+                            <ui:Label
+                                text="Edit name, email, password"
+                                class="row-description" />
+
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="chevron-icon" />
+
+                    </ui:Button>
+
+                </ui:VisualElement>
+
+                <!-- APPEARANCE -->
+                <ui:VisualElement class="setting-card section-card">
+
+                    <ui:Label
+                        text="APPEARANCE"
+                        class="section-title" />
+
+                    <ui:VisualElement class="section-divider" />
+
+                    <ui:VisualElement class="setting-row">
+
+                        <ui:VisualElement class="row-icon sun-icon" />
+
+                        <ui:Label
+                            text="Dark Mode"
+                            class="row-title row-grow" />
+
+                        <ui:Toggle
+                            name="dark-mode-toggle"
+                            class="switch-toggle" />
+
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="section-divider" />
+
+                    <ui:VisualElement class="setting-row">
+
+                        <ui:VisualElement class="row-icon language-icon" />
+
+                        <ui:Label
+                            text="Language"
+                            class="row-title row-grow" />
+
+                        <ui:VisualElement class="language-switch">
+
+                            <ui:Button
+                                name="english-button"
+                                text="EN"
+                                class="language-button language-button-active" />
+
+                            <ui:Button
+                                name="vietnamese-button"
+                                text="VI"
+                                class="language-button" />
+
+                        </ui:VisualElement>
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+                <!-- AUDIO -->
+                <ui:VisualElement class="setting-card section-card">
+
+                    <ui:Label
+                        text="AUDIO"
+                        class="section-title" />
+
+                    <ui:VisualElement class="section-divider" />
+
+                    <ui:VisualElement class="audio-row">
+
+                        <ui:VisualElement class="row-icon volume-icon" />
+
+                        <ui:VisualElement class="audio-content">
+
+                            <ui:VisualElement class="audio-header">
+
+                                <ui:Label
+                                    text="SFX Volume"
+                                    class="row-title row-grow" />
+
+                                <ui:Label
+                                    name="sfx-value-label"
+                                    text="70%"
+                                    class="volume-value" />
+
+                            </ui:VisualElement>
+
+                            <ui:VisualElement class="volume-slider-container">
+
+                                <ui:VisualElement class="volume-slider-background" />
+
+                                <ui:VisualElement
+                                    name="sfx-slider-fill"
+                                    class="volume-slider-fill" />
+
+                                <ui:Slider
+                                    name="sfx-slider"
+                                    low-value="0"
+                                    high-value="100"
+                                    value="70"
+                                    show-input-field="false"
+                                    class="volume-slider" />
+
+                            </ui:VisualElement>
+
+                        </ui:VisualElement>
+
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="audio-row">
+
+                        <ui:VisualElement class="row-icon headphone-icon" />
+
+                        <ui:VisualElement class="audio-content">
+
+                            <ui:VisualElement class="audio-header">
+
+                                <ui:Label
+                                    text="BGM Volume"
+                                    class="row-title row-grow" />
+
+                                <ui:Label
+                                    name="bgm-value-label"
+                                    text="50%"
+                                    class="volume-value" />
+
+                            </ui:VisualElement>
+
+                            <ui:VisualElement class="volume-slider-container">
+
+                                <ui:VisualElement class="volume-slider-background" />
+
+                                <ui:VisualElement
+                                    name="bgm-slider-fill"
+                                    class="volume-slider-fill" />
+
+                                <ui:Slider
+                                    name="bgm-slider"
+                                    low-value="0"
+                                    high-value="100"
+                                    value="50"
+                                    show-input-field="false"
+                                    class="volume-slider" />
+
+                            </ui:VisualElement>
+
+                        </ui:VisualElement>
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+                <!-- LEARNING -->
+                <ui:VisualElement class="setting-card section-card">
+
+                    <ui:Label
+                        text="LEARNING"
+                        class="section-title" />
+
+                    <ui:VisualElement class="section-divider" />
+
+                    <ui:VisualElement class="setting-row">
+
+                        <ui:VisualElement class="row-icon tutorial-icon" />
+
+                        <ui:VisualElement class="row-text-container">
+
+                            <ui:Label
+                                text="Tutorial Guide"
+                                class="row-title" />
+
+                            <ui:Label
+                                text="Show onboarding hints"
+                                class="row-description" />
+
+                        </ui:VisualElement>
+
+                        <ui:Toggle
+                            name="tutorial-toggle"
+                            value="true"
+                            class="switch-toggle" />
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+                <!-- SESSION RECOVERY -->
+                <ui:VisualElement
+                    name="session-recovery-card"
+                    class="recovery-card">
+
+                    <ui:VisualElement class="recovery-top-row">
+
+                        <ui:VisualElement class="warning-icon" />
+
+                        <ui:VisualElement class="recovery-text-container">
+
+                            <ui:Label
+                                text="Session Recovery"
+                                class="recovery-title" />
+
+                            <ui:Label
+                                text="Unsaved session from 2h ago detected. Restore it?"
+                                class="recovery-description" />
+
+                        </ui:VisualElement>
+
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="recovery-button-row">
+
+                        <ui:Button
+                            name="restore-button"
+                            text="Restore"
+                            class="recovery-button restore-button" />
+
+                        <ui:Button
+                            name="dismiss-button"
+                            text="Dismiss"
+                            class="recovery-button dismiss-button" />
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+                <!-- PRIVACY -->
+                <ui:Button
+                    name="privacy-button"
+                    class="setting-card privacy-card">
+
+                    <ui:VisualElement class="row-icon privacy-icon" />
+
+                    <ui:Label
+                        text="Privacy &amp; Terms"
+                        class="row-title row-grow" />
+
+                    <ui:VisualElement class="chevron-icon" />
+
+                </ui:Button>
+
+                <!-- LOGOUT -->
+                <ui:Button
+                    name="logout-button"
+                    class="setting-card logout-button">
+
+                    <ui:VisualElement class="logout-button-content">
+
+                        <ui:VisualElement class="logout-icon" />
+
+                        <ui:Label
+                            text="Logout"
+                            class="logout-label" />
+
+                    </ui:VisualElement>
+
+                </ui:Button>
+
+                <ui:VisualElement class="content-bottom-space" />
+
+            </ui:VisualElement>
+
+        </ui:ScrollView>
+
+        <!-- INLINE FOOTER: avoids template clone errors -->
+        <ui:VisualElement
+            name="bottom-navigation"
+            class="bottom-navigation">
+
+            <ui:Button
+                name="home-nav-button"
+                class="nav-button">
+
+                <ui:VisualElement class="nav-button-content">
+
+                    <ui:VisualElement
+                        class="nav-icon icon-nav-home" />
+
+                    <ui:Label
+                        text="Home"
+                        class="nav-label" />
+
+                </ui:VisualElement>
+
+            </ui:Button>
+
+            <ui:Button
+                name="classes-nav-button"
+                class="nav-button">
+
+                <ui:VisualElement class="nav-button-content">
+
+                    <ui:VisualElement
+                        class="nav-icon icon-nav-classes" />
+
+                    <ui:Label
+                        text="My"
+                        class="nav-label" />
+
+                </ui:VisualElement>
+
+            </ui:Button>
+
+            <ui:Button
+                name="ai-nav-button"
+                class="nav-button">
+
+                <ui:VisualElement class="nav-button-content">
+
+                    <ui:VisualElement
+                        class="nav-icon icon-nav-ai" />
+
+                    <ui:Label
+                        text="AI"
+                        class="nav-label" />
+
+                </ui:VisualElement>
+
+            </ui:Button>
+
+            <ui:Button
+                name="settings-nav-button"
+                class="nav-button">
+
+                <ui:VisualElement class="nav-button-content">
+
+                    <ui:VisualElement
+                        class="nav-icon icon-nav-settings" />
+
+                    <ui:Label
+                        text="Settings"
+                        class="nav-label" />
+
+                </ui:VisualElement>
+
+            </ui:Button>
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+
+</ui:UXML>

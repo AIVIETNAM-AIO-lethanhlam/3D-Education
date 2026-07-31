@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements"
+         xmlns:uie="UnityEditor.UIElements">
+
+    <ui:Style src="StartQuizPage.uss"/>
+
+    <ui:VisualElement name="page-root" class="page-root">
+
+        <!-- Header -->
+        <ui:VisualElement name="header" class="header">
+
+            <ui:Button name="back-button"
+                       class="back-button"
+                       tooltip="Back">
+
+                <ui:VisualElement class="back-icon"/>
+            </ui:Button>
+
+            <ui:VisualElement class="header-center">
+                <ui:Label name="lesson-label"
+                          text="Lesson 8"
+                          class="lesson-label"/>
+
+                <ui:Label name="header-quiz-title"
+                          text="Quiz 01"
+                          class="header-quiz-title"/>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="status-badge"
+                              class="status-badge status-not-attempted">
+
+                <ui:VisualElement class="status-dot"/>
+
+                <ui:Label name="status-label"
+                          text="NOT ATTEMPTED"
+                          class="status-label"/>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <ui:VisualElement class="header-divider"/>
+
+        <!-- Scrollable body -->
+        <ui:ScrollView name="content-scroll"
+                       class="content-scroll"
+                       mode="Vertical"
+                       horizontal-scroller-visibility="Hidden"
+                       vertical-scroller-visibility="Auto">
+
+            <ui:VisualElement class="content-container">
+
+                <!-- Main quiz card -->
+                <ui:VisualElement class="quiz-card">
+
+                    <!-- Blue header -->
+                    <ui:VisualElement class="quiz-card-header">
+
+                        <ui:VisualElement class="quiz-type-row">
+
+                            <ui:VisualElement class="quiz-type-icon-circle">
+                                <ui:VisualElement class="quiz-type-icon"/>
+                            </ui:VisualElement>
+
+                            <ui:Label name="quiz-type-label"
+                                      text="MULTIPLE CHOICE QUIZ"
+                                      class="quiz-type-label"/>
+                        </ui:VisualElement>
+
+                        <ui:Label name="quiz-title-label"
+                                  text="Quiz 01: Fundamentals of Circuits"
+                                  class="quiz-title-label"/>
+
+                        <ui:Label name="quiz-subtitle-label"
+                                  text="Electronics · Chapter 1–3"
+                                  class="quiz-subtitle-label"/>
+
+                    </ui:VisualElement>
+
+                    <!-- Information -->
+                    <ui:VisualElement class="quiz-info-container">
+
+                        <ui:VisualElement class="info-row">
+
+                            <ui:VisualElement class="info-left">
+                                <ui:VisualElement class="info-icon open-icon"/>
+                                <ui:Label text="Opens" class="info-name"/>
+                            </ui:VisualElement>
+
+                            <ui:Label name="open-time-label"
+                                      text="Oct 25, 2026 · 08:00 AM"
+                                      class="info-value"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="row-divider"/>
+
+                        <ui:VisualElement class="info-row">
+
+                            <ui:VisualElement class="info-left">
+                                <ui:VisualElement class="info-icon close-icon"/>
+                                <ui:Label text="Closes" class="info-name"/>
+                            </ui:VisualElement>
+
+                            <ui:Label name="close-time-label"
+                                      text="Oct 27, 2026 · 11:59 PM"
+                                      class="info-value"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="row-divider"/>
+
+                        <ui:VisualElement class="info-row">
+
+                            <ui:VisualElement class="info-left">
+                                <ui:VisualElement class="empty-icon-space"/>
+                                <ui:Label text="Questions" class="info-name"/>
+                            </ui:VisualElement>
+
+                            <ui:Label name="question-count-label"
+                                      text="5 questions"
+                                      class="info-value"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="row-divider"/>
+
+                        <ui:VisualElement class="info-row">
+
+                            <ui:VisualElement class="info-left">
+                                <ui:VisualElement class="empty-icon-space"/>
+                                <ui:Label text="Maximum Grade" class="info-name"/>
+                            </ui:VisualElement>
+
+                            <ui:Label name="maximum-grade-label"
+                                      text="10 points"
+                                      class="info-value"/>
+                        </ui:VisualElement>
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+                <!-- Notice -->
+                <ui:VisualElement class="notice-card">
+
+                    <ui:VisualElement class="notice-icon"/>
+
+                    <ui:VisualElement class="notice-content">
+
+                        <ui:Label text="Before you begin"
+                                  class="notice-title"/>
+
+                        <ui:Label name="notice-description"
+                                  text="Once started, the quiz must be completed in one session. Make sure you have a stable internet connection before clicking “Start Quiz”."
+                                  class="notice-description"/>
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+        </ui:ScrollView>
+
+        <!-- Bottom fixed area -->
+        <ui:VisualElement class="bottom-area">
+
+            <ui:VisualElement class="bottom-shadow"/>
+
+            <ui:Button name="start-quiz-button"
+                       text="Start Quiz"
+                       class="start-quiz-button"/>
+
+        </ui:VisualElement>
+
+        <!-- Confirmation popup -->
+        <ui:VisualElement name="confirmation-overlay"
+                          class="confirmation-overlay hidden">
+
+            <ui:VisualElement class="confirmation-dialog">
+
+                <ui:Label text="Start Quiz?"
+                          class="confirmation-title"/>
+
+                <ui:Label text="The quiz timer will begin immediately after you start."
+                          class="confirmation-message"/>
+
+                <ui:VisualElement class="confirmation-actions">
+
+                    <ui:Button name="cancel-start-button"
+                               text="Cancel"
+                               class="dialog-button cancel-dialog-button"/>
+
+                    <ui:Button name="confirm-start-button"
+                               text="Start"
+                               class="dialog-button confirm-dialog-button"/>
+
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+
+</ui:UXML>
