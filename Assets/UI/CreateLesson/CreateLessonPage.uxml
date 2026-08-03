@@ -144,7 +144,7 @@
                         </ui:VisualElement>
 
                         <ui:VisualElement name="exercise-file-row"
-                                          class="single-file-row hidden">
+                                          class="single-file-row single-file-row-exercise hidden">
                             <ui:Label name="exercise-file-label"
                                       text="No exercise PDF selected"
                                       class="single-file-name" />
@@ -171,7 +171,7 @@
                             </ui:VisualElement>
                         </ui:VisualElement>
                         <ui:VisualElement name="model-file-row"
-                                          class="single-file-row hidden">
+                                          class="single-file-row single-file-row-model hidden">
                             <ui:Label name="model-file-label"
                                       text="No 3D asset selected"
                                       class="single-file-name" />

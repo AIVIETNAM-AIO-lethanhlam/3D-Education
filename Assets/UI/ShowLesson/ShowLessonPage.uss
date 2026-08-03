@@ -155,6 +155,11 @@ width: 100%;
         url("project://database/Assets/UI/Images/Icons/ai-sparkle-white.png");
 }
 
+.icon-close {
+    background-image:
+        url("project://database/Assets/UI/Images/Icons/close.png");
+}
+
 .button-icon,
 .play-icon,
 .small-icon,
@@ -1143,77 +1148,167 @@ width: 100%;
 }
 .resource-modal-overlay {
     position: absolute;
-    left: 0; right: 0; top: 0; bottom: 0;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+
     justify-content: center;
     align-items: center;
+
     padding-left: 22px;
     padding-right: 22px;
+
     background-color: rgba(7, 18, 38, 0.55);
 }
+
 .resource-modal-card {
     width: 100%;
+    min-height: 0;
     max-height: 62%;
-    padding: 16px;
+
+    padding-top: 16px;
+    padding-right: 16px;
+    padding-bottom: 14px;
+    padding-left: 16px;
+
     border-radius: 16px;
-    background-color: rgb(255,255,255);
+    background-color: rgb(255, 255, 255);
 }
+
 .resource-modal-header {
+    width: 100%;
+    min-height: 32px;
+
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+
+    margin-bottom: 6px;
 }
+
 .resource-modal-title {
+    flex-grow: 1;
+
     color: rgb(20, 42, 82);
     font-size: 16px;
     -unity-font-style: bold;
 }
+
 .resource-modal-close {
-    width: 30px;
-    height: 30px;
+    width: 25px;
+    height: 25px;
+
+    min-width: 20px;
+    min-height: 20px;
+
+    margin-left: 8px;
+    margin-right: 2px;
+
+    padding: 0;
+
+    justify-content: center;
+    align-items: center;
+
     border-width: 0;
-    border-radius: 15px;
-    background-color: rgb(242,246,252);
-    color: rgb(54,76,112);
-    font-size: 18px;
+
+    background-color: rgba(0,0,0,0);
+
+    background-repeat: no-repeat;
+    background-position: center;
+
+    -unity-background-scale-mode: scale-to-fit;
 }
+
+.resource-modal-close:hover {
+    background-color: rgb(226, 235, 248);
+}
+
 .resource-modal-message {
     margin-bottom: 10px;
-    color: rgb(102,120,150);
+
+    color: rgb(102, 120, 150);
     font-size: 10px;
 }
+
 .resource-file-list {
+    width: 100%;
+    min-height: 0;
     max-height: 300px;
+
+    flex-grow: 0;
+    flex-shrink: 1;
 }
-.resource-file-list .unity-scroll-view__vertical-scroller { display: none; }
+
+.resource-file-list .unity-scroll-view__content-viewport {
+    min-height: 0;
+}
+
+.resource-file-list .unity-scroll-view__content-container {
+    min-height: 0;
+}
+
+.resource-file-list .unity-scroll-view__horizontal-scroller,
+.resource-file-list .unity-scroll-view__vertical-scroller {
+    display: none;
+}
+
 .resource-file-row {
+    width: 100%;
+
     flex-direction: row;
     align-items: center;
+
     margin-bottom: 8px;
     padding: 10px;
+
     border-width: 1px;
-    border-color: rgb(220,229,243);
+    border-color: rgb(220, 229, 243);
     border-radius: 11px;
-    background-color: rgb(249,251,255);
+
+    background-color: rgb(249, 251, 255);
 }
-.resource-file-info { flex-grow: 1; flex-shrink: 1; margin-right: 8px; }
-.resource-file-name { color: rgb(24,49,91); font-size: 11px; -unity-font-style: bold; white-space: normal; }
-.resource-file-size { margin-top: 2px; color: rgb(120,136,163); font-size: 9px; }
+
+.resource-file-info {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-right: 8px;
+}
+
+.resource-file-name {
+    color: rgb(24, 49, 91);
+    font-size: 11px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.resource-file-size {
+    margin-top: 2px;
+    color: rgb(120, 136, 163);
+    font-size: 9px;
+}
+
 .resource-download-button {
     min-width: 72px;
     height: 32px;
+
     border-width: 0;
     border-radius: 9px;
-    background-color: rgb(32,96,214);
+
+    background-color: rgb(32, 96, 214);
     color: white;
+
     font-size: 10px;
     -unity-font-style: bold;
 }
+
 .download-status-label {
-    min-height: 16px;
-    margin-top: 6px;
-    color: rgb(32,96,214);
+    min-height: 0;
+    margin-top: 4px;
+
+    color: rgb(32, 96, 214);
     font-size: 10px;
     white-space: normal;
 }
+
 .quiz-row { width: 100%; }

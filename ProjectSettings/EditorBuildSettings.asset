@@ -5,9 +5,6 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
     path: Assets/Scenes/SplashScene.unity
     guid: f3af9cb6dfa139c46a7e83618ab16d18
@@ -54,8 +51,8 @@ EditorBuildSettings:
     path: Assets/Scenes/DoQuizScene.unity
     guid: 1397b41399d14474cb855b9da051aa58
   - enabled: 1
-    path: Assets/Scenes/ARModelScene.unity
-    guid: 6daf868080e7101478b86d303e226b8e
+    path: Assets/ARModels/Scenes/ARScene.unity
+    guid: 72742e0afadbfe247a93ef773db7ada6
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: ac4a33b71edaaed4a8cf7efbca392c0b, type: 2}
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: bdc425842afcfcf4f83ed3deeca353d0, type: 2}

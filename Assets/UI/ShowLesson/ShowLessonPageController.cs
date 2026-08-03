@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
@@ -15,8 +16,14 @@ public class ShowLessonPageController : MonoBehaviour
     [SerializeField] private string previousSceneName = "ClassDetailScene";
     [SerializeField] private string editLessonSceneName = "CreateLessonScene";
     [SerializeField] private string quizSceneName = "DoExerciseScene";
+
     [SerializeField] private string interactiveModelSceneName = "InteractiveModelScene";
+    [SerializeField] private string arModelsSceneName = "ARScene";
+
     [SerializeField] private string aiSceneName = "AIScene";
+
+    [Header("3D model storage")]
+    [SerializeField, Min(60)] private int modelSignedUrlLifetimeSeconds = 3600;
 
     [Header("Current user")]
     [SerializeField] private bool showTeacherControls = true;
@@ -79,21 +86,26 @@ public class ShowLessonPageController : MonoBehaviour
     private bool isMuted;
     private bool fallbackPlaying;
     private float fallbackCurrentTime;
+    private bool isOpeningModelScene;
+    private MonoBehaviour nativeWebViewComponent;
+    private bool resumeVideoAfterModal;
 
     private void OnEnable()
     {
         uiDocument = GetComponent<UIDocument>();
         restService = GetComponent<SupabaseRuntimeRestService>();
-
         if (uiDocument == null || restService == null)
         {
-            Debug.LogError("ShowLessonScene is missing UIDocument or SupabaseRuntimeRestService.");
+            Debug.LogError(
+                "ShowLessonScene is missing UIDocument or " +
+                "SupabaseRuntimeRestService.");
             return;
         }
 
         root = uiDocument.rootVisualElement;
         QueryElements();
         FindYouTubeBridge();
+        FindNativeWebViewComponent();
         RegisterEvents();
         ConfigureRoleUI();
         HideScrollbars();
@@ -181,6 +193,65 @@ public class ShowLessonPageController : MonoBehaviour
         }
     }
 
+
+    private void FindNativeWebViewComponent()
+    {
+        nativeWebViewComponent = null;
+
+        MonoBehaviour[] components = GetComponentsInChildren<MonoBehaviour>(true);
+        foreach (MonoBehaviour component in components)
+        {
+            if (component == null) continue;
+
+            Type type = component.GetType();
+            if (string.Equals(type.Name, "WebViewObject", StringComparison.Ordinal))
+            {
+                nativeWebViewComponent = component;
+                break;
+            }
+        }
+
+        if (nativeWebViewComponent == null)
+        {
+            Debug.LogWarning(
+                "[ShowLessonPageController] WebViewObject was not found. " +
+                "The resource popup can still open, but a native WebView may remain above UI Toolkit."
+            );
+        }
+    }
+
+    private void SetNativeWebViewVisible(bool visible)
+    {
+        if (nativeWebViewComponent == null)
+            FindNativeWebViewComponent();
+
+        if (nativeWebViewComponent == null) return;
+
+        Type type = nativeWebViewComponent.GetType();
+        var method = type.GetMethod(
+            "SetVisibility",
+            new[] { typeof(bool) }
+        );
+
+        if (method != null)
+        {
+            try
+            {
+                method.Invoke(nativeWebViewComponent, new object[] { visible });
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    "[ShowLessonPageController] Cannot change WebView visibility: " +
+                    exception.Message
+                );
+            }
+            return;
+        }
+
+        nativeWebViewComponent.gameObject.SetActive(visible);
+    }
+
     private void RegisterEvents()
     {
         Register(backButton, HandleBackClicked);
@@ -189,12 +260,12 @@ public class ShowLessonPageController : MonoBehaviour
         Register(replayButton, HandleReplayClicked);
         Register(volumeButton, HandleVolumeClicked);
         Register(fullscreenButton, HandleFullscreenClicked);
-        Register(lectureSlidesButton, () => OpenResourceModal("Lecture Slides", documentAssets));
-        Register(exerciseFilesButton, () => OpenResourceModal("Exercises", quizAssets));
-        Register(launchModelButton, () => OpenModel("3d"));
-        Register(vrModeButton, () => OpenModel("vr"));
-        Register(arModeButton, () => OpenModel("ar"));
-        Register(aiAssistantButton, () => LoadSceneSafely(aiSceneName));
+        Register(lectureSlidesButton, HandleLectureSlidesClicked);
+        Register(exerciseFilesButton, HandleExerciseFilesClicked);
+        Register(launchModelButton, HandleLaunchModelClicked);
+        Register(vrModeButton, HandleVrModeClicked);
+        Register(arModeButton, HandleArModeClicked);
+        Register(aiAssistantButton, HandleAiAssistantClicked);
         Register(resourceModalClose, CloseResourceModal);
     }
 
@@ -206,6 +277,12 @@ public class ShowLessonPageController : MonoBehaviour
         Unregister(replayButton, HandleReplayClicked);
         Unregister(volumeButton, HandleVolumeClicked);
         Unregister(fullscreenButton, HandleFullscreenClicked);
+        Unregister(lectureSlidesButton, HandleLectureSlidesClicked);
+        Unregister(exerciseFilesButton, HandleExerciseFilesClicked);
+        Unregister(launchModelButton, HandleLaunchModelClicked);
+        Unregister(vrModeButton, HandleVrModeClicked);
+        Unregister(arModeButton, HandleArModeClicked);
+        Unregister(aiAssistantButton, HandleAiAssistantClicked);
         Unregister(resourceModalClose, CloseResourceModal);
     }
 
@@ -613,6 +690,13 @@ public class ShowLessonPageController : MonoBehaviour
     {
         if (resourceFileList == null || resourceModalOverlay == null) return;
 
+        resumeVideoAfterModal = youtubeBridge != null && youtubeBridge.IsReady && youtubeBridge.IsPlaying;
+        if (resumeVideoAfterModal)
+            youtubeBridge.Pause();
+
+        // Native Android WebView is rendered above UI Toolkit. Hide it while the popup is open.
+        SetNativeWebViewVisible(false);
+
         resourceFileList.Clear();
         if (resourceModalTitle != null) resourceModalTitle.text = title;
         if (resourceModalMessage != null)
@@ -625,6 +709,8 @@ public class ShowLessonPageController : MonoBehaviour
             resourceFileList.Add(CreateResourceFileRow(asset));
 
         SetVisible(resourceModalOverlay, true);
+        resourceModalOverlay.BringToFront();
+        resourceModalOverlay.pickingMode = PickingMode.Position;
     }
 
     private VisualElement CreateResourceFileRow(LessonAssetView asset)
@@ -714,17 +800,332 @@ public class ShowLessonPageController : MonoBehaviour
         LoadSceneSafely(quizSceneName);
     }
 
-    private void OpenModel(string mode)
+    private void HandleLectureSlidesClicked()
     {
-        if (modelAssets.Count == 0) return;
+        OpenResourceModal("Lecture Slides", documentAssets);
+    }
+
+    private void HandleExerciseFilesClicked()
+    {
+        OpenResourceModal("Exercises", quizAssets);
+    }
+
+    private void HandleLaunchModelClicked()
+    {
+        BeginOpenModel("3d");
+    }
+
+    private void HandleVrModeClicked()
+    {
+        BeginOpenModel("vr");
+    }
+
+    private void HandleArModeClicked()
+    {
+        BeginOpenModel("ar");
+    }
+
+    private void HandleAiAssistantClicked()
+    {
+        LoadSceneSafely(aiSceneName);
+    }
+
+    private void BeginOpenModel(string mode)
+    {
+        if (isOpeningModelScene)
+            return;
+
+        StartCoroutine(OpenModelRoutine(mode));
+    }
+
+    private IEnumerator OpenModelRoutine(string mode)
+    {
+        if (modelAssets.Count == 0)
+        {
+            ShowError("No 3D model is attached to this lesson.");
+            yield break;
+        }
+
         LessonAssetView model = modelAssets[0];
-        PlayerPrefs.SetString("interactive_mode", mode);
-        PlayerPrefs.SetString("selected_model_asset_id", model.id ?? string.Empty);
-        PlayerPrefs.SetString("selected_model_bucket", model.storage_bucket ?? string.Empty);
-        PlayerPrefs.SetString("selected_model_storage_path", model.storage_path ?? string.Empty);
-        PlayerPrefs.SetString("selected_model_file_name", model.file_name ?? string.Empty);
+
+        if (model == null)
+        {
+            ShowError("The selected 3D model record is invalid.");
+            yield break;
+        }
+
+        if (string.IsNullOrWhiteSpace(model.storage_bucket) ||
+            string.IsNullOrWhiteSpace(model.storage_path))
+        {
+            ShowError(
+                "The 3D model does not have a valid Storage bucket or path.");
+            yield break;
+        }
+
+        string normalizedMode =
+            string.IsNullOrWhiteSpace(mode)
+                ? "3d"
+                : mode.Trim().ToLowerInvariant();
+
+        string destinationScene =
+            normalizedMode == "ar"
+                ? arModelsSceneName
+                : interactiveModelSceneName;
+
+        if (!CanLoadScene(destinationScene))
+            yield break;
+
+        isOpeningModelScene = true;
+        SetModelButtonsEnabled(false);
+        ClearError();
+
+        string signedUrl = null;
+        string signedUrlError = null;
+
+        yield return CreateSignedModelUrlRoutine(
+            model.storage_bucket,
+            model.storage_path,
+            Mathf.Max(60, modelSignedUrlLifetimeSeconds),
+            value => signedUrl = value,
+            message => signedUrlError = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(signedUrlError))
+        {
+            isOpeningModelScene = false;
+            SetModelButtonsEnabled(true);
+
+            ShowError(
+                "Cannot open the 3D model: " +
+                signedUrlError);
+
+            yield break;
+        }
+
+        if (string.IsNullOrWhiteSpace(signedUrl))
+        {
+            isOpeningModelScene = false;
+            SetModelButtonsEnabled(true);
+
+            ShowError(
+                "Supabase returned an empty URL for the 3D model.");
+
+            yield break;
+        }
+
+        string modelName =
+            string.IsNullOrWhiteSpace(model.file_name)
+                ? "3D Model"
+                : Path.GetFileNameWithoutExtension(
+                    model.file_name);
+
+        PlayerPrefs.SetString(
+            "interactive_mode",
+            normalizedMode);
+
+        PlayerPrefs.SetString(
+            "selected_model_asset_id",
+            model.id ?? string.Empty);
+
+        PlayerPrefs.SetString(
+            "selected_model_bucket",
+            model.storage_bucket ?? string.Empty);
+
+        PlayerPrefs.SetString(
+            "selected_model_storage_path",
+            model.storage_path ?? string.Empty);
+
+        PlayerPrefs.SetString(
+            "selected_model_file_name",
+            model.file_name ?? string.Empty);
+
+        // RuntimeGlbLoader/ARModelSceneController read these keys.
+        PlayerPrefs.SetString(
+            "selected_model_url",
+            signedUrl);
+
+        PlayerPrefs.SetString(
+            "selected_model_name",
+            modelName);
+
+        PlayerPrefs.SetString(
+            "selected_model_lesson_id",
+            selectedLessonId ?? string.Empty);
+
+        string currentRole = PlayerPrefs.GetString("current_role", showTeacherControls ? "teacher" : "student");
+        PlayerPrefs.SetString("current_role", currentRole);
+
+        // Giữ nguyên các thông tin user hiện có (nếu có)
+        if (PlayerPrefs.HasKey("user_id")) PlayerPrefs.SetString("user_id", PlayerPrefs.GetString("user_id"));
+        if (PlayerPrefs.HasKey("user_email")) PlayerPrefs.SetString("user_email", PlayerPrefs.GetString("user_email"));
+        if (PlayerPrefs.HasKey("user_name")) PlayerPrefs.SetString("user_name", PlayerPrefs.GetString("user_name"));
+
+        PlayerPrefs.SetString(
+            "previous_scene",
+            "ShowLessonScene");
+
         PlayerPrefs.Save();
-        LoadSceneSafely(interactiveModelSceneName);
+
+        Debug.Log(
+            "[ShowLessonPageController] Opening model scene." +
+            $"\nMode: {normalizedMode}" +
+            $"\nScene: {destinationScene}" +
+            $"\nAsset ID: {model.id}" +
+            $"\nBucket: {model.storage_bucket}" +
+            $"\nPath: {model.storage_path}" +
+            $"\nFile: {model.file_name}");
+
+        SceneManager.LoadScene(destinationScene);
+    }
+
+    private IEnumerator CreateSignedModelUrlRoutine(
+        string bucket,
+        string storagePath,
+        int expiresInSeconds,
+        Action<string> onSuccess,
+        Action<string> onError)
+    {
+        if (restService == null)
+        {
+            onError?.Invoke("SupabaseRuntimeRestService is missing.");
+            yield break;
+        }
+
+        if (!restService.IsConfigured(out string configError))
+        {
+            onError?.Invoke(configError);
+            yield break;
+        }
+
+        if (string.IsNullOrWhiteSpace(bucket) ||
+            string.IsNullOrWhiteSpace(storagePath))
+        {
+            onError?.Invoke("The model Storage bucket or path is empty.");
+            yield break;
+        }
+
+        string encodedBucket =
+            UnityWebRequest.EscapeURL(bucket.Trim());
+
+        string encodedPath =
+            EncodeStoragePath(storagePath.Trim());
+
+        string url =
+            $"{restService.ProjectUrl.TrimEnd('/')}/storage/v1/object/sign/" +
+            $"{encodedBucket}/{encodedPath}";
+
+        SignedStorageUrlRequest payload = new()
+        {
+            expiresIn = Mathf.Max(60, expiresInSeconds)
+        };
+
+        byte[] body =
+            Encoding.UTF8.GetBytes(JsonUtility.ToJson(payload));
+
+        using UnityWebRequest request =
+            new(url, UnityWebRequest.kHttpVerbPOST);
+
+        request.uploadHandler = new UploadHandlerRaw(body);
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.timeout = SupabaseConfig.RequestTimeoutSeconds;
+
+        restService.ApplyAuthHeaders(request);
+        request.SetRequestHeader("Content-Type", "application/json");
+        request.SetRequestHeader("Accept", "application/json");
+
+        yield return request.SendWebRequest();
+
+        string responseText =
+            request.downloadHandler?.text ?? string.Empty;
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            string message =
+                !string.IsNullOrWhiteSpace(responseText)
+                    ? responseText
+                    : request.error;
+
+            onError?.Invoke(
+                $"Cannot create signed URL ({request.responseCode}): " +
+                message);
+
+            yield break;
+        }
+
+        SignedStorageUrlResponse response = null;
+
+        try
+        {
+            response =
+                JsonUtility.FromJson<SignedStorageUrlResponse>(responseText);
+        }
+        catch (Exception exception)
+        {
+            onError?.Invoke(
+                "Cannot parse Supabase signed URL response: " +
+                exception.Message);
+
+            yield break;
+        }
+
+        string signedPath = response?.signedURL;
+
+        if (string.IsNullOrWhiteSpace(signedPath))
+            signedPath = response?.signed_url;
+
+        if (string.IsNullOrWhiteSpace(signedPath))
+        {
+            onError?.Invoke(
+                "Supabase returned an empty signed URL. Response: " +
+                responseText);
+
+            yield break;
+        }
+
+        string absoluteUrl;
+
+        if (Uri.TryCreate(signedPath, UriKind.Absolute, out Uri parsedUrl))
+        {
+            absoluteUrl = parsedUrl.ToString();
+        }
+        else
+        {
+            string normalizedPath =
+                signedPath.StartsWith("/")
+                    ? signedPath
+                    : "/" + signedPath;
+
+            absoluteUrl =
+                restService.ProjectUrl.TrimEnd('/') + normalizedPath;
+        }
+
+        onSuccess?.Invoke(absoluteUrl);
+    }
+
+    private void SetModelButtonsEnabled(bool enabled)
+    {
+        launchModelButton?.SetEnabled(enabled);
+        vrModeButton?.SetEnabled(enabled);
+        arModeButton?.SetEnabled(enabled);
+    }
+
+    private static bool CanLoadScene(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+        {
+            Debug.LogError(
+                "[ShowLessonPageController] Destination scene name is empty.");
+            return false;
+        }
+
+        if (!Application.CanStreamedLevelBeLoaded(sceneName))
+        {
+            Debug.LogError(
+                $"Scene '{sceneName}' is not included in Build Profiles.");
+            return false;
+        }
+
+        return true;
     }
 
     private void HandleBackClicked()
@@ -747,6 +1148,12 @@ public class ShowLessonPageController : MonoBehaviour
     private void CloseResourceModal()
     {
         SetVisible(resourceModalOverlay, false);
+        SetNativeWebViewVisible(true);
+
+        if (resumeVideoAfterModal && youtubeBridge != null && youtubeBridge.IsReady)
+            youtubeBridge.Play();
+
+        resumeVideoAfterModal = false;
     }
 
     private void ShowError(string message)
@@ -833,13 +1240,22 @@ public class ShowLessonPageController : MonoBehaviour
 
     private static void LoadSceneSafely(string sceneName)
     {
-        if (string.IsNullOrWhiteSpace(sceneName)) return;
-        if (!Application.CanStreamedLevelBeLoaded(sceneName))
-        {
-            Debug.LogWarning($"Scene '{sceneName}' is not included in Build Profiles.");
+        if (!CanLoadScene(sceneName))
             return;
-        }
+
         SceneManager.LoadScene(sceneName);
+    }
+    [Serializable]
+    private class SignedStorageUrlRequest
+    {
+        public int expiresIn;
+    }
+
+    [Serializable]
+    private class SignedStorageUrlResponse
+    {
+        public string signedURL;
+        public string signed_url;
     }
 }
 

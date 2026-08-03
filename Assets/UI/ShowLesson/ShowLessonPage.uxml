@@ -110,7 +110,7 @@
             <ui:VisualElement class="resource-modal-card">
                 <ui:VisualElement class="resource-modal-header">
                     <ui:Label name="resource-modal-title" text="Files" class="resource-modal-title"/>
-                    <ui:Button name="resource-modal-close" text="×" class="resource-modal-close"/>
+                    <ui:Button name="resource-modal-close" class="resource-modal-close icon-close"/>
                 </ui:VisualElement>
                 <ui:Label name="resource-modal-message" text="Choose a file to download." class="resource-modal-message"/>
                 <ui:ScrollView name="resource-file-list" class="resource-file-list" mode="Vertical" horizontal-scroller-visibility="Hidden"/>

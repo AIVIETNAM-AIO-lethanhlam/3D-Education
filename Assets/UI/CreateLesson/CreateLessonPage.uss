@@ -234,7 +234,17 @@
     flex-direction: row;
     align-items: center;
     background-color: white;
+    border-width: 1px;
     border-radius: 11px;
+}
+
+/* Match the bordered file chips used in the Documents section. */
+.single-file-row-exercise {
+    border-color: rgb(238, 137, 35);
+}
+
+.single-file-row-model {
+    border-color: rgb(126, 48, 235);
 }
 
 .single-file-name {

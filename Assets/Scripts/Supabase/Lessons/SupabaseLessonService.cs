@@ -22,12 +22,11 @@ public class SupabaseLessonService : MonoBehaviour
         if (rest != null)
             return true;
 
-        Debug.LogError(
-            "[SupabaseLessonService] SupabaseRuntimeRestService is missing."
-        );
-
+        Debug.LogError("[SupabaseLessonService] SupabaseRuntimeRestService is missing.");
         return false;
     }
+
+    #region Chapter Queries
 
     public IEnumerator GetChaptersByClass(
         string classId,
@@ -47,10 +46,7 @@ public class SupabaseLessonService : MonoBehaviour
         }
 
         string encodedClassId = UnityWebRequest.EscapeURL(classId);
-        string relativeUrl =
-            $"rest/v1/chapters?class_id=eq.{encodedClassId}" +
-            "&select=id,class_id,title,chapter_order" +
-            "&order=chapter_order.asc";
+        string relativeUrl = $"rest/v1/chapters?class_id=eq.{encodedClassId}&select=id,class_id,title,chapter_order&order=chapter_order.asc";
 
         string response = null;
         string error = null;
@@ -72,14 +68,8 @@ public class SupabaseLessonService : MonoBehaviour
 
         try
         {
-            ChapterRecordList wrapper =
-                JsonUtility.FromJson<ChapterRecordList>($"{{\"items\":{response}}}");
-
-            onSuccess?.Invoke(
-                wrapper?.items == null
-                    ? new List<ChapterRecord>()
-                    : new List<ChapterRecord>(wrapper.items)
-            );
+            ChapterRecordList wrapper = JsonUtility.FromJson<ChapterRecordList>($"{{\"items\":{response}}}");
+            onSuccess?.Invoke(wrapper?.items == null ? new List<ChapterRecord>() : new List<ChapterRecord>(wrapper.items));
         }
         catch (Exception ex)
         {
@@ -104,17 +94,9 @@ public class SupabaseLessonService : MonoBehaviour
             yield break;
         }
 
-        if (!Guid.TryParse(requestData.class_id, out _))
-        {
-            onError?.Invoke("class_id is not a valid UUID.");
-            yield break;
-        }
-
         string payload = JsonUtility.ToJson(requestData);
         string response = null;
         string error = null;
-
-        Debug.Log("[CreateChapter] Payload:\n" + payload);
 
         yield return rest.SendJson(
             UnityWebRequest.kHttpVerbPOST,
@@ -133,17 +115,10 @@ public class SupabaseLessonService : MonoBehaviour
 
         try
         {
-            ChapterRecordList wrapper =
-                JsonUtility.FromJson<ChapterRecordList>(
-                    $"{{\"items\":{response}}}"
-                );
-
-            if (wrapper?.items == null ||
-                wrapper.items.Length == 0)
+            ChapterRecordList wrapper = JsonUtility.FromJson<ChapterRecordList>($"{{\"items\":{response}}}");
+            if (wrapper?.items == null || wrapper.items.Length == 0)
             {
-                onError?.Invoke(
-                    "Supabase created the chapter but returned no row."
-                );
+                onError?.Invoke("Supabase created the chapter but returned no row.");
                 yield break;
             }
 
@@ -151,10 +126,54 @@ public class SupabaseLessonService : MonoBehaviour
         }
         catch (Exception exception)
         {
-            onError?.Invoke(
-                "Cannot parse created chapter: " +
-                exception.Message
-            );
+            onError?.Invoke("Cannot parse created chapter: " + exception.Message);
+        }
+    }
+
+    #endregion
+
+    #region Lesson Queries
+
+    public IEnumerator GetLessonsByChapter(
+        string chapterId,
+        Action<List<LessonRecord>> onSuccess,
+        Action<string> onError)
+    {
+        if (!ResolveRestService())
+        {
+            onError?.Invoke("SupabaseRuntimeRestService is missing.");
+            yield break;
+        }
+
+        string encodedChapterId = UnityWebRequest.EscapeURL(chapterId);
+        string relativeUrl = $"rest/v1/lessons?chapter_id=eq.{encodedChapterId}&select=*";
+
+        string response = null;
+        string error = null;
+
+        yield return rest.SendJson(
+            UnityWebRequest.kHttpVerbGET,
+            relativeUrl,
+            null,
+            null,
+            value => response = value,
+            value => error = value
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            onError?.Invoke(error);
+            yield break;
+        }
+
+        try
+        {
+            LessonRecordList wrapper = JsonUtility.FromJson<LessonRecordList>($"{{\"items\":{response}}}");
+            onSuccess?.Invoke(wrapper?.items == null ? new List<LessonRecord>() : new List<LessonRecord>(wrapper.items));
+        }
+        catch (Exception ex)
+        {
+            onError?.Invoke($"Cannot parse lessons response: {ex.Message}");
         }
     }
 
@@ -169,17 +188,9 @@ public class SupabaseLessonService : MonoBehaviour
             yield break;
         }
 
-        if (requestData == null)
-        {
-            onError?.Invoke("CreateLessonRequest is null.");
-            yield break;
-        }
-
         string response = null;
         string error = null;
         string payload = JsonUtility.ToJson(requestData);
-
-        Debug.Log("[CreateLesson] Payload:\n" + payload);
 
         yield return rest.SendJson(
             UnityWebRequest.kHttpVerbPOST,
@@ -198,9 +209,7 @@ public class SupabaseLessonService : MonoBehaviour
 
         try
         {
-            LessonRecordList wrapper =
-                JsonUtility.FromJson<LessonRecordList>($"{{\"items\":{response}}}");
-
+            LessonRecordList wrapper = JsonUtility.FromJson<LessonRecordList>($"{{\"items\":{response}}}");
             if (wrapper?.items == null || wrapper.items.Length == 0)
             {
                 onError?.Invoke("Supabase created the lesson but returned no lesson row.");
@@ -212,6 +221,53 @@ public class SupabaseLessonService : MonoBehaviour
         catch (Exception ex)
         {
             onError?.Invoke($"Cannot parse created lesson: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region Asset & Objective Queries
+
+    public IEnumerator GetLessonAssetsByLesson(
+        string lessonId,
+        Action<List<LessonAssetRecord>> onSuccess,
+        Action<string> onError)
+    {
+        if (!ResolveRestService())
+        {
+            onError?.Invoke("SupabaseRuntimeRestService is missing.");
+            yield break;
+        }
+
+        string encodedLessonId = UnityWebRequest.EscapeURL(lessonId);
+        string relativeUrl = $"rest/v1/lesson_assets?lesson_id=eq.{encodedLessonId}&select=*&order=display_order.asc";
+
+        string response = null;
+        string error = null;
+
+        yield return rest.SendJson(
+            UnityWebRequest.kHttpVerbGET,
+            relativeUrl,
+            null,
+            null,
+            value => response = value,
+            value => error = value
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            onError?.Invoke(error);
+            yield break;
+        }
+
+        try
+        {
+            LessonAssetRecordList wrapper = JsonUtility.FromJson<LessonAssetRecordList>($"{{\"items\":{response}}}");
+            onSuccess?.Invoke(wrapper?.items == null ? new List<LessonAssetRecord>() : new List<LessonAssetRecord>(wrapper.items));
+        }
+        catch (Exception ex)
+        {
+            onError?.Invoke($"Cannot parse lesson assets: {ex.Message}");
         }
     }
 
@@ -253,15 +309,8 @@ public class SupabaseLessonService : MonoBehaviour
             yield break;
         }
 
-        if (string.IsNullOrWhiteSpace(lessonId))
-        {
-            onError?.Invoke("lessonId is empty.");
-            yield break;
-        }
-
         string encodedId = UnityWebRequest.EscapeURL(lessonId);
         LessonStatusUpdate payload = new() { status = status };
-
         string error = null;
 
         yield return rest.SendJson(
@@ -281,6 +330,8 @@ public class SupabaseLessonService : MonoBehaviour
 
         onSuccess?.Invoke();
     }
+
+    #endregion
 
     private IEnumerator InsertWithoutResponse(
         string relativeUrl,

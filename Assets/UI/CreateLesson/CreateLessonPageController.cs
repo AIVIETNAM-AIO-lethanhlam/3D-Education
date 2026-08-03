@@ -17,9 +17,10 @@ public class CreateLessonPageController : MonoBehaviour
     private const long MaxPdfBytes = 25L * 1024L * 1024L;
     private const long MaxModelBytes = 100L * 1024L * 1024L;
 
-    [Header("Supabase services")]
+    [Header("Services")]
     [SerializeField] private SupabaseLessonService lessonService;
-    [SerializeField] private SupabaseStorageService storageService;
+    [SerializeField] private CloudflareR2StorageService r2StorageService;
+    [SerializeField] private SupabaseQuizService quizService; // <-- Đã thêm QuizService
 
     private SupabaseRuntimeRestService runtimeRestService;
 
@@ -147,17 +148,22 @@ public class CreateLessonPageController : MonoBehaviour
         if (lessonService == null)
             lessonService = GetComponent<SupabaseLessonService>();
 
-        if (storageService == null)
-            storageService = GetComponent<SupabaseStorageService>();
+        if (r2StorageService == null)
+            r2StorageService = GetComponent<CloudflareR2StorageService>();
 
-        runtimeRestService =
-            GetComponent<SupabaseRuntimeRestService>();
+        if (quizService == null)
+            quizService = GetComponent<SupabaseQuizService>(); // Tự động tìm SupabaseQuizService
+
+        runtimeRestService = GetComponent<SupabaseRuntimeRestService>();
 
         if (lessonService == null)
             Debug.LogError("Thiếu SupabaseLessonService trên CreateLessonUIDocument.");
 
-        if (storageService == null)
-            Debug.LogError("Thiếu SupabaseStorageService trên CreateLessonUIDocument.");
+        if (r2StorageService == null)
+            Debug.LogError("Thiếu CloudflareR2StorageService trên CreateLessonUIDocument.");
+
+        if (quizService == null)
+            Debug.LogWarning("Thiếu SupabaseQuizService trên CreateLessonUIDocument.");
     }
 
     private void QueryElements()
@@ -280,10 +286,7 @@ public class CreateLessonPageController : MonoBehaviour
         {
             if (!Guid.TryParse(editingLessonId, out _))
             {
-                SetLabel(
-                    formatErrorLabel,
-                    "The lesson selected for editing is invalid."
-                );
+                SetLabel(formatErrorLabel, "The lesson selected for editing is invalid.");
                 yield break;
             }
 
@@ -295,67 +298,38 @@ public class CreateLessonPageController : MonoBehaviour
 
     private IEnumerator LoadChaptersRoutine()
     {
-        string classId = PlayerPrefs.GetString(
-            "selected_class_id",
-            string.Empty
-        );
+        string classId = PlayerPrefs.GetString("selected_class_id", string.Empty);
 
         if (string.IsNullOrWhiteSpace(classId))
         {
-            SetLabel(
-                formatErrorLabel,
-                "No class selected. Please reopen this page from Class Detail."
-            );
+            SetLabel(formatErrorLabel, "No class selected. Please reopen this page from Class Detail.");
             yield break;
         }
 
-        // Khi đi từ nút Add Lesson của một chapter cụ thể,
-        // ClassDetailScene đã lưu sẵn thông tin chapter vào PlayerPrefs.
-        string passedChapterId = PlayerPrefs.GetString(
-            "selected_chapter_id",
-            string.Empty
-        );
-
-        string passedChapterTitle = PlayerPrefs.GetString(
-            "selected_chapter_title",
-            string.Empty
-        );
-
-        int passedChapterOrder = PlayerPrefs.GetInt(
-            "selected_chapter_order",
-            0
-        );
+        string passedChapterId = PlayerPrefs.GetString("selected_chapter_id", string.Empty);
+        string passedChapterTitle = PlayerPrefs.GetString("selected_chapter_title", string.Empty);
+        int passedChapterOrder = PlayerPrefs.GetInt("selected_chapter_order", 0);
 
         if (!string.IsNullOrWhiteSpace(passedChapterId))
         {
             selectedChapterId = passedChapterId;
 
             loadedChapters.Clear();
-            loadedChapters.Add(
-                new ChapterRecord
-                {
-                    id = passedChapterId,
-                    class_id = classId,
-                    title = string.IsNullOrWhiteSpace(passedChapterTitle)
-                        ? $"Chapter {Mathf.Max(1, passedChapterOrder)}"
-                        : passedChapterTitle,
-                    chapter_order = Mathf.Max(1, passedChapterOrder)
-                }
-            );
+            loadedChapters.Add(new ChapterRecord
+            {
+                id = passedChapterId,
+                class_id = classId,
+                title = string.IsNullOrWhiteSpace(passedChapterTitle)
+                    ? $"Chapter {Mathf.Max(1, passedChapterOrder)}"
+                    : passedChapterTitle,
+                chapter_order = Mathf.Max(1, passedChapterOrder)
+            });
 
             if (chapterDropdown != null)
             {
-                string label =
-                    $"Chapter {loadedChapters[0].chapter_order} – " +
-                    loadedChapters[0].title;
-
-                chapterDropdown.choices =
-                    new List<string> { label };
-
+                string label = $"Chapter {loadedChapters[0].chapter_order} – {loadedChapters[0].title}";
+                chapterDropdown.choices = new List<string> { label };
                 chapterDropdown.index = 0;
-
-                // Người dùng đang tạo lesson cho chapter đã chọn,
-                // vì vậy không cần đổi chapter ở màn hình này.
                 chapterDropdown.SetEnabled(false);
             }
 
@@ -363,20 +337,15 @@ public class CreateLessonPageController : MonoBehaviour
             yield break;
         }
 
-        // Chỉ query Supabase khi scene được mở mà không truyền chapter cụ thể.
         if (lessonService == null)
         {
-            SetLabel(
-                formatErrorLabel,
-                "SupabaseLessonService is missing."
-            );
+            SetLabel(formatErrorLabel, "SupabaseLessonService is missing.");
             yield break;
         }
 
         if (chapterDropdown != null)
         {
-            chapterDropdown.choices =
-                new List<string> { "Loading chapters..." };
+            chapterDropdown.choices = new List<string> { "Loading chapters..." };
             chapterDropdown.index = 0;
             chapterDropdown.SetEnabled(false);
         }
@@ -397,38 +366,26 @@ public class CreateLessonPageController : MonoBehaviour
         }
 
         loadedChapters.Clear();
-
-        if (result != null)
-            loadedChapters.AddRange(result);
+        if (result != null) loadedChapters.AddRange(result);
 
         if (loadedChapters.Count == 0)
         {
             if (chapterDropdown != null)
             {
-                chapterDropdown.choices =
-                    new List<string> { "No chapter available" };
+                chapterDropdown.choices = new List<string> { "No chapter available" };
                 chapterDropdown.index = 0;
                 chapterDropdown.SetEnabled(false);
             }
 
-            SetLabel(
-                formatErrorLabel,
-                "This class has no chapter. Create a chapter first."
-            );
+            SetLabel(formatErrorLabel, "This class has no chapter. Create a chapter first.");
             yield break;
         }
 
         List<string> labels = new();
-
         foreach (ChapterRecord chapter in loadedChapters)
         {
-            int order = chapter.chapter_order <= 0
-                ? labels.Count + 1
-                : chapter.chapter_order;
-
-            labels.Add(
-                $"Chapter {order} – {chapter.title}"
-            );
+            int order = chapter.chapter_order <= 0 ? labels.Count + 1 : chapter.chapter_order;
+            labels.Add($"Chapter {order} – {chapter.title}");
         }
 
         if (chapterDropdown != null)
@@ -445,7 +402,6 @@ public class CreateLessonPageController : MonoBehaviour
     private void HandleChapterChanged(ChangeEvent<string> evt)
     {
         if (chapterDropdown == null) return;
-
         int index = chapterDropdown.index;
         if (index >= 0 && index < loadedChapters.Count)
             selectedChapterId = loadedChapters[index].id;
@@ -576,43 +532,22 @@ public class CreateLessonPageController : MonoBehaviour
                 youtubeUrlField?.Focus();
                 return false;
             }
-
             selectedYoutubeUrl = url;
         }
 
-        bool hasExistingDocument =
-            existingAssets.Exists(
-                asset =>
-                    asset.asset_type == "document" &&
-                    !removedExistingAssetIds.Contains(asset.id)
-            );
+        bool hasExistingDocument = existingAssets.Exists(asset => asset.asset_type == "document" && !removedExistingAssetIds.Contains(asset.id));
 
-        if (documentSelected &&
-            selectedDocumentPaths.Count == 0 &&
-            !hasExistingDocument)
+        if (documentSelected && selectedDocumentPaths.Count == 0 && !hasExistingDocument)
         {
-            SetLabel(
-                assetErrorLabel,
-                "Please select at least one PDF document."
-            );
+            SetLabel(assetErrorLabel, "Please select at least one PDF document.");
             return false;
         }
 
-        bool hasExistingModel =
-            existingAssets.Exists(
-                asset =>
-                    asset.asset_type == "model_3d" &&
-                    !removedExistingAssetIds.Contains(asset.id)
-            );
+        bool hasExistingModel = existingAssets.Exists(asset => asset.asset_type == "model_3d" && !removedExistingAssetIds.Contains(asset.id));
 
-        if (modelSelected &&
-            string.IsNullOrWhiteSpace(selectedModelPath) &&
-            !hasExistingModel)
+        if (modelSelected && string.IsNullOrWhiteSpace(selectedModelPath) && !hasExistingModel)
         {
-            SetLabel(
-                assetErrorLabel,
-                "Please select one GLB model."
-            );
+            SetLabel(assetErrorLabel, "Please select one GLB model.");
             return false;
         }
 
@@ -712,7 +647,6 @@ public class CreateLessonPageController : MonoBehaviour
     private void UpdateProgressSegment(VisualElement segment, int segmentStep)
     {
         if (segment == null) return;
-
         segment.EnableInClassList("progress-complete", segmentStep < currentStep);
         segment.EnableInClassList("progress-current", segmentStep == currentStep);
     }
@@ -723,32 +657,21 @@ public class CreateLessonPageController : MonoBehaviour
 
         if (nextButtonLabel != null)
         {
-            nextButtonLabel.text =
-                isLastStep
-                    ? (isUpdateMode ? "Finish" : "Save & Publish")
-                    : "Next";
+            nextButtonLabel.text = isLastStep
+                ? (isUpdateMode ? "Finish" : "Save & Publish")
+                : "Next";
         }
 
-        nextButton?.EnableInClassList(
-            "update-mode-finish",
-            isUpdateMode && isLastStep
-        );
-
+        nextButton?.EnableInClassList("update-mode-finish", isUpdateMode && isLastStep);
         SetVisible(nextButtonIcon, !isLastStep);
-        SetVisible(
-            saveDraftButton,
-            isLastStep && !isUpdateMode
-        );
+        SetVisible(saveDraftButton, isLastStep && !isUpdateMode);
     }
 
     private void UpdateUploadCards()
     {
         SetVisible(videoUploadCard, videoSelected);
         SetVisible(documentUploadCard, documentSelected);
-
-        // Exercise PDF is an additional resource for document lessons.
         SetVisible(exerciseUploadCard, documentSelected);
-
         SetVisible(modelUploadCard, modelSelected);
     }
 
@@ -817,8 +740,7 @@ public class CreateLessonPageController : MonoBehaviour
             return;
         }
 
-        if (lessonDescriptionField != null &&
-            string.IsNullOrWhiteSpace(lessonDescriptionField.value))
+        if (lessonDescriptionField != null && string.IsNullOrWhiteSpace(lessonDescriptionField.value))
         {
             lessonDescriptionField.value =
                 $"This lesson introduces {title}, explains the core concepts, and gives students guided practice before applying the topic independently.";
@@ -845,12 +767,7 @@ public class CreateLessonPageController : MonoBehaviour
     private void PickDocuments()
     {
 #if UNITY_EDITOR
-        string path = UnityEditor.EditorUtility.OpenFilePanel(
-            "Choose PDF Document",
-            string.Empty,
-            "pdf"
-        );
-
+        string path = UnityEditor.EditorUtility.OpenFilePanel("Choose PDF Document", string.Empty, "pdf");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         if (!ValidateLocalFile(path, ".pdf", MaxPdfBytes, "PDF", out string error))
@@ -867,29 +784,17 @@ public class CreateLessonPageController : MonoBehaviour
 
         ClearLabel(assetErrorLabel);
 #else
-        SetLabel(assetErrorLabel,
-            "Android file picker is not installed yet. Add a Storage Access Framework/native file picker plugin.");
+        SetLabel(assetErrorLabel, "Android file picker is not installed yet.");
 #endif
     }
 
     private void PickExercisePdf()
     {
 #if UNITY_EDITOR
-        string path = UnityEditor.EditorUtility.OpenFilePanel(
-            "Choose Exercise PDF",
-            string.Empty,
-            "pdf"
-        );
+        string path = UnityEditor.EditorUtility.OpenFilePanel("Choose Exercise PDF", string.Empty, "pdf");
+        if (string.IsNullOrWhiteSpace(path)) return;
 
-        if (string.IsNullOrWhiteSpace(path))
-            return;
-
-        if (!ValidateLocalFile(
-                path,
-                ".pdf",
-                MaxPdfBytes,
-                "Exercise PDF",
-                out string error))
+        if (!ValidateLocalFile(path, ".pdf", MaxPdfBytes, "Exercise PDF", out string error))
         {
             SetLabel(assetErrorLabel, error);
             return;
@@ -903,23 +808,14 @@ public class CreateLessonPageController : MonoBehaviour
         SetVisible(exerciseFileRow, true);
         ClearLabel(assetErrorLabel);
 #else
-        SetLabel(
-            assetErrorLabel,
-            "Android file picker is not installed yet. " +
-            "Add a Storage Access Framework/native file picker plugin."
-        );
+        SetLabel(assetErrorLabel, "Android file picker is not installed yet.");
 #endif
     }
 
     private void PickModel()
     {
 #if UNITY_EDITOR
-        string path = UnityEditor.EditorUtility.OpenFilePanel(
-            "Choose GLB 3D Model",
-            string.Empty,
-            "glb"
-        );
-
+        string path = UnityEditor.EditorUtility.OpenFilePanel("Choose GLB 3D Model", string.Empty, "glb");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         if (!ValidateLocalFile(path, ".glb", MaxModelBytes, "GLB", out string error))
@@ -936,22 +832,14 @@ public class CreateLessonPageController : MonoBehaviour
         SetVisible(modelFileRow, true);
         ClearLabel(assetErrorLabel);
 #else
-        SetLabel(assetErrorLabel,
-            "Android file picker is not installed yet. Add a Storage Access Framework/native file picker plugin.");
+        SetLabel(assetErrorLabel, "Android file picker is not installed yet.");
 #endif
     }
 
     private void RemoveExercisePdf()
     {
-        ExistingAssetData existing =
-            existingAssets.Find(
-                asset =>
-                    asset.asset_type == "quiz_pdf" &&
-                    !removedExistingAssetIds.Contains(asset.id)
-            );
-
-        if (existing != null)
-            removedExistingAssetIds.Add(existing.id);
+        ExistingAssetData existing = existingAssets.Find(asset => asset.asset_type == "quiz_pdf" && !removedExistingAssetIds.Contains(asset.id));
+        if (existing != null) removedExistingAssetIds.Add(existing.id);
 
         selectedExercisePath = string.Empty;
 
@@ -964,15 +852,8 @@ public class CreateLessonPageController : MonoBehaviour
 
     private void RemoveModel()
     {
-        ExistingAssetData existing =
-            existingAssets.Find(
-                asset =>
-                    asset.asset_type == "model_3d" &&
-                    !removedExistingAssetIds.Contains(asset.id)
-            );
-
-        if (existing != null)
-            removedExistingAssetIds.Add(existing.id);
+        ExistingAssetData existing = existingAssets.Find(asset => asset.asset_type == "model_3d" && !removedExistingAssetIds.Contains(asset.id));
+        if (existing != null) removedExistingAssetIds.Add(existing.id);
 
         selectedModelPath = string.Empty;
 
@@ -983,12 +864,7 @@ public class CreateLessonPageController : MonoBehaviour
         ClearLabel(assetErrorLabel);
     }
 
-    private static bool ValidateLocalFile(
-        string path,
-        string extension,
-        long maxBytes,
-        string displayType,
-        out string error)
+    private static bool ValidateLocalFile(string path, string extension, long maxBytes, string displayType, out string error)
     {
         error = string.Empty;
 
@@ -1015,20 +891,15 @@ public class CreateLessonPageController : MonoBehaviour
 
     private void RebuildDocumentChips()
     {
-        if (documentChipContainer == null)
-            return;
-
+        if (documentChipContainer == null) return;
         documentChipContainer.Clear();
 
         if (isUpdateMode)
         {
             foreach (ExistingAssetData asset in existingAssets)
             {
-                if (asset.asset_type != "document" ||
-                    removedExistingAssetIds.Contains(asset.id))
-                {
+                if (asset.asset_type != "document" || removedExistingAssetIds.Contains(asset.id))
                     continue;
-                }
 
                 AddExistingDocumentChip(asset);
             }
@@ -1052,9 +923,7 @@ public class CreateLessonPageController : MonoBehaviour
                 selectedDocumentPaths.Remove(path);
                 RebuildDocumentChips();
             })
-            {
-                text = "×"
-            };
+            { text = "×" };
             remove.AddToClassList("remove-file-button");
 
             chip.Add(icon);
@@ -1064,37 +933,22 @@ public class CreateLessonPageController : MonoBehaviour
         }
     }
 
-    private static void ShowSelectedFile(Label label, string filename)
-    {
-        if (label == null) return;
-        label.text = filename;
-        SetVisible(label, true);
-    }
-
     private IEnumerator LoadLessonForUpdateRoutine()
     {
         if (runtimeRestService == null)
         {
-            SetLabel(
-                formatErrorLabel,
-                "SupabaseRuntimeRestService is missing."
-            );
+            SetLabel(formatErrorLabel, "SupabaseRuntimeRestService is missing.");
             yield break;
         }
 
-        string lessonId =
-            UnityWebRequest.EscapeURL(editingLessonId);
-
+        string lessonId = UnityWebRequest.EscapeURL(editingLessonId);
         string lessonResponse = null;
         string error = null;
 
         yield return runtimeRestService.SendJson(
             UnityWebRequest.kHttpVerbGET,
-            "rest/v1/lessons" +
-            "?select=id,chapter_id,title,description,youtube_url,has_video,status" +
-            $"&id=eq.{lessonId}",
-            null,
-            null,
+            "rest/v1/lessons?select=id,chapter_id,title,description,youtube_url,has_video,status&id=eq." + lessonId,
+            null, null,
             value => lessonResponse = value,
             message => error = message
         );
@@ -1105,54 +959,28 @@ public class CreateLessonPageController : MonoBehaviour
             yield break;
         }
 
-        LessonEditorRecordList lessonWrapper =
-            JsonUtility.FromJson<LessonEditorRecordList>(
-                $"{{\"items\":{lessonResponse}}}"
-            );
-
-        if (lessonWrapper?.items == null ||
-            lessonWrapper.items.Length == 0)
+        LessonEditorRecordList lessonWrapper = JsonUtility.FromJson<LessonEditorRecordList>($"{{\"items\":{lessonResponse}}}");
+        if (lessonWrapper?.items == null || lessonWrapper.items.Length == 0)
         {
-            SetLabel(
-                formatErrorLabel,
-                "The lesson could not be found."
-            );
+            SetLabel(formatErrorLabel, "The lesson could not be found.");
             yield break;
         }
 
-        LessonEditorRecord lesson =
-            lessonWrapper.items[0];
-
+        LessonEditorRecord lesson = lessonWrapper.items[0];
         selectedChapterId = lesson.chapter_id;
-        lessonTitleField?.SetValueWithoutNotify(
-            lesson.title ?? string.Empty
-        );
-        lessonDescriptionField?.SetValueWithoutNotify(
-            lesson.description ?? string.Empty
-        );
-        youtubeUrlField?.SetValueWithoutNotify(
-            lesson.youtube_url ?? string.Empty
-        );
-
-        selectedYoutubeUrl =
-            lesson.youtube_url ?? string.Empty;
-
-        videoSelected =
-            !string.IsNullOrWhiteSpace(
-                lesson.youtube_url
-            );
+        lessonTitleField?.SetValueWithoutNotify(lesson.title ?? string.Empty);
+        lessonDescriptionField?.SetValueWithoutNotify(lesson.description ?? string.Empty);
+        youtubeUrlField?.SetValueWithoutNotify(lesson.youtube_url ?? string.Empty);
+        selectedYoutubeUrl = lesson.youtube_url ?? string.Empty;
+        videoSelected = !string.IsNullOrWhiteSpace(lesson.youtube_url);
 
         string assetResponse = null;
         error = null;
 
         yield return runtimeRestService.SendJson(
             UnityWebRequest.kHttpVerbGET,
-            "rest/v1/lesson_assets" +
-            "?select=id,asset_type,file_name,storage_bucket,storage_path,mime_type,file_extension,file_size_bytes,display_order" +
-            $"&lesson_id=eq.{lessonId}" +
-            "&order=display_order.asc",
-            null,
-            null,
+            "rest/v1/lesson_assets?select=id,asset_type,file_name,storage_bucket,storage_path,mime_type,file_extension,file_size_bytes,display_order&lesson_id=eq." + lessonId + "&order=display_order.asc",
+            null, null,
             value => assetResponse = value,
             message => error = message
         );
@@ -1163,44 +991,19 @@ public class CreateLessonPageController : MonoBehaviour
             yield break;
         }
 
-        ExistingAssetDataList assetWrapper =
-            JsonUtility.FromJson<ExistingAssetDataList>(
-                $"{{\"items\":{assetResponse}}}"
-            );
-
+        ExistingAssetDataList assetWrapper = JsonUtility.FromJson<ExistingAssetDataList>($"{{\"items\":{assetResponse}}}");
         existingAssets.Clear();
         removedExistingAssetIds.Clear();
 
         if (assetWrapper?.items != null)
             existingAssets.AddRange(assetWrapper.items);
 
-        documentSelected =
-            existingAssets.Exists(
-                asset =>
-                    asset.asset_type == "document" ||
-                    asset.asset_type == "quiz_pdf"
-            );
+        documentSelected = existingAssets.Exists(asset => asset.asset_type == "document" || asset.asset_type == "quiz_pdf");
+        modelSelected = existingAssets.Exists(asset => asset.asset_type == "model_3d");
 
-        modelSelected =
-            existingAssets.Exists(
-                asset => asset.asset_type == "model_3d"
-            );
-
-        UpdateFormatVisual(
-            videoFormatButton,
-            videoRadio,
-            videoSelected
-        );
-        UpdateFormatVisual(
-            documentFormatButton,
-            documentRadio,
-            documentSelected
-        );
-        UpdateFormatVisual(
-            modelFormatButton,
-            modelRadio,
-            modelSelected
-        );
+        UpdateFormatVisual(videoFormatButton, videoRadio, videoSelected);
+        UpdateFormatVisual(documentFormatButton, documentRadio, documentSelected);
+        UpdateFormatVisual(modelFormatButton, modelRadio, modelSelected);
 
         RebuildExistingAssetRows();
 
@@ -1209,12 +1012,8 @@ public class CreateLessonPageController : MonoBehaviour
 
         yield return runtimeRestService.SendJson(
             UnityWebRequest.kHttpVerbGET,
-            "rest/v1/lesson_objectives" +
-            "?select=id,objective_text,objective_order" +
-            $"&lesson_id=eq.{lessonId}" +
-            "&order=objective_order.asc",
-            null,
-            null,
+            "rest/v1/lesson_objectives?select=id,objective_text,objective_order&lesson_id=eq." + lessonId + "&order=objective_order.asc",
+            null, null,
             value => objectiveResponse = value,
             message => error = message
         );
@@ -1225,26 +1024,17 @@ public class CreateLessonPageController : MonoBehaviour
             yield break;
         }
 
-        LessonObjectiveEditorList objectiveWrapper =
-            JsonUtility.FromJson<LessonObjectiveEditorList>(
-                $"{{\"items\":{objectiveResponse}}}"
-            );
+        LessonObjectiveEditorList objectiveWrapper = JsonUtility.FromJson<LessonObjectiveEditorList>($"{{\"items\":{objectiveResponse}}}");
 
         objectivesContainer?.Clear();
         objectiveFields.Clear();
 
         if (objectiveWrapper?.items != null)
         {
-            foreach (LessonObjectiveEditor objective
-                     in objectiveWrapper.items)
+            foreach (LessonObjectiveEditor objective in objectiveWrapper.items)
             {
                 AddObjective();
-
-                objectiveFields[^1]
-                    .SetValueWithoutNotify(
-                        objective.objective_text ??
-                        string.Empty
-                    );
+                objectiveFields[^1].SetValueWithoutNotify(objective.objective_text ?? string.Empty);
             }
         }
 
@@ -1259,18 +1049,10 @@ public class CreateLessonPageController : MonoBehaviour
     {
         RebuildDocumentChips();
 
-        ExistingAssetData exercise =
-            existingAssets.Find(
-                asset =>
-                    asset.asset_type == "quiz_pdf" &&
-                    !removedExistingAssetIds.Contains(asset.id)
-            );
-
+        ExistingAssetData exercise = existingAssets.Find(asset => asset.asset_type == "quiz_pdf" && !removedExistingAssetIds.Contains(asset.id));
         if (exercise != null)
         {
-            if (exerciseFileLabel != null)
-                exerciseFileLabel.text = exercise.file_name;
-
+            if (exerciseFileLabel != null) exerciseFileLabel.text = exercise.file_name;
             SetVisible(exerciseFileRow, true);
         }
         else if (string.IsNullOrWhiteSpace(selectedExercisePath))
@@ -1278,18 +1060,10 @@ public class CreateLessonPageController : MonoBehaviour
             SetVisible(exerciseFileRow, false);
         }
 
-        ExistingAssetData model =
-            existingAssets.Find(
-                asset =>
-                    asset.asset_type == "model_3d" &&
-                    !removedExistingAssetIds.Contains(asset.id)
-            );
-
+        ExistingAssetData model = existingAssets.Find(asset => asset.asset_type == "model_3d" && !removedExistingAssetIds.Contains(asset.id));
         if (model != null)
         {
-            if (modelFileLabel != null)
-                modelFileLabel.text = model.file_name;
-
+            if (modelFileLabel != null) modelFileLabel.text = model.file_name;
             SetVisible(modelFileRow, true);
         }
         else if (string.IsNullOrWhiteSpace(selectedModelPath))
@@ -1298,9 +1072,7 @@ public class CreateLessonPageController : MonoBehaviour
         }
     }
 
-    private void AddExistingDocumentChip(
-        ExistingAssetData asset
-    )
+    private void AddExistingDocumentChip(ExistingAssetData asset)
     {
         VisualElement chip = new();
         chip.AddToClassList("document-chip-row");
@@ -1311,11 +1083,7 @@ public class CreateLessonPageController : MonoBehaviour
         Label fileName = new(asset.file_name);
         fileName.AddToClassList("document-chip-text");
 
-        Button remove = new()
-        {
-            text = "×"
-        };
-
+        Button remove = new() { text = "×" };
         remove.AddToClassList("remove-file-button");
         remove.clicked += () =>
         {
@@ -1331,40 +1099,25 @@ public class CreateLessonPageController : MonoBehaviour
 
     private IEnumerator UpdateLessonRoutine()
     {
-        if (isSaving)
-            yield break;
+        if (isSaving) yield break;
 
         isSaving = true;
         SetSavingUi(true);
         SetSaveProgress(10f, "Updating lesson...");
 
-        string finalYoutubeUrl =
-            videoSelected
-                ? youtubeUrlField?.value?.Trim()
-                : null;
+        string finalYoutubeUrl = videoSelected ? youtubeUrlField?.value?.Trim() : null;
 
         LessonUpdatePayload payload = new()
         {
-            title =
-                lessonTitleField?.value?.Trim() ??
-                string.Empty,
-            description =
-                lessonDescriptionField?.value?.Trim() ??
-                string.Empty,
-            youtube_url =
-                string.IsNullOrWhiteSpace(finalYoutubeUrl)
-                    ? string.Empty
-                    : finalYoutubeUrl,
-            has_video =
-                !string.IsNullOrWhiteSpace(
-                    finalYoutubeUrl
-                ),
+            title = lessonTitleField?.value?.Trim() ?? string.Empty,
+            description = lessonDescriptionField?.value?.Trim() ?? string.Empty,
+            youtube_url = string.IsNullOrWhiteSpace(finalYoutubeUrl) ? string.Empty : finalYoutubeUrl,
+            has_video = !string.IsNullOrWhiteSpace(finalYoutubeUrl),
             status = "published"
         };
 
         string error = null;
-        string lessonId =
-            UnityWebRequest.EscapeURL(editingLessonId);
+        string lessonId = UnityWebRequest.EscapeURL(editingLessonId);
 
         yield return runtimeRestService.SendJson(
             "PATCH",
@@ -1381,17 +1134,13 @@ public class CreateLessonPageController : MonoBehaviour
             yield break;
         }
 
-        foreach (string assetId
-                 in removedExistingAssetIds)
+        foreach (string assetId in removedExistingAssetIds)
         {
             error = null;
-
             yield return runtimeRestService.SendJson(
                 "DELETE",
-                "rest/v1/lesson_assets" +
-                $"?id=eq.{UnityWebRequest.EscapeURL(assetId)}",
-                null,
-                "return=minimal",
+                $"rest/v1/lesson_assets?id=eq.{UnityWebRequest.EscapeURL(assetId)}",
+                null, "return=minimal",
                 _ => { },
                 message => error = message
             );
@@ -1404,13 +1153,10 @@ public class CreateLessonPageController : MonoBehaviour
         }
 
         error = null;
-
         yield return runtimeRestService.SendJson(
             "DELETE",
-            "rest/v1/lesson_objectives" +
-            $"?lesson_id=eq.{lessonId}",
-            null,
-            "return=minimal",
+            $"rest/v1/lesson_objectives?lesson_id=eq.{lessonId}",
+            null, "return=minimal",
             _ => { },
             message => error = message
         );
@@ -1421,13 +1167,10 @@ public class CreateLessonPageController : MonoBehaviour
             yield break;
         }
 
-        List<string> objectives =
-            CollectObjectives();
-
+        List<string> objectives = CollectObjectives();
         for (int i = 0; i < objectives.Count; i++)
         {
             error = null;
-
             LessonObjectiveInsert objective = new()
             {
                 lesson_id = editingLessonId,
@@ -1435,12 +1178,7 @@ public class CreateLessonPageController : MonoBehaviour
                 objective_order = i + 1
             };
 
-            yield return lessonService.CreateLessonObjective(
-                objective,
-                () => { },
-                message => error = message
-            );
-
+            yield return lessonService.CreateLessonObjective(objective, () => { }, message => error = message);
             if (!string.IsNullOrWhiteSpace(error))
             {
                 FailSaving(error);
@@ -1448,59 +1186,34 @@ public class CreateLessonPageController : MonoBehaviour
             }
         }
 
-        // New local files selected while editing are appended.
-        yield return UploadNewAssetsForExistingLesson(
-            editingLessonId
-        );
+        yield return UploadNewAssetsForExistingLesson(editingLessonId);
 
-        if (!isSaving)
-            yield break;
+        if (!isSaving) yield break;
 
         SetSaveProgress(100f, "Lesson updated.");
         yield return new WaitForSecondsRealtime(0.35f);
 
         isSaving = false;
-        PlayerPrefs.SetString(
-            "lesson_editor_mode",
-            "create"
-        );
+        PlayerPrefs.SetString("lesson_editor_mode", "create");
         PlayerPrefs.Save();
         ReturnToClassDetail();
     }
 
-    private IEnumerator UploadNewAssetsForExistingLesson(
-        string lessonId
-    )
+    private IEnumerator UploadNewAssetsForExistingLesson(string lessonId)
     {
-        string classId =
-            PlayerPrefs.GetString(
-                "selected_class_id",
-                string.Empty
-            );
-
-        string teacherId =
-            PlayerPrefs.GetString(
-                "user_id",
-                string.Empty
-            );
-
+        string classId = PlayerPrefs.GetString("selected_class_id", string.Empty);
+        string teacherId = PlayerPrefs.GetString("user_id", string.Empty);
         string error = null;
 
-        for (int i = 0;
-             i < selectedDocumentPaths.Count;
-             i++)
+        // 1. Upload new Document PDFs lên Cloudflare R2
+        for (int i = 0; i < selectedDocumentPaths.Count; i++)
         {
-            string localPath =
-                selectedDocumentPaths[i];
-
-            string storagePath =
-                $"{teacherId}/{classId}/{lessonId}/documents/" +
-                $"{Guid.NewGuid():N}.pdf";
-
+            string localPath = selectedDocumentPaths[i];
+            string storagePath = $"{teacherId}/{classId}/{lessonId}/documents/{Guid.NewGuid():N}.pdf";
             string uploadedPath = null;
 
-            yield return storageService.UploadFile(
-                "lesson-documents",
+            yield return r2StorageService.UploadFile(
+                "lesson-documents", // R2 Bucket Name
                 storagePath,
                 localPath,
                 "application/pdf",
@@ -1524,17 +1237,11 @@ public class CreateLessonPageController : MonoBehaviour
                 storage_path = uploadedPath,
                 mime_type = "application/pdf",
                 file_extension = ".pdf",
-                file_size_bytes =
-                    new FileInfo(localPath).Length,
+                file_size_bytes = new FileInfo(localPath).Length,
                 display_order = i
             };
 
-            yield return lessonService.CreateLessonAsset(
-                asset,
-                () => { },
-                message => error = message
-            );
-
+            yield return lessonService.CreateLessonAsset(asset, () => { }, message => error = message);
             if (!string.IsNullOrWhiteSpace(error))
             {
                 FailSaving(error);
@@ -1542,18 +1249,15 @@ public class CreateLessonPageController : MonoBehaviour
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(
-                selectedExercisePath))
+        // 2. Upload Exercise PDF lên Cloudflare R2 & Gọi AI Phân Tách Câu Hỏi
+        if (!string.IsNullOrWhiteSpace(selectedExercisePath))
         {
             string uploadedPath = null;
-            string storagePath =
-                $"{teacherId}/{classId}/{lessonId}/exercise/" +
-                $"{Guid.NewGuid():N}.pdf";
-
+            string storagePath = $"{teacherId}/{classId}/{lessonId}/exercise/{Guid.NewGuid():N}.pdf";
             error = null;
 
-            yield return storageService.UploadFile(
-                "lesson-documents",
+            yield return r2StorageService.UploadFile(
+                "lesson-documents", // R2 Bucket Name
                 storagePath,
                 selectedExercisePath,
                 "application/pdf",
@@ -1572,46 +1276,52 @@ public class CreateLessonPageController : MonoBehaviour
                 lesson_id = lessonId,
                 uploaded_by = teacherId,
                 asset_type = "quiz_pdf",
-                file_name =
-                    Path.GetFileName(
-                        selectedExercisePath
-                    ),
+                file_name = Path.GetFileName(selectedExercisePath),
                 storage_bucket = "lesson-documents",
                 storage_path = uploadedPath,
                 mime_type = "application/pdf",
                 file_extension = ".pdf",
-                file_size_bytes =
-                    new FileInfo(
-                        selectedExercisePath
-                    ).Length,
+                file_size_bytes = new FileInfo(selectedExercisePath).Length,
                 display_order = 0
             };
 
-            yield return lessonService.CreateLessonAsset(
-                asset,
-                () => { },
-                message => error = message
-            );
-
+            yield return lessonService.CreateLessonAsset(asset, () => { }, message => error = message);
             if (!string.IsNullOrWhiteSpace(error))
             {
                 FailSaving(error);
                 yield break;
             }
+
+            // 🔥 TỰ ĐỘNG GỌI AI BÓC TÁCH CÂU HỎI TỪ PDF (KHI UPDATE LESSON)
+            if (quizService != null)
+            {
+                SetSaveProgress(80f, "AI đang bóc tách câu hỏi từ PDF bài tập...");
+                bool isQuizParsed = false;
+
+                yield return quizService.CallParseQuizFunction(
+                    lessonId,
+                    teacherId,
+                    lessonTitleField?.value?.Trim() ?? "Bài tập",
+                    uploadedPath,
+                    success => isQuizParsed = success
+                );
+
+                if (!isQuizParsed)
+                {
+                    Debug.LogWarning("Không thể tự động bóc tách đề thi AI, nhưng bài học vẫn được lưu.");
+                }
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(
-                selectedModelPath))
+        // 3. Upload 3D GLB Model lên Cloudflare R2
+        if (!string.IsNullOrWhiteSpace(selectedModelPath))
         {
             string uploadedPath = null;
-            string storagePath =
-                $"{teacherId}/{classId}/{lessonId}/models/" +
-                $"{Guid.NewGuid():N}.glb";
-
+            string storagePath = $"{teacherId}/{classId}/{lessonId}/models/{Guid.NewGuid():N}.glb";
             error = null;
 
-            yield return storageService.UploadFile(
-                "lesson-models",
+            yield return r2StorageService.UploadFile(
+                "lesson-models", // R2 Bucket Name
                 storagePath,
                 selectedModelPath,
                 "model/gltf-binary",
@@ -1630,27 +1340,16 @@ public class CreateLessonPageController : MonoBehaviour
                 lesson_id = lessonId,
                 uploaded_by = teacherId,
                 asset_type = "model_3d",
-                file_name =
-                    Path.GetFileName(
-                        selectedModelPath
-                    ),
+                file_name = Path.GetFileName(selectedModelPath),
                 storage_bucket = "lesson-models",
                 storage_path = uploadedPath,
                 mime_type = "model/gltf-binary",
                 file_extension = ".glb",
-                file_size_bytes =
-                    new FileInfo(
-                        selectedModelPath
-                    ).Length,
+                file_size_bytes = new FileInfo(selectedModelPath).Length,
                 display_order = 0
             };
 
-            yield return lessonService.CreateLessonAsset(
-                asset,
-                () => { },
-                message => error = message
-            );
-
+            yield return lessonService.CreateLessonAsset(asset, () => { }, message => error = message);
             if (!string.IsNullOrWhiteSpace(error))
             {
                 FailSaving(error);
@@ -1671,24 +1370,17 @@ public class CreateLessonPageController : MonoBehaviour
 
         if (lessonService == null)
         {
-            SetLabel(
-                detailsErrorLabel,
-                "SupabaseLessonService is missing."
-            );
+            SetLabel(detailsErrorLabel, "SupabaseLessonService is missing.");
             return;
         }
 
-        bool requiresStorage =
-            selectedDocumentPaths.Count > 0 ||
+        bool requiresStorage = selectedDocumentPaths.Count > 0 ||
             !string.IsNullOrWhiteSpace(selectedExercisePath) ||
             modelSelected;
 
-        if (requiresStorage && storageService == null)
+        if (requiresStorage && r2StorageService == null)
         {
-            SetLabel(
-                detailsErrorLabel,
-                "SupabaseStorageService is missing."
-            );
+            SetLabel(detailsErrorLabel, "CloudflareR2StorageService is missing.");
             return;
         }
 
@@ -1704,9 +1396,7 @@ public class CreateLessonPageController : MonoBehaviour
         string classId = PlayerPrefs.GetString("selected_class_id", string.Empty);
         string teacherId = PlayerPrefs.GetString("user_id", string.Empty);
 
-        if (string.IsNullOrWhiteSpace(classId) ||
-            string.IsNullOrWhiteSpace(teacherId) ||
-            string.IsNullOrWhiteSpace(selectedChapterId))
+        if (string.IsNullOrWhiteSpace(classId) || string.IsNullOrWhiteSpace(teacherId) || string.IsNullOrWhiteSpace(selectedChapterId))
         {
             FailSaving("Missing class, teacher, or chapter information.");
             yield break;
@@ -1731,27 +1421,19 @@ public class CreateLessonPageController : MonoBehaviour
         }
 
         List<string> objectives = CollectObjectives();
-
-        string finalStatus =
-            asDraft ? "draft" : "published";
-
-        string finalYoutubeUrl =
-            videoSelected &&
-            !string.IsNullOrWhiteSpace(selectedYoutubeUrl)
-                ? selectedYoutubeUrl.Trim()
-                : null;
+        string finalStatus = asDraft ? "draft" : "published";
+        string finalYoutubeUrl = videoSelected && !string.IsNullOrWhiteSpace(selectedYoutubeUrl)
+            ? selectedYoutubeUrl.Trim()
+            : null;
 
         CreateLessonRequest request = new()
         {
             chapter_id = selectedChapterId,
             teacher_id = teacherId,
             title = lessonTitleField.value.Trim(),
-            description =
-                lessonDescriptionField?.value?.Trim()
-                ?? string.Empty,
+            description = lessonDescriptionField?.value?.Trim() ?? string.Empty,
             youtube_url = finalYoutubeUrl,
-            has_video =
-                !string.IsNullOrWhiteSpace(finalYoutubeUrl),
+            has_video = !string.IsNullOrWhiteSpace(finalYoutubeUrl),
             status = finalStatus
         };
 
@@ -1772,32 +1454,27 @@ public class CreateLessonPageController : MonoBehaviour
             yield break;
         }
 
-        int totalUploads =
-            selectedDocumentPaths.Count +
+        int totalUploads = selectedDocumentPaths.Count +
             (!string.IsNullOrWhiteSpace(selectedExercisePath) ? 1 : 0) +
             (modelSelected ? 1 : 0);
 
         int completedUploads = 0;
 
+        // 1. Upload Lesson Document PDFs lên Cloudflare R2
         for (int i = 0; i < selectedDocumentPaths.Count; i++)
         {
             string localPath = selectedDocumentPaths[i];
             SetSaveProgress(
                 CalculateUploadProgress(completedUploads, totalUploads),
-                $"Uploading PDF {i + 1} of {selectedDocumentPaths.Count}..."
+                $"Uploading PDF {i + 1} of {selectedDocumentPaths.Count} to R2..."
             );
 
-            // Storage object keys only use ASCII-safe UUID segments.
-            // The original filename is preserved in lesson_assets.file_name.
-            string storagePath =
-                $"{teacherId}/{classId}/{createdLesson.id}/documents/" +
-                $"{Guid.NewGuid():N}.pdf";
-
+            string storagePath = $"{teacherId}/{classId}/{createdLesson.id}/documents/{Guid.NewGuid():N}.pdf";
             string uploadedPath = null;
             operationError = null;
 
-            yield return storageService.UploadFile(
-                "lesson-documents",
+            yield return r2StorageService.UploadFile(
+                "lesson-documents", // R2 Bucket Name
                 storagePath,
                 localPath,
                 "application/pdf",
@@ -1840,22 +1517,20 @@ public class CreateLessonPageController : MonoBehaviour
             completedUploads++;
         }
 
+        // 2. Upload Exercise / Quiz PDF lên Cloudflare R2 & Tự động gọi AI bóc tách
         if (!string.IsNullOrWhiteSpace(selectedExercisePath))
         {
             SetSaveProgress(
                 CalculateUploadProgress(completedUploads, totalUploads),
-                "Uploading exercise PDF..."
+                "Uploading exercise PDF to R2..."
             );
 
-            string exerciseStoragePath =
-                $"{teacherId}/{classId}/{createdLesson.id}/exercise/" +
-                $"{Guid.NewGuid():N}.pdf";
-
+            string exerciseStoragePath = $"{teacherId}/{classId}/{createdLesson.id}/exercise/{Guid.NewGuid():N}.pdf";
             string uploadedExercisePath = null;
             operationError = null;
 
-            yield return storageService.UploadFile(
-                "lesson-documents",
+            yield return r2StorageService.UploadFile(
+                "lesson-documents", // R2 Bucket Name
                 exerciseStoragePath,
                 selectedExercisePath,
                 "application/pdf",
@@ -1873,10 +1548,7 @@ public class CreateLessonPageController : MonoBehaviour
             {
                 lesson_id = createdLesson.id,
                 uploaded_by = teacherId,
-
-                // Reuse the existing quiz_pdf asset type for an exercise PDF.
                 asset_type = "quiz_pdf",
-
                 file_name = Path.GetFileName(selectedExercisePath),
                 storage_bucket = "lesson-documents",
                 storage_path = uploadedExercisePath,
@@ -1898,25 +1570,46 @@ public class CreateLessonPageController : MonoBehaviour
                 yield break;
             }
 
+            // 🔥 TỰ ĐỘNG GỌI AI BÓC TÁCH CÂU HỎI TỪ PDF (KHI TẠO LESSON MỚI)
+            if (quizService != null)
+            {
+                SetSaveProgress(
+                    CalculateUploadProgress(completedUploads, totalUploads),
+                    "AI đang bóc tách câu hỏi từ PDF bài tập..."
+                );
+
+                bool isQuizParsed = false;
+                yield return quizService.CallParseQuizFunction(
+                    createdLesson.id,
+                    teacherId,
+                    createdLesson.title,
+                    uploadedExercisePath,
+                    success => isQuizParsed = success
+                );
+
+                if (!isQuizParsed)
+                {
+                    Debug.LogWarning("Không thể tự động bóc tách đề thi AI, nhưng bài học vẫn được tạo thành công.");
+                }
+            }
+
             completedUploads++;
         }
 
+        // 3. Upload 3D GLB Model lên Cloudflare R2
         if (modelSelected)
         {
             SetSaveProgress(
                 CalculateUploadProgress(completedUploads, totalUploads),
-                "Uploading 3D model..."
+                "Uploading 3D model to R2..."
             );
 
-            string storagePath =
-                $"{teacherId}/{classId}/{createdLesson.id}/models/" +
-                $"{Guid.NewGuid():N}.glb";
-
+            string storagePath = $"{teacherId}/{classId}/{createdLesson.id}/models/{Guid.NewGuid():N}.glb";
             string uploadedPath = null;
             operationError = null;
 
-            yield return storageService.UploadFile(
-                "lesson-models",
+            yield return r2StorageService.UploadFile(
+                "lesson-models", // R2 Bucket Name
                 storagePath,
                 selectedModelPath,
                 "model/gltf-binary",
@@ -2002,14 +1695,12 @@ public class CreateLessonPageController : MonoBehaviour
     private List<string> CollectObjectives()
     {
         List<string> objectives = new();
-
         foreach (TextField field in objectiveFields)
         {
             string value = field.value?.Trim();
             if (!string.IsNullOrWhiteSpace(value))
                 objectives.Add(value);
         }
-
         return objectives;
     }
 
@@ -2087,34 +1778,6 @@ public class CreateLessonPageController : MonoBehaviour
             Debug.LogError($"Không tìm thấy {sceneName} trong Build Settings.");
     }
 
-    private static string SanitizeFileName(string fileName)
-    {
-        if (string.IsNullOrWhiteSpace(fileName))
-            return "file";
-
-        string extension = Path.GetExtension(fileName);
-        string nameOnly = Path.GetFileNameWithoutExtension(fileName);
-
-        nameOnly = Regex.Replace(
-            nameOnly,
-            @"[^A-Za-z0-9_-]+",
-            "_"
-        );
-
-        nameOnly = nameOnly.Trim('_');
-
-        if (string.IsNullOrWhiteSpace(nameOnly))
-            nameOnly = "file";
-
-        extension = Regex.Replace(
-            extension.ToLowerInvariant(),
-            @"[^a-z0-9.]",
-            string.Empty
-        );
-
-        return nameOnly + extension;
-    }
-
     private static void SetVisible(VisualElement element, bool visible)
     {
         if (element == null) return;
@@ -2132,24 +1795,7 @@ public class CreateLessonPageController : MonoBehaviour
     }
 }
 
-[Serializable]
-public class LessonEditorRecord
-{
-    public string id;
-    public string chapter_id;
-    public string title;
-    public string description;
-    public string youtube_url;
-    public bool has_video;
-    public string status;
-}
-
-[Serializable]
-public class LessonEditorRecordList
-{
-    public LessonEditorRecord[] items;
-}
-
+#region Data Models for Editor & Supabase REST API
 [Serializable]
 public class ExistingAssetData
 {
@@ -2168,6 +1814,24 @@ public class ExistingAssetData
 public class ExistingAssetDataList
 {
     public ExistingAssetData[] items;
+}
+
+[Serializable]
+public class LessonEditorRecord
+{
+    public string id;
+    public string chapter_id;
+    public string title;
+    public string description;
+    public string youtube_url;
+    public bool has_video;
+    public string status;
+}
+
+[Serializable]
+public class LessonEditorRecordList
+{
+    public LessonEditorRecord[] items;
 }
 
 [Serializable]
@@ -2193,3 +1857,4 @@ public class LessonUpdatePayload
     public bool has_video;
     public string status;
 }
+#endregion

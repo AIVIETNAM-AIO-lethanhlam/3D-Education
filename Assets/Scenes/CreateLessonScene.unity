@@ -225,6 +225,8 @@ GameObject:
   - component: {fileID: 490676434}
   - component: {fileID: 490676433}
   - component: {fileID: 490676432}
+  - component: {fileID: 490676435}
+  - component: {fileID: 490676436}
   m_Layer: 5
   m_Name: CreateLessonUIDocument
   m_TagString: Untagged
@@ -282,6 +284,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a68a8b3e852129f4887c9a42a7ec5850, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CreateLessonPageController
+  lessonService: {fileID: 0}
+  r2StorageService: {fileID: 0}
+  quizService: {fileID: 0}
 --- !u!114 &490676432
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -294,6 +299,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f15c1d168a5e6a844aa483ac949b4fe7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SupabaseStorageService
+  defaultSignedUrlLifetimeSeconds: 3600
 --- !u!114 &490676433
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -318,8 +324,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d54e6729cea984f4aae41e9d2c9c1a18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SupabaseRuntimeRestService
-  projectUrl: https://nfribubvehdzjyguxejq.supabase.co
-  anonKey: sb_publishable_1QTg4NVH-lYBBAt1qOQHYw_th1pWtIf
+--- !u!114 &490676435
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 490676428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7746f0a8a5aa3eb45aad0f1518f74361, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CloudflareR2StorageService
+  accountId: 6a920b1daa3581d8f30ef5b01c3c533d
+  accessKeyId: c54d8c5547b3f50be68928e0e8b5c961
+  secretAccessKey: ba9b289f369bbe03295697191b33c260cf486646430ebf1ae0f97537548868ec
+  customDomainOrCdn: https://pub-36945c8c179544849e98ff661e68806a.r2.dev
+--- !u!114 &490676436
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 490676428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d49b85d56d56cf429371ad72962a1d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SupabaseQuizService
 --- !u!1 &722930009
 GameObject:
   m_ObjectHideFlags: 0

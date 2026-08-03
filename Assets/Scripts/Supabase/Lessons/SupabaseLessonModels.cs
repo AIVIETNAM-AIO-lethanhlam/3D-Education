@@ -45,6 +45,23 @@ public class LessonRecord
 }
 
 [Serializable]
+public class LessonAssetRecord
+{
+    public string id;
+    public string lesson_id;
+    public string uploaded_by;
+    public string asset_type;
+    public string file_name;
+    public string storage_bucket;
+    public string storage_path;
+    public string mime_type;
+    public string file_extension;
+    public long file_size_bytes;
+    public int display_order;
+    public string created_at;
+}
+
+[Serializable]
 public class LessonAssetInsert
 {
     public string lesson_id;
@@ -83,4 +100,10 @@ public class ChapterRecordList
 public class LessonRecordList
 {
     public LessonRecord[] items;
+}
+
+[Serializable]
+public class LessonAssetRecordList
+{
+    public LessonAssetRecord[] items;
 }
