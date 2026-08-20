@@ -1,21 +1,27 @@
+# Unity generated folders
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
-[Bb]uild/
-[Bb]uilds/
 [Ll]ogs/
 UserSettings/
 
+# Build
+[Bb]uild/
+[Bb]uilds/
+
+# IDE
 .vs/
 .vscode/
-.idea/
+.vsconfig
 
+# Unity Version Control / Plastic SCM
+.plastic/
+.utmp/
+
+# Node
+node_modules/
+
+# Visual Studio generated files
 *.csproj
-*.unityproj
 *.sln
-*.user
-*.pidb
-*.booproj
-
-.DS_Store
-Thumbs.db
+*.slnx

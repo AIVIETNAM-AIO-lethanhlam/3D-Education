@@ -18,7 +18,12 @@ public class BottomNavigationController : IDisposable
      */
     private const string HomeSceneName = "MainHomeScene";
     private const string MyClassesSceneName = "MyClassesScene";
+    private const string ChatAISceneName = "ChatAIScene";
     private const string SettingsSceneName = "SettingScene";
+
+    // Dedicated key so ChatAIScene always returns to the exact page
+    // from which the AI footer button was opened.
+    private const string ChatAIPreviousSceneKey = "chat_ai_previous_scene";
 
     private readonly VisualElement footerRoot;
 
@@ -109,7 +114,7 @@ public class BottomNavigationController : IDisposable
             case "MyClassesScene":
                 return BottomNavigationTab.MyClasses;
 
-            case "AIPageScene":
+            case ChatAISceneName:
                 return BottomNavigationTab.AI;
 
             case SettingsSceneName:
@@ -211,14 +216,35 @@ public class BottomNavigationController : IDisposable
 
     private void HandleAiClicked()
     {
-        /*
-         * Tạm thời chỉ ghi Console cho đến khi AI Scene hoàn thành.
-         */
-        Debug.Log(
-            "Bottom Navigation: Đã nhấn AI. " +
-            "AI Scene hiện chưa được triển khai.");
+        string currentSceneName =
+            SceneManager.GetActiveScene().name;
+
+        // Save the exact scene that opened ChatAIScene.
+        // Examples:
+        // MainHomeScene -> ChatAIScene -> Back -> MainHomeScene
+        // MyClassesScene -> ChatAIScene -> Back -> MyClassesScene
+        if (!string.Equals(
+                currentSceneName,
+                ChatAISceneName,
+                StringComparison.Ordinal))
+        {
+            PlayerPrefs.SetString(
+                ChatAIPreviousSceneKey,
+                currentSceneName
+            );
+
+            PlayerPrefs.Save();
+        }
+
+        SetActiveTab(
+            BottomNavigationTab.AI
+        );
 
         AIClicked?.Invoke();
+
+        LoadSceneIfNeeded(
+            ChatAISceneName
+        );
     }
 
     private void HandleSettingsClicked()

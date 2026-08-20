@@ -1540,7 +1540,7 @@
     margin-top: 22px;
 }
 
-.student-quizzes-container:empty {
+.student-quizzes-container-empty {
     min-height: 0;
     margin-top: 0;
     padding: 0;
@@ -1550,3 +1550,13 @@
 .student-quizzes-section > .section-title {
     margin-bottom: 12px;
 }
+
+/* Student class loading states */
+.student-classes-container .classes-state-message {
+    width: 100%;
+    min-height: 80px;
+    padding: 20px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+

@@ -20,7 +20,7 @@ public class ShowLessonPageController : MonoBehaviour
     [SerializeField] private string interactiveModelSceneName = "InteractiveModelScene";
     [SerializeField] private string arModelsSceneName = "ARScene";
 
-    [SerializeField] private string aiSceneName = "AIScene";
+    [SerializeField] private string aiSceneName = "ChatAIScene";
 
     [Header("3D model storage")]
     [SerializeField, Min(60)] private int modelSignedUrlLifetimeSeconds = 3600;
@@ -827,7 +827,16 @@ public class ShowLessonPageController : MonoBehaviour
 
     private void HandleAiAssistantClicked()
     {
-        LoadSceneSafely(aiSceneName);
+        // The AI chat scene in this project is named "ChatAIScene".
+        // Use the real scene name directly so an old serialized Inspector value
+        // such as "AIScene" cannot prevent navigation.
+        const string chatAiSceneName = "ChatAIScene";
+
+        PlayerPrefs.SetString("previous_scene", "ShowLessonScene");
+        PlayerPrefs.Save();
+
+        Debug.Log($"[ShowLessonPageController] Opening AI chat scene: {chatAiSceneName}");
+        LoadSceneSafely(chatAiSceneName);
     }
 
     private void BeginOpenModel(string mode)

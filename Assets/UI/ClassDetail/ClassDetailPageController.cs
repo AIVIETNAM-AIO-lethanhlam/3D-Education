@@ -9,6 +9,7 @@ using UnityEngine.UIElements;
 [RequireComponent(typeof(UIDocument))]
 [RequireComponent(typeof(SupabaseRuntimeRestService))]
 [RequireComponent(typeof(SupabaseLessonService))]
+[RequireComponent(typeof(R2StorageService))]
 public class ClassDetailPageController : MonoBehaviour
 {
     // =========================================================
@@ -24,12 +25,30 @@ public class ClassDetailPageController : MonoBehaviour
     private Button syllabusTabButton;
     private Button labsTabButton;
     private Button studentListTabButton;
+    private VisualElement studentListUnreadDot;
 
     private VisualElement syllabusContent;
     private VisualElement labsContent;
     private VisualElement studentListContent;
 
+    private VisualElement studentCardList;
+    private VisualElement studentListLoadingState;
+    private VisualElement studentListEmptyState;
+    private VisualElement studentListErrorState;
+    private Label studentListErrorLabel;
+    private Label studentListCountLabel;
+    private Label studentOnlineCountLabel;
+    private Button studentListRetryButton;
+
+    private VisualElement modelCardList;
+    private VisualElement labsLoadingState;
+    private VisualElement labsEmptyState;
+    private VisualElement labsErrorState;
+    private Label labsErrorLabel;
+    private Button labsRetryButton;
+
     private VisualElement chapterList;
+    private VisualElement reorderPreview;
     private Button addChapterButton;
     private Button editContentButton;
 
@@ -45,6 +64,7 @@ public class ClassDetailPageController : MonoBehaviour
     private Label teacherInitialLabel;
     private Label teacherNameLabel;
     private Label teacherPositionLabel;
+    private Label teacherMessageUnreadBadge;
 
     private Label studentCountLabel;
     private Label moduleCountLabel;
@@ -56,6 +76,7 @@ public class ClassDetailPageController : MonoBehaviour
 
     private SupabaseLessonService lessonService;
     private SupabaseRuntimeRestService runtimeRestService;
+    private R2StorageService r2StorageService;
     private bool isCreatingChapter;
     private bool isTeacher;
     private bool isEditMode;
@@ -66,6 +87,62 @@ public class ClassDetailPageController : MonoBehaviour
     // =========================================================
 
     private readonly List<ChapterData> chapters = new();
+    private readonly List<Class3DModelData> class3DModels = new();
+    private readonly List<ClassMemberStudent> enrolledStudents = new();
+    private bool isLoading3DModels;
+    private bool isLoadingStudents;
+    private bool hasLoadedStudents;
+
+    // Teacher-side unread state.
+    // Key = student user id, Value = unread messages sent by that student.
+    private readonly Dictionary<string, int> studentUnreadCounts =
+        new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+    private Coroutine studentUnreadPollingCoroutine;
+    private const float StudentUnreadPollInterval = 2f;
+
+    // The tab dot is an "attention" indicator, not the read state itself.
+    // Opening Student List acknowledges the current unread set. If a NEW unread
+    // message arrives later, the signature changes and the red dot appears again.
+    private string latestStudentUnreadSignature = string.Empty;
+    private string acknowledgedStudentUnreadSignature = string.Empty;
+
+    // Student -> teacher direct-chat state for the current class.
+    private string currentTeacherId;
+    private string currentTeacherName = "Teacher";
+    private string currentTeacherConversationId;
+    private Coroutine teacherUnreadPollingCoroutine;
+    private const float TeacherUnreadPollInterval = 2f;
+
+    [Serializable] private class ClassOwnerRecord { public string teacher_id; }
+    [Serializable] private class ClassOwnerArray { public ClassOwnerRecord[] items; }
+    [Serializable] private class ChatProfileRecord { public string id; public string full_name; public string role; }
+    [Serializable] private class ChatProfileArray { public ChatProfileRecord[] items; }
+    [Serializable] private class DirectConversationRpcBody { public string p_other_user_id; public string p_class_id; }
+    [Serializable] private class UnreadMessageRecord { public string id; }
+    [Serializable] private class UnreadMessageArray { public UnreadMessageRecord[] items; }
+
+    [Serializable]
+    private class TeacherConversationRecord
+    {
+        public string id;
+        public string class_id;
+        public string user_a_id;
+        public string user_b_id;
+    }
+
+    [Serializable] private class TeacherConversationArray { public TeacherConversationRecord[] items; }
+
+    [Serializable]
+    private class TeacherUnreadMessageRecord
+    {
+        public string id;
+        public string conversation_id;
+        public string sender_id;
+        public string receiver_id;
+    }
+
+    [Serializable] private class TeacherUnreadMessageArray { public TeacherUnreadMessageRecord[] items; }
 
     private const string ActiveTabClass = "tab-button-active";
     private const string HiddenClass = "hidden";
@@ -94,14 +171,34 @@ public class ClassDetailPageController : MonoBehaviour
         ResolveServices();
         RegisterEvents();
 
-        LoadClassInformation();
+        SetEmptyClassInformation();
         ConfigureRoleUi();
+        ShowSyllabusTab();
+        StartCoroutine(LoadClassInformationFromSupabase());
         StartCoroutine(LoadChapterData());
+
+        if (isTeacher)
+        {
+            studentUnreadPollingCoroutine =
+                StartCoroutine(TeacherStudentUnreadPollingLoop());
+        }
     }
 
     private void OnDisable()
     {
         UnregisterEvents();
+
+        if (teacherUnreadPollingCoroutine != null)
+        {
+            StopCoroutine(teacherUnreadPollingCoroutine);
+            teacherUnreadPollingCoroutine = null;
+        }
+
+        if (studentUnreadPollingCoroutine != null)
+        {
+            StopCoroutine(studentUnreadPollingCoroutine);
+            studentUnreadPollingCoroutine = null;
+        }
     }
 
     // =========================================================
@@ -112,6 +209,7 @@ public class ClassDetailPageController : MonoBehaviour
     {
         lessonService = GetComponent<SupabaseLessonService>();
         runtimeRestService = GetComponent<SupabaseRuntimeRestService>();
+        r2StorageService = GetComponent<R2StorageService>();
 
         if (lessonService == null)
         {
@@ -148,6 +246,9 @@ public class ClassDetailPageController : MonoBehaviour
         studentListTabButton =
             root.Q<Button>("student-list-tab-button");
 
+        studentListUnreadDot =
+            root.Q<VisualElement>("student-list-unread-dot");
+
         syllabusContent =
             root.Q<VisualElement>("syllabus-content");
 
@@ -157,8 +258,53 @@ public class ClassDetailPageController : MonoBehaviour
         studentListContent =
             root.Q<VisualElement>("student-list-content");
 
+        studentCardList =
+            root.Q<VisualElement>("student-card-list");
+
+        studentListLoadingState =
+            root.Q<VisualElement>("student-list-loading-state");
+
+        studentListEmptyState =
+            root.Q<VisualElement>("student-list-empty-state");
+
+        studentListErrorState =
+            root.Q<VisualElement>("student-list-error-state");
+
+        studentListErrorLabel =
+            root.Q<Label>("student-list-error-label");
+
+        studentListCountLabel =
+            root.Q<Label>("student-list-count-label");
+
+        studentOnlineCountLabel =
+            root.Q<Label>("student-online-count-label");
+
+        studentListRetryButton =
+            root.Q<Button>("student-list-retry-button");
+
+        modelCardList =
+            root.Q<VisualElement>("model-card-list");
+
+        labsLoadingState =
+            root.Q<VisualElement>("labs-loading-state");
+
+        labsEmptyState =
+            root.Q<VisualElement>("labs-empty-state");
+
+        labsErrorState =
+            root.Q<VisualElement>("labs-error-state");
+
+        labsErrorLabel =
+            root.Q<Label>("labs-error-label");
+
+        labsRetryButton =
+            root.Q<Button>("labs-retry-button");
+
         chapterList =
             root.Q<VisualElement>("chapter-list");
+
+        reorderPreview =
+            root.Q<VisualElement>("reorder-preview");
 
         addChapterButton =
             root.Q<Button>("add-chapter-button");
@@ -198,6 +344,9 @@ public class ClassDetailPageController : MonoBehaviour
 
         teacherPositionLabel =
             root.Q<Label>("teacher-position-label");
+
+        teacherMessageUnreadBadge =
+            root.Q<Label>("teacher-message-unread-badge");
 
         studentCountLabel =
             root.Q<Label>("student-count-label");
@@ -253,6 +402,12 @@ public class ClassDetailPageController : MonoBehaviour
         if (studentListTabButton != null)
             studentListTabButton.clicked += ShowStudentListTab;
 
+        if (labsRetryButton != null)
+            labsRetryButton.clicked += RetryLoad3DModels;
+
+        if (studentListRetryButton != null)
+            studentListRetryButton.clicked += RetryLoadStudents;
+
         if (addChapterButton != null)
             addChapterButton.clicked += OnAddChapterClicked;
 
@@ -286,6 +441,12 @@ public class ClassDetailPageController : MonoBehaviour
         if (studentListTabButton != null)
             studentListTabButton.clicked -= ShowStudentListTab;
 
+        if (labsRetryButton != null)
+            labsRetryButton.clicked -= RetryLoad3DModels;
+
+        if (studentListRetryButton != null)
+            studentListRetryButton.clicked -= RetryLoadStudents;
+
         if (addChapterButton != null)
             addChapterButton.clicked -= OnAddChapterClicked;
 
@@ -301,10 +462,12 @@ public class ClassDetailPageController : MonoBehaviour
 
     private void ConfigureRoleUi()
     {
-        string role = PlayerPrefs.GetString(
-            "current_role",
-            PlayerPrefs.GetString("role", string.Empty)
-        );
+        string role = !string.IsNullOrWhiteSpace(SupabaseSession.Role)
+            ? SupabaseSession.Role.Trim()
+            : PlayerPrefs.GetString(
+                "current_role",
+                PlayerPrefs.GetString("role", string.Empty)
+            ).Trim();
 
         isTeacher = string.Equals(
             role,
@@ -312,11 +475,35 @@ public class ClassDetailPageController : MonoBehaviour
             StringComparison.OrdinalIgnoreCase
         );
 
+        if (root != null)
+        {
+            root.EnableInClassList("role-teacher", isTeacher);
+            root.EnableInClassList("role-student", !isTeacher);
+        }
+
+        // Teacher-only controls.
         SetVisible(editContentButton, isTeacher);
         SetVisible(addChapterButton, isTeacher);
+        SetVisible(reorderPreview, isTeacher);
+        SetVisible(moreButton, isTeacher);
+
+        if (isTeacher)
+        {
+            SetTeacherUnreadBadge(0);
+            SetStudentListUnreadDot(false);
+        }
 
         if (!isTeacher)
+        {
             isEditMode = false;
+
+            if (editContentButton != null)
+                editContentButton.text = "Chỉnh sửa";
+        }
+
+        Debug.Log(
+            $"[ClassDetail] Role = {(isTeacher ? "teacher" : "student")}"
+        );
     }
 
     private void ToggleEditMode()
@@ -353,48 +540,355 @@ public class ClassDetailPageController : MonoBehaviour
     // CLASS INFORMATION
     // =========================================================
 
-    private void LoadClassInformation()
+    private void SetEmptyClassInformation()
     {
-        /*
-         * Hiện tại dùng dữ liệu mẫu.
-         *
-         * Sau này có thể lấy selected_class_id:
-         *
-         * string classId =
-         *     PlayerPrefs.GetString("selected_class_id", "");
-         *
-         * Sau đó gọi SupabaseClassService để lấy:
-         * - class_name
-         * - semester
-         * - teacher_name
-         * - student count
-         * - chapter/module count
-         * - average score
-         */
+        // A newly-created class starts with no students, lessons or scores.
+        if (semesterLabel != null)
+            semesterLabel.text = "CLASS OVERVIEW";
 
-        semesterLabel.text =
-            "SEMESTER 2 · 2024–2025";
+        if (classTitleLabel != null)
+            classTitleLabel.text = "Loading class...";
 
-        classTitleLabel.text =
-            "EE301 – Circuit Analysis";
+        if (teacherInitialLabel != null)
+            teacherInitialLabel.text = "T";
 
-        teacherInitialLabel.text =
-            "TQ";
+        if (teacherNameLabel != null)
+            teacherNameLabel.text = "Teacher";
 
-        teacherNameLabel.text =
-            "Dr. Trần Minh Quân";
+        if (teacherPositionLabel != null)
+            teacherPositionLabel.text = "Class instructor";
 
-        teacherPositionLabel.text =
-            "Associate Professor";
+        if (studentCountLabel != null)
+            studentCountLabel.text = "0";
 
-        studentCountLabel.text =
-            "34";
+        if (moduleCountLabel != null)
+            moduleCountLabel.text = "0";
 
-        moduleCountLabel.text =
-            "5";
+        if (averageScoreLabel != null)
+            averageScoreLabel.text = "0%";
+    }
 
-        averageScoreLabel.text =
-            "89%";
+    private IEnumerator LoadClassInformationFromSupabase()
+    {
+        string classId = PlayerPrefs.GetString(
+            "selected_class_id",
+            string.Empty
+        );
+
+        Debug.Log(
+            $"[ClassDetail] Loading chapters for class_id = {classId}"
+        );
+
+        if (!Guid.TryParse(classId, out _))
+        {
+            Debug.LogError(
+                "[ClassDetailPageController] selected_class_id is invalid."
+            );
+            yield break;
+        }
+
+        ClassDetailStats stats = null;
+        string error = null;
+
+        yield return SupabaseClassService.GetClassDetailStats(
+            classId,
+            result => stats = result,
+            message => error = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            Debug.LogError(
+                "Unable to load class statistics: " + error
+            );
+            yield break;
+        }
+
+        if (stats == null)
+            yield break;
+
+        string className = string.IsNullOrWhiteSpace(stats.class_name)
+            ? "Untitled Class"
+            : stats.class_name.Trim();
+
+        string classCode = string.IsNullOrWhiteSpace(stats.class_code)
+            ? string.Empty
+            : stats.class_code.Trim();
+
+        if (classTitleLabel != null)
+        {
+            classTitleLabel.text = string.IsNullOrWhiteSpace(classCode)
+                ? className
+                : $"{classCode} – {className}";
+        }
+
+        string teacherName = string.IsNullOrWhiteSpace(stats.teacher_name)
+            ? "Teacher"
+            : stats.teacher_name.Trim();
+
+        if (teacherNameLabel != null)
+            teacherNameLabel.text = teacherName;
+
+        if (teacherInitialLabel != null)
+            teacherInitialLabel.text = GetInitials(teacherName);
+
+        if (studentCountLabel != null)
+            studentCountLabel.text = Mathf.Max(0, stats.student_count).ToString();
+
+        if (moduleCountLabel != null)
+            moduleCountLabel.text = Mathf.Max(0, stats.lesson_count).ToString();
+
+        if (averageScoreLabel != null)
+        {
+            averageScoreLabel.text = stats.has_average_score
+                ? $"{Mathf.RoundToInt(Mathf.Clamp(stats.average_score, 0f, 100f))}%"
+                : "0%";
+        }
+
+        // Students need the teacher user id to open the same direct conversation
+        // and to display the unread-message badge on the teacher chat icon.
+        if (!isTeacher)
+            yield return LoadTeacherChatContext(classId, teacherName);
+    }
+
+    private IEnumerator LoadTeacherChatContext(string classId, string fallbackTeacherName)
+    {
+        currentTeacherId = string.Empty;
+        currentTeacherConversationId = string.Empty;
+        currentTeacherName = string.IsNullOrWhiteSpace(fallbackTeacherName)
+            ? "Teacher"
+            : fallbackTeacherName.Trim();
+        SetTeacherUnreadBadge(0);
+
+        if (runtimeRestService == null)
+        {
+            Debug.LogError("[ClassDetail] Cannot load teacher chat context: SupabaseRuntimeRestService is missing.");
+            yield break;
+        }
+
+        string classResponse = null;
+        string classError = null;
+        string encodedClassId = UnityWebRequest.EscapeURL(classId);
+
+        yield return runtimeRestService.SendJson(
+            "GET",
+            $"rest/v1/classes?id=eq.{encodedClassId}&select=teacher_id&limit=1",
+            null,
+            null,
+            value => classResponse = value,
+            message => classError = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(classError))
+        {
+            Debug.LogError("[ClassDetail] Unable to resolve class teacher: " + classError);
+            yield break;
+        }
+
+        ClassOwnerRecord[] owners = ParseRestArray<ClassOwnerArray, ClassOwnerRecord>(
+            classResponse,
+            wrapper => wrapper.items
+        );
+
+        if (owners.Length == 0 || !Guid.TryParse(owners[0].teacher_id, out _))
+        {
+            Debug.LogError("[ClassDetail] Class teacher id (classes.teacher_id) is missing or invalid.");
+            yield break;
+        }
+
+        currentTeacherId = owners[0].teacher_id;
+
+        // Fetch the canonical teacher name from profiles. If RLS blocks this query,
+        // keep the teacher_name already returned by GetClassDetailStats.
+        string profileResponse = null;
+        string profileError = null;
+        yield return runtimeRestService.SendJson(
+            "GET",
+            $"rest/v1/profiles?id=eq.{UnityWebRequest.EscapeURL(currentTeacherId)}&select=id,full_name,role&limit=1",
+            null,
+            null,
+            value => profileResponse = value,
+            message => profileError = message
+        );
+
+        if (string.IsNullOrWhiteSpace(profileError))
+        {
+            ChatProfileRecord[] profiles = ParseRestArray<ChatProfileArray, ChatProfileRecord>(
+                profileResponse,
+                wrapper => wrapper.items
+            );
+
+            if (profiles.Length > 0 && !string.IsNullOrWhiteSpace(profiles[0].full_name))
+                currentTeacherName = profiles[0].full_name.Trim();
+        }
+
+        yield return ResolveTeacherConversation(classId);
+        yield return RefreshTeacherUnreadCount();
+
+        if (teacherUnreadPollingCoroutine != null)
+            StopCoroutine(teacherUnreadPollingCoroutine);
+
+        teacherUnreadPollingCoroutine = StartCoroutine(TeacherUnreadPollingLoop());
+    }
+
+    private IEnumerator ResolveTeacherConversation(string classId)
+    {
+        if (!Guid.TryParse(currentTeacherId, out _))
+            yield break;
+
+        string response = null;
+        string error = null;
+        DirectConversationRpcBody body = new()
+        {
+            p_other_user_id = currentTeacherId,
+            p_class_id = classId
+        };
+
+        yield return runtimeRestService.SendJson(
+            "POST",
+            "rest/v1/rpc/get_or_create_direct_conversation",
+            JsonUtility.ToJson(body),
+            "return=representation",
+            value => response = value,
+            message => error = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            Debug.LogError("[ClassDetail] Unable to resolve teacher conversation: " + error);
+            yield break;
+        }
+
+        currentTeacherConversationId = ExtractRpcUuid(response);
+
+        if (!Guid.TryParse(currentTeacherConversationId, out _))
+        {
+            Debug.LogError("[ClassDetail] Invalid teacher conversation id returned by RPC: " + response);
+            currentTeacherConversationId = string.Empty;
+        }
+    }
+
+    private IEnumerator TeacherUnreadPollingLoop()
+    {
+        while (!isTeacher && isActiveAndEnabled)
+        {
+            yield return new WaitForSeconds(TeacherUnreadPollInterval);
+            yield return RefreshTeacherUnreadCount();
+        }
+    }
+
+    private IEnumerator RefreshTeacherUnreadCount()
+    {
+        if (runtimeRestService == null ||
+            string.IsNullOrWhiteSpace(currentTeacherConversationId))
+        {
+            SetTeacherUnreadBadge(0);
+            yield break;
+        }
+
+        string currentUserId = GetCurrentUserId();
+        if (!Guid.TryParse(currentUserId, out _))
+        {
+            SetTeacherUnreadBadge(0);
+            yield break;
+        }
+
+        string response = null;
+        string error = null;
+        string path =
+            $"rest/v1/chat_messages?conversation_id=eq.{UnityWebRequest.EscapeURL(currentTeacherConversationId)}" +
+            $"&sender_id=eq.{UnityWebRequest.EscapeURL(currentTeacherId)}" +
+            $"&receiver_id=eq.{UnityWebRequest.EscapeURL(currentUserId)}" +
+            "&seen_at=is.null&select=id&order=created_at.asc";
+
+        yield return runtimeRestService.SendJson(
+            "GET", path, null, null,
+            value => response = value,
+            message => error = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            Debug.LogWarning("[ClassDetail] Unable to load unread teacher messages: " + error);
+            yield break;
+        }
+
+        UnreadMessageRecord[] unread = ParseRestArray<UnreadMessageArray, UnreadMessageRecord>(
+            response,
+            wrapper => wrapper.items
+        );
+
+        SetTeacherUnreadBadge(unread.Length);
+    }
+
+    private void SetTeacherUnreadBadge(int count)
+    {
+        if (teacherMessageUnreadBadge == null)
+            return;
+
+        bool visible = !isTeacher && count > 0;
+        teacherMessageUnreadBadge.text = count > 99 ? "99+" : Mathf.Max(0, count).ToString();
+        teacherMessageUnreadBadge.EnableInClassList(HiddenClass, !visible);
+    }
+
+    private static string GetCurrentUserId()
+    {
+        if (!string.IsNullOrWhiteSpace(SupabaseSession.UserId))
+            return SupabaseSession.UserId.Trim();
+
+        string id = PlayerPrefs.GetString("user_id", string.Empty);
+        if (string.IsNullOrWhiteSpace(id))
+            id = PlayerPrefs.GetString("current_user_id", string.Empty);
+        return id?.Trim() ?? string.Empty;
+    }
+
+    private static string ExtractRpcUuid(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return string.Empty;
+
+        string value = response.Trim().Trim('"');
+        if (value.StartsWith("[") && value.EndsWith("]"))
+            value = value.Trim('[', ']', ' ', '"');
+        return value;
+    }
+
+    private static TItem[] ParseRestArray<TWrapper, TItem>(
+        string json,
+        Func<TWrapper, TItem[]> selector
+    )
+    {
+        if (string.IsNullOrWhiteSpace(json) || json.Trim() == "[]")
+            return Array.Empty<TItem>();
+
+        try
+        {
+            TWrapper wrapper = JsonUtility.FromJson<TWrapper>("{\"items\":" + json + "}");
+            return selector(wrapper) ?? Array.Empty<TItem>();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("[ClassDetail] Unable to parse Supabase REST response: " + exception.Message + "\n" + json);
+            return Array.Empty<TItem>();
+        }
+    }
+
+    private static string GetInitials(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            return "T";
+
+        string[] parts = fullName.Split(
+            new[] { ' ' },
+            StringSplitOptions.RemoveEmptyEntries
+        );
+
+        if (parts.Length == 1)
+            return parts[0].Substring(0, 1).ToUpperInvariant();
+
+        string first = parts[0].Substring(0, 1);
+        string last = parts[parts.Length - 1].Substring(0, 1);
+        return (first + last).ToUpperInvariant();
     }
 
     // =========================================================
@@ -442,6 +936,11 @@ public class ClassDetailPageController : MonoBehaviour
 
         chapters.Clear();
 
+        Debug.Log(
+            $"[ClassDetail] Supabase returned " +
+            $"{(records == null ? 0 : records.Count)} chapter(s)."
+        );
+
         if (records != null)
         {
             foreach (ChapterRecord record in records)
@@ -476,6 +975,29 @@ public class ClassDetailPageController : MonoBehaviour
 
         RenderChapterList();
         UpdateProgress();
+
+        int loadedLessonCount = 0;
+
+        foreach (ChapterData loadedChapter in chapters)
+        {
+            loadedLessonCount +=
+                loadedChapter?.Lessons?.Count ?? 0;
+        }
+
+        Debug.Log(
+            $"[ClassDetail] Rendered {chapters.Count} chapter(s) " +
+            $"and {loadedLessonCount} lesson(s)."
+        );
+
+        if (chapters.Count == 0)
+        {
+            Debug.LogWarning(
+                "[ClassDetail] No chapters were returned. " +
+                "If the class has chapters in Supabase, check the chapters SELECT RLS policy for enrolled students."
+            );
+        }
+
+        yield return Load3DModelsForCurrentClass();
     }
 
     private IEnumerator LoadLessonsForChapter(
@@ -488,89 +1010,78 @@ public class ClassDetailPageController : MonoBehaviour
         chapter.Lessons ??= new List<LessonData>();
         chapter.Lessons.Clear();
 
-        if (runtimeRestService == null)
-            yield break;
-
-        if (!Guid.TryParse(chapter.Id, out _))
+        if (lessonService == null)
         {
-            Debug.LogWarning(
-                $"Skip loading lessons because chapter ID is invalid: {chapter.Id}"
+            Debug.LogError(
+                "[ClassDetail] Cannot load lessons because SupabaseLessonService is missing."
             );
             yield break;
         }
 
-        string encodedChapterId =
-            UnityWebRequest.EscapeURL(chapter.Id);
+        if (!Guid.TryParse(chapter.Id, out _))
+        {
+            Debug.LogWarning(
+                $"[ClassDetail] Skip invalid chapter ID: {chapter.Id}"
+            );
+            yield break;
+        }
 
-        string response = null;
+        List<LessonRecord> records = null;
         string error = null;
 
-        string endpoint =
-            "rest/v1/lessons" +
-            "?select=id,chapter_id,title,status,created_at" +
-            $"&chapter_id=eq.{encodedChapterId}" +
-            "&order=created_at.asc";
-
-        yield return runtimeRestService.SendJson(
-            UnityWebRequest.kHttpVerbGET,
-            endpoint,
-            null,
-            null,
-            value => response = value,
+        yield return lessonService.GetLessonsByChapter(
+            chapter.Id,
+            result => records = result,
             message => error = message
         );
 
         if (!string.IsNullOrWhiteSpace(error))
         {
             Debug.LogError(
-                $"Unable to load lessons for chapter {chapter.Title}: {error}"
+                $"[ClassDetail] Unable to load lessons for chapter " +
+                $"{chapter.Title}: {error}"
             );
             yield break;
         }
 
-        if (string.IsNullOrWhiteSpace(response))
+        Debug.Log(
+            $"[ClassDetail] Supabase returned " +
+            $"{(records == null ? 0 : records.Count)} lesson(s) " +
+            $"for chapter {chapter.Title} ({chapter.Id})."
+        );
+
+        if (records == null)
             yield break;
 
-        try
+        foreach (LessonRecord record in records)
         {
-            LessonRecordList wrapper =
-                JsonUtility.FromJson<LessonRecordList>(
-                    $"{{\"items\":{response}}}"
-                );
-
-            if (wrapper?.items == null)
-                yield break;
-
-            foreach (LessonRecord record in wrapper.items)
+            if (record == null ||
+                string.IsNullOrWhiteSpace(record.id))
             {
-                if (record == null)
-                    continue;
-
-                chapter.Lessons.Add(
-                    new LessonData
-                    {
-                        Id = record.id,
-                        Title = string.IsNullOrWhiteSpace(record.title)
-                            ? "Untitled Lesson"
-                            : record.title,
-                        IsComplete = false,
-                        Has3DContent = false
-                    }
-                );
+                continue;
             }
 
-            if (chapter.Lessons.Count > 0)
-            {
-                chapter.Status = ChapterStatus.InProgress;
-            }
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError(
-                $"Cannot parse lessons for chapter {chapter.Title}: " +
-                exception.Message
+            chapter.Lessons.Add(
+                new LessonData
+                {
+                    Id = record.id,
+                    Title = string.IsNullOrWhiteSpace(record.title)
+                        ? "Untitled Lesson"
+                        : record.title.Trim(),
+                    IsComplete = false,
+                    Has3DContent = false
+                }
             );
         }
+
+        chapter.Status = chapter.Lessons.Count > 0
+            ? ChapterStatus.InProgress
+            : ChapterStatus.Upcoming;
+
+        Debug.Log(
+            $"[ClassDetail] Loaded {chapter.Lessons.Count} lesson(s) " +
+            $"for chapter {chapter.Title}."
+        );
     }
 
     public void ApplyLoadedChapters(IEnumerable<ChapterData> records)
@@ -623,8 +1134,6 @@ public class ClassDetailPageController : MonoBehaviour
             chapterList.Add(chapterCard);
         }
 
-        moduleCountLabel.text =
-            chapters.Count.ToString();
     }
 
     private VisualElement CreateChapterCard(
@@ -849,7 +1358,9 @@ public class ClassDetailPageController : MonoBehaviour
 
         collapseButton.Add(collapseArrow);
 
-        header.Add(dragHandle);
+        if (isTeacher)
+            header.Add(dragHandle);
+
         header.Add(statusCircle);
         header.Add(information);
 
@@ -925,7 +1436,9 @@ public class ClassDetailPageController : MonoBehaviour
             information.Add(badge);
         }
 
-        row.Add(dragHandle);
+        if (isTeacher)
+            row.Add(dragHandle);
+
         row.Add(statusCircle);
         row.Add(information);
 
@@ -1037,6 +1550,873 @@ public class ClassDetailPageController : MonoBehaviour
     }
 
     // =========================================================
+    // 3D LABS
+    // =========================================================
+
+    private IEnumerator Load3DModelsForCurrentClass()
+    {
+        if (isLoading3DModels)
+            yield break;
+
+        if (lessonService == null)
+        {
+            Show3DModelsError("SupabaseLessonService is missing.");
+            yield break;
+        }
+
+        string selectedClassId = PlayerPrefs.GetString(
+            "selected_class_id",
+            string.Empty
+        );
+
+        if (!Guid.TryParse(selectedClassId, out _))
+        {
+            Show3DModelsError("selected_class_id is invalid.");
+            yield break;
+        }
+
+        isLoading3DModels = true;
+        class3DModels.Clear();
+        modelCardList?.Clear();
+
+        SetVisible(labsLoadingState, true);
+        SetVisible(labsEmptyState, false);
+        SetVisible(labsErrorState, false);
+
+        foreach (ChapterData chapter in chapters)
+        {
+            if (chapter == null ||
+                !string.Equals(
+                    chapter.ClassId,
+                    selectedClassId,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foreach (LessonData lesson in chapter.Lessons)
+            {
+                if (lesson == null || !Guid.TryParse(lesson.Id, out _))
+                    continue;
+
+                List<LessonAssetRecord> assets = null;
+                string error = null;
+
+                yield return lessonService.GetLessonAssetsByLesson(
+                    lesson.Id,
+                    result => assets = result,
+                    message => error = message
+                );
+
+                if (!string.IsNullOrWhiteSpace(error))
+                {
+                    isLoading3DModels = false;
+                    Show3DModelsError(
+                        $"Cannot load models for {lesson.Title}: {error}"
+                    );
+                    yield break;
+                }
+
+                if (assets == null)
+                    continue;
+
+                foreach (LessonAssetRecord asset in assets)
+                {
+                    if (!Is3DModelAsset(asset))
+                        continue;
+
+                    class3DModels.Add(
+                        new Class3DModelData
+                        {
+                            asset_id = asset.id,
+                            lesson_id = lesson.Id,
+                            lesson_title = lesson.Title,
+                            chapter_id = chapter.Id,
+                            chapter_title = chapter.Title,
+                            chapter_order = chapter.Order,
+                            file_name = asset.file_name,
+                            storage_bucket = asset.storage_bucket,
+                            storage_path = asset.storage_path,
+                            mime_type = asset.mime_type,
+                            file_extension = asset.file_extension,
+                            file_size_bytes = asset.file_size_bytes,
+                            display_order = asset.display_order
+                        }
+                    );
+                }
+            }
+        }
+
+        class3DModels.Sort((left, right) =>
+        {
+            int chapterCompare =
+                left.chapter_order.CompareTo(right.chapter_order);
+
+            if (chapterCompare != 0)
+                return chapterCompare;
+
+            int lessonCompare = string.Compare(
+                left.lesson_title,
+                right.lesson_title,
+                StringComparison.OrdinalIgnoreCase
+            );
+
+            return lessonCompare != 0
+                ? lessonCompare
+                : left.display_order.CompareTo(right.display_order);
+        });
+
+        isLoading3DModels = false;
+        Render3DModelCards();
+    }
+
+    private void RetryLoad3DModels()
+    {
+        if (!isLoading3DModels)
+            StartCoroutine(Load3DModelsForCurrentClass());
+    }
+
+    private void Render3DModelCards()
+    {
+        modelCardList?.Clear();
+
+        SetVisible(labsLoadingState, false);
+        SetVisible(labsErrorState, false);
+        SetVisible(labsEmptyState, class3DModels.Count == 0);
+
+        if (modelCardList == null)
+            return;
+
+        foreach (Class3DModelData model in class3DModels)
+        {
+            modelCardList.Add(Create3DModelCard(model));
+        }
+    }
+
+    private VisualElement Create3DModelCard(Class3DModelData model)
+    {
+        VisualElement card = new();
+        card.AddToClassList("model-card");
+
+        VisualElement iconContainer = new();
+        iconContainer.AddToClassList("model-icon-container");
+
+        VisualElement icon = new();
+        icon.AddToClassList("model-icon");
+        iconContainer.Add(icon);
+
+        VisualElement information = new();
+        information.AddToClassList("model-information");
+
+        Label title = new(GetModelDisplayName(model.file_name));
+        title.AddToClassList("model-title");
+
+        string contextText =
+            $"{model.lesson_title} · Chapter {Mathf.Max(1, model.chapter_order)}";
+
+        Label context = new(contextText);
+        context.AddToClassList("model-context");
+
+        Label badge = new("◉  Launch 3D Viewer");
+        badge.AddToClassList("model-launch-badge");
+
+        information.Add(title);
+        information.Add(context);
+        information.Add(badge);
+
+        Label arrow = new("›");
+        arrow.AddToClassList("model-card-arrow");
+
+        card.Add(iconContainer);
+        card.Add(information);
+        card.Add(arrow);
+
+        card.RegisterCallback<ClickEvent>(_ => Open3DModel(model));
+
+        return card;
+    }
+
+    private void Open3DModel(Class3DModelData model)
+    {
+        if (model == null || string.IsNullOrWhiteSpace(model.storage_path))
+        {
+            Debug.LogError("The selected 3D model has no storage_path.");
+            return;
+        }
+
+        string modelUrl = r2StorageService != null
+            ? r2StorageService.BuildFullR2Url(model.storage_path)
+            : model.storage_path;
+
+        PlayerPrefs.SetString("selected_model_asset_id", model.asset_id ?? "");
+        PlayerPrefs.SetString("selected_model_name", model.file_name ?? "");
+        PlayerPrefs.SetString("selected_model_path", model.storage_path ?? "");
+        PlayerPrefs.SetString("selected_model_url", modelUrl ?? "");
+        PlayerPrefs.SetString("selected_lesson_id", model.lesson_id ?? "");
+        PlayerPrefs.SetString("selected_chapter_id", model.chapter_id ?? "");
+        PlayerPrefs.SetString("previous_scene", "ClassDetailScene");
+        PlayerPrefs.Save();
+
+        const string sceneName = "ARScene";
+
+        if (Application.CanStreamedLevelBeLoaded(sceneName))
+        {
+            SceneHistory.LoadScene(sceneName);
+        }
+        else
+        {
+            Debug.LogWarning(
+                $"{sceneName} is not included in Build Profiles. " +
+                $"Selected model URL: {modelUrl}"
+            );
+        }
+    }
+
+    private void Show3DModelsError(string message)
+    {
+        isLoading3DModels = false;
+
+        SetVisible(labsLoadingState, false);
+        SetVisible(labsEmptyState, false);
+        SetVisible(labsErrorState, true);
+
+        if (labsErrorLabel != null)
+            labsErrorLabel.text = message ?? "Unknown error.";
+    }
+
+    private static bool Is3DModelAsset(LessonAssetRecord asset)
+    {
+        if (asset == null)
+            return false;
+
+        string type = asset.asset_type?.Trim().ToLowerInvariant() ?? "";
+        string extension = asset.file_extension?.Trim().TrimStart('.').ToLowerInvariant() ?? "";
+        string mime = asset.mime_type?.Trim().ToLowerInvariant() ?? "";
+
+        return type.Contains("3d") ||
+               type.Contains("model") ||
+               extension == "glb" ||
+               extension == "gltf" ||
+               mime.Contains("gltf") ||
+               mime.Contains("model/");
+    }
+
+    private static string GetModelDisplayName(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return "Untitled 3D Model";
+
+        string name = System.IO.Path.GetFileNameWithoutExtension(fileName);
+        name = name.Replace('_', ' ').Replace('-', ' ').Trim();
+
+        return string.IsNullOrWhiteSpace(name)
+            ? "Untitled 3D Model"
+            : name;
+    }
+
+
+    // =========================================================
+    // TEACHER: UNREAD STUDENT CHAT NOTIFICATIONS
+    // =========================================================
+
+    private IEnumerator TeacherStudentUnreadPollingLoop()
+    {
+        // Refresh immediately so the teacher does not need to open Student List
+        // before seeing its red notification dot.
+        yield return RefreshTeacherStudentUnreadState();
+
+        while (isTeacher && isActiveAndEnabled)
+        {
+            yield return new WaitForSeconds(StudentUnreadPollInterval);
+            yield return RefreshTeacherStudentUnreadState();
+        }
+    }
+
+    private IEnumerator RefreshTeacherStudentUnreadState()
+    {
+        if (!isTeacher || runtimeRestService == null)
+            yield break;
+
+        string teacherId = GetCurrentUserId();
+        string classId = PlayerPrefs.GetString("selected_class_id", string.Empty);
+
+        if (!Guid.TryParse(teacherId, out _) ||
+            !Guid.TryParse(classId, out _))
+        {
+            SetStudentListUnreadDot(false);
+            yield break;
+        }
+
+        string conversationResponse = null;
+        string conversationError = null;
+
+        string encodedTeacherId = UnityWebRequest.EscapeURL(teacherId);
+        string encodedClassId = UnityWebRequest.EscapeURL(classId);
+
+        // Only conversations belonging to the currently opened class and
+        // containing this teacher are considered.
+        string conversationPath =
+            $"rest/v1/chat_conversations?class_id=eq.{encodedClassId}" +
+            $"&or=(user_a_id.eq.{encodedTeacherId},user_b_id.eq.{encodedTeacherId})" +
+            "&select=id,class_id,user_a_id,user_b_id";
+
+        yield return runtimeRestService.SendJson(
+            "GET",
+            conversationPath,
+            null,
+            null,
+            value => conversationResponse = value,
+            message => conversationError = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(conversationError))
+        {
+            Debug.LogWarning(
+                "[ClassDetail] Unable to load teacher chat conversations: " +
+                conversationError
+            );
+            yield break;
+        }
+
+        TeacherConversationRecord[] conversations =
+            ParseRestArray<TeacherConversationArray, TeacherConversationRecord>(
+                conversationResponse,
+                wrapper => wrapper.items
+            );
+
+        Dictionary<string, string> conversationToStudent =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (TeacherConversationRecord conversation in conversations)
+        {
+            if (conversation == null ||
+                !Guid.TryParse(conversation.id, out _))
+            {
+                continue;
+            }
+
+            string studentId = string.Equals(
+                conversation.user_a_id,
+                teacherId,
+                StringComparison.OrdinalIgnoreCase)
+                    ? conversation.user_b_id
+                    : conversation.user_a_id;
+
+            if (!Guid.TryParse(studentId, out _))
+                continue;
+
+            conversationToStudent[conversation.id] = studentId;
+        }
+
+        Dictionary<string, int> nextCounts =
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        List<string> unreadIds = new List<string>();
+
+        if (conversationToStudent.Count > 0)
+        {
+            string unreadResponse = null;
+            string unreadError = null;
+
+            // One request gets every unread message addressed to this teacher.
+            // We then filter it to conversations from the current class.
+            string unreadPath =
+                $"rest/v1/chat_messages?receiver_id=eq.{encodedTeacherId}" +
+                "&seen_at=is.null" +
+                "&select=id,conversation_id,sender_id,receiver_id" +
+                "&order=created_at.asc";
+
+            yield return runtimeRestService.SendJson(
+                "GET",
+                unreadPath,
+                null,
+                null,
+                value => unreadResponse = value,
+                message => unreadError = message
+            );
+
+            if (!string.IsNullOrWhiteSpace(unreadError))
+            {
+                Debug.LogWarning(
+                    "[ClassDetail] Unable to load unread student messages: " +
+                    unreadError
+                );
+                yield break;
+            }
+
+            TeacherUnreadMessageRecord[] unreadMessages =
+                ParseRestArray<TeacherUnreadMessageArray, TeacherUnreadMessageRecord>(
+                    unreadResponse,
+                    wrapper => wrapper.items
+                );
+
+            foreach (TeacherUnreadMessageRecord message in unreadMessages)
+            {
+                if (message == null ||
+                    string.IsNullOrWhiteSpace(message.id) ||
+                    string.IsNullOrWhiteSpace(message.conversation_id))
+                {
+                    continue;
+                }
+
+                if (!conversationToStudent.TryGetValue(
+                        message.conversation_id,
+                        out string studentId))
+                {
+                    // Unread message belongs to another class/conversation.
+                    continue;
+                }
+
+                // Extra safety: the sender must be the student counterpart.
+                if (!string.Equals(
+                        message.sender_id,
+                        studentId,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                nextCounts.TryGetValue(studentId, out int count);
+                nextCounts[studentId] = count + 1;
+                unreadIds.Add(message.id);
+            }
+        }
+
+        unreadIds.Sort(StringComparer.Ordinal);
+        string nextSignature = string.Join("|", unreadIds);
+
+        bool countsChanged = !UnreadCountMapsEqual(
+            studentUnreadCounts,
+            nextCounts
+        );
+
+        studentUnreadCounts.Clear();
+        foreach (KeyValuePair<string, int> pair in nextCounts)
+            studentUnreadCounts[pair.Key] = pair.Value;
+
+        latestStudentUnreadSignature = nextSignature;
+
+        if (studentUnreadCounts.Count == 0)
+        {
+            // Reset acknowledgement after everything has actually been read.
+            acknowledgedStudentUnreadSignature = string.Empty;
+            SetStudentListUnreadDot(false);
+        }
+        else
+        {
+            // If Student List has already acknowledged the current set, keep the
+            // tab dot hidden. Any newly arrived unread message changes the signature
+            // and causes the dot to appear again.
+            bool hasNewAttention =
+                !string.Equals(
+                    latestStudentUnreadSignature,
+                    acknowledgedStudentUnreadSignature,
+                    StringComparison.Ordinal
+                );
+
+            SetStudentListUnreadDot(hasNewAttention);
+        }
+
+        // Student cards are dynamic C# UI, so re-render only when a student's
+        // unread count actually changed.
+        if (countsChanged && hasLoadedStudents)
+            RenderStudentCards();
+    }
+
+    private int GetStudentUnreadCount(string studentId)
+    {
+        if (string.IsNullOrWhiteSpace(studentId))
+            return 0;
+
+        return studentUnreadCounts.TryGetValue(studentId, out int count)
+            ? Mathf.Max(0, count)
+            : 0;
+    }
+
+    private static bool UnreadCountMapsEqual(
+        Dictionary<string, int> left,
+        Dictionary<string, int> right)
+    {
+        if (ReferenceEquals(left, right))
+            return true;
+
+        if (left == null || right == null || left.Count != right.Count)
+            return false;
+
+        foreach (KeyValuePair<string, int> pair in left)
+        {
+            if (!right.TryGetValue(pair.Key, out int rightValue) ||
+                rightValue != pair.Value)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void SetStudentListUnreadDot(bool visible)
+    {
+        if (studentListUnreadDot == null)
+            return;
+
+        studentListUnreadDot.EnableInClassList(
+            HiddenClass,
+            !isTeacher || !visible
+        );
+    }
+
+    private void AcknowledgeStudentListNotificationDot()
+    {
+        if (!isTeacher)
+            return;
+
+        acknowledgedStudentUnreadSignature =
+            latestStudentUnreadSignature ?? string.Empty;
+
+        SetStudentListUnreadDot(false);
+    }
+
+    // =========================================================
+    // STUDENT LIST
+    // =========================================================
+
+    private IEnumerator LoadStudentsForCurrentClass()
+    {
+        if (isLoadingStudents)
+            yield break;
+
+        string classId = PlayerPrefs.GetString(
+            "selected_class_id",
+            string.Empty
+        );
+
+        if (!Guid.TryParse(classId, out _))
+        {
+            ShowStudentListError("selected_class_id is invalid.");
+            yield break;
+        }
+
+        isLoadingStudents = true;
+        hasLoadedStudents = false;
+        enrolledStudents.Clear();
+        studentCardList?.Clear();
+
+        SetVisible(studentListLoadingState, true);
+        SetVisible(studentListEmptyState, false);
+        SetVisible(studentListErrorState, false);
+
+        ClassMemberStudent[] students = null;
+        string error = null;
+
+        yield return SupabaseClassService.GetClassEnrolledStudents(
+            classId,
+            result => students = result,
+            message => error = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            isLoadingStudents = false;
+            ShowStudentListError(error);
+            yield break;
+        }
+
+        if (students != null)
+        {
+            foreach (ClassMemberStudent student in students)
+            {
+                if (student == null || !Guid.TryParse(student.user_id, out _))
+                    continue;
+
+                UserPresenceRecord presence = null;
+                string presenceError = null;
+
+                yield return SupabaseClassService.GetUserPresence(
+                    student.user_id,
+                    result => presence = result,
+                    message => presenceError = message
+                );
+
+                // Presence is optional. The card must still render even if
+                // user_presence has no row or its RLS does not allow reading.
+                if (!string.IsNullOrWhiteSpace(presenceError))
+                {
+                    Debug.LogWarning(
+                        $"[ClassDetail] Presence unavailable for " +
+                        $"{student.user_id}: {presenceError}"
+                    );
+                }
+
+                if (presence != null)
+                {
+                    student.is_online = presence.is_online;
+                    student.last_seen_at = !string.IsNullOrWhiteSpace(
+                        presence.last_seen_at
+                    )
+                        ? presence.last_seen_at
+                        : presence.updated_at;
+                }
+
+                enrolledStudents.Add(student);
+            }
+        }
+
+        isLoadingStudents = false;
+        hasLoadedStudents = true;
+        RenderStudentCards();
+
+        Debug.Log(
+            $"[ClassDetail] Rendered {enrolledStudents.Count} enrolled student(s)."
+        );
+    }
+
+    private void RetryLoadStudents()
+    {
+        if (!isLoadingStudents)
+            StartCoroutine(LoadStudentsForCurrentClass());
+    }
+
+    private void ShowStudentListError(string message)
+    {
+        isLoadingStudents = false;
+        hasLoadedStudents = false;
+
+        SetVisible(studentListLoadingState, false);
+        SetVisible(studentListEmptyState, false);
+        SetVisible(studentListErrorState, true);
+
+        if (studentListErrorLabel != null)
+        {
+            studentListErrorLabel.text =
+                string.IsNullOrWhiteSpace(message)
+                    ? "Unable to load students."
+                    : message;
+        }
+    }
+
+    private void RenderStudentCards()
+    {
+        studentCardList?.Clear();
+
+        SetVisible(studentListLoadingState, false);
+        SetVisible(studentListErrorState, false);
+        SetVisible(studentListEmptyState, enrolledStudents.Count == 0);
+
+        int onlineCount = 0;
+
+        foreach (ClassMemberStudent student in enrolledStudents)
+        {
+            if (student == null)
+                continue;
+
+            if (student.is_online)
+                onlineCount++;
+
+            studentCardList?.Add(CreateStudentCard(student));
+        }
+
+        if (studentListCountLabel != null)
+        {
+            studentListCountLabel.text =
+                $"{enrolledStudents.Count} ENROLLED " +
+                $"{(enrolledStudents.Count == 1 ? "STUDENT" : "STUDENTS")}";
+        }
+
+        if (studentOnlineCountLabel != null)
+            studentOnlineCountLabel.text = $"{onlineCount} Online";
+
+        if (studentCountLabel != null)
+            studentCountLabel.text = enrolledStudents.Count.ToString();
+    }
+
+    private VisualElement CreateStudentCard(
+        ClassMemberStudent student
+    )
+    {
+        string fullName =
+            student.profiles != null &&
+            !string.IsNullOrWhiteSpace(student.profiles.full_name)
+                ? student.profiles.full_name.Trim()
+                : "Student";
+
+        VisualElement card = new();
+        card.AddToClassList("student-card");
+
+        VisualElement avatarWrap = new();
+        avatarWrap.AddToClassList("student-avatar-wrap");
+
+        VisualElement avatar = new();
+        avatar.AddToClassList("student-avatar");
+
+        Label initials = new(GetInitials(fullName));
+        initials.AddToClassList("student-avatar-initials");
+        avatar.Add(initials);
+
+        VisualElement presenceDot = new();
+        presenceDot.AddToClassList("student-presence-dot");
+        presenceDot.EnableInClassList(
+            "student-presence-dot-online",
+            student.is_online
+        );
+
+        avatarWrap.Add(avatar);
+        avatarWrap.Add(presenceDot);
+
+        VisualElement information = new();
+        information.AddToClassList("student-information");
+
+        Label nameLabel = new(fullName);
+        nameLabel.AddToClassList("student-name-label");
+
+        Label activityLabel = new(GetStudentActivityText(student));
+        activityLabel.AddToClassList("student-last-active-label");
+
+        Label enrollmentLabel = new(
+            GetEnrollmentText(student.joined_at)
+        );
+        enrollmentLabel.AddToClassList("student-enrollment-label");
+
+        information.Add(nameLabel);
+        information.Add(activityLabel);
+        information.Add(enrollmentLabel);
+
+        Button messageButton = new();
+        messageButton.AddToClassList("student-message-button");
+        messageButton.tooltip = $"Message {fullName}";
+
+        VisualElement messageIcon = new();
+        messageIcon.AddToClassList("student-message-icon");
+        messageButton.Add(messageIcon);
+
+        int unreadCount = GetStudentUnreadCount(student.user_id);
+        if (unreadCount > 0)
+        {
+            Label unreadBadge = new(
+                unreadCount > 99 ? "99+" : unreadCount.ToString()
+            );
+            unreadBadge.AddToClassList("student-message-unread-badge");
+            unreadBadge.pickingMode = PickingMode.Ignore;
+            messageButton.Add(unreadBadge);
+        }
+
+        messageButton.clicked += () =>
+            OpenChatForStudent(student, fullName);
+
+        card.Add(avatarWrap);
+        card.Add(information);
+        card.Add(messageButton);
+
+        return card;
+    }
+
+    private static string GetStudentActivityText(
+        ClassMemberStudent student
+    )
+    {
+        if (student == null)
+            return "Offline";
+
+        if (student.is_online)
+            return "Active now";
+
+        if (!TryParseSupabaseDate(
+                student.last_seen_at,
+                out DateTime lastSeen))
+        {
+            return "Offline";
+        }
+
+        TimeSpan elapsed = DateTime.UtcNow - lastSeen.ToUniversalTime();
+
+        if (elapsed.TotalMinutes < 1)
+            return "Active just now";
+
+        if (elapsed.TotalMinutes < 60)
+            return $"Last active {Mathf.Max(1, (int)elapsed.TotalMinutes)} min ago";
+
+        if (elapsed.TotalHours < 24)
+            return $"Last active {Mathf.Max(1, (int)elapsed.TotalHours)} hours ago";
+
+        return $"Last active {Mathf.Max(1, (int)elapsed.TotalDays)} days ago";
+    }
+
+    private static string GetEnrollmentText(string joinedAt)
+    {
+        if (!TryParseSupabaseDate(joinedAt, out DateTime joined))
+            return "Enrolled student";
+
+        return $"Enrolled {joined.ToLocalTime():dd/MM/yyyy}";
+    }
+
+    private static bool TryParseSupabaseDate(
+        string value,
+        out DateTime dateTime)
+    {
+        return DateTime.TryParse(
+            value,
+            null,
+            System.Globalization.DateTimeStyles.RoundtripKind,
+            out dateTime
+        );
+    }
+
+    private void OpenChatForStudent(
+        ClassMemberStudent student,
+        string fullName
+    )
+    {
+        if (student == null ||
+            !Guid.TryParse(student.user_id, out _))
+        {
+            Debug.LogError(
+                "[ClassDetail] Cannot open ChatScene: invalid student user_id."
+            );
+            return;
+        }
+
+        PlayerPrefs.SetString(
+            "selected_chat_user_id",
+            student.user_id
+        );
+
+        PlayerPrefs.SetString(
+            "selected_chat_user_name",
+            fullName ?? "Student"
+        );
+
+        PlayerPrefs.SetString(
+            "selected_chat_user_role",
+            "student"
+        );
+
+        PlayerPrefs.SetString(
+            "previous_scene",
+            "ClassDetailScene"
+        );
+
+        // Force ChatScene to resolve/create the correct direct conversation.
+        PlayerPrefs.DeleteKey(
+            "selected_chat_conversation_id"
+        );
+
+        PlayerPrefs.Save();
+
+        const string sceneName = "ChatScene";
+
+        if (Application.CanStreamedLevelBeLoaded(sceneName))
+        {
+            SceneHistory.LoadScene(sceneName);
+        }
+        else
+        {
+            Debug.LogError(
+                "ChatScene is not included in Build Profiles / Scene List."
+            );
+        }
+    }
+
+    // =========================================================
     // TAB HANDLING
     // =========================================================
 
@@ -1054,6 +2434,13 @@ public class ClassDetailPageController : MonoBehaviour
             labsTabButton,
             labsContent
         );
+
+        if (!isLoading3DModels &&
+            class3DModels.Count == 0 &&
+            chapters.Count > 0)
+        {
+            StartCoroutine(Load3DModelsForCurrentClass());
+        }
     }
 
     private void ShowStudentListTab()
@@ -1062,6 +2449,18 @@ public class ClassDetailPageController : MonoBehaviour
             studentListTabButton,
             studentListContent
         );
+
+        // Teacher has explicitly checked the Student List.
+        // Hide the tab-level attention dot for the unread set that currently
+        // exists. Per-student unread badges remain until ChatScene marks those
+        // messages seen.
+        if (isTeacher)
+            AcknowledgeStudentListNotificationDot();
+
+        if (!hasLoadedStudents && !isLoadingStudents)
+        {
+            StartCoroutine(LoadStudentsForCurrentClass());
+        }
     }
 
     private void SetActiveTab(
@@ -1108,20 +2507,9 @@ public class ClassDetailPageController : MonoBehaviour
 
     private void OnBackClicked()
     {
-        if (Application.CanStreamedLevelBeLoaded(
-                "MyClassesScene"
-            ))
-        {
-            SceneManager.LoadScene(
-                "MyClassesScene"
-            );
-        }
-        else
-        {
-            Debug.LogWarning(
-                "MyClassesScene is not included in Build Profiles."
-            );
-        }
+        // Không LoadScene("MyClassesScene") trực tiếp.
+        // SceneHistory sẽ pop đúng Scene trước đó trong stack.
+        SceneHistory.GoBack("MyClassesScene");
     }
 
     private void OnMoreClicked()
@@ -1141,14 +2529,47 @@ public class ClassDetailPageController : MonoBehaviour
 
     private void OnTeacherMessageClicked()
     {
-        Debug.Log(
-            "Open teacher message screen."
-        );
+        // This header button is the student -> class teacher entry point.
+        if (isTeacher)
+        {
+            Debug.Log("[ClassDetail] Teacher header chat button ignored for teacher role.");
+            return;
+        }
+
+        if (!Guid.TryParse(currentTeacherId, out _))
+        {
+            Debug.LogError("[ClassDetail] Cannot open ChatScene: teacher id has not been resolved yet.");
+            return;
+        }
+
+        PlayerPrefs.SetString("selected_chat_user_id", currentTeacherId);
+        PlayerPrefs.SetString("selected_chat_user_name", currentTeacherName ?? "Teacher");
+        PlayerPrefs.SetString("selected_chat_user_role", "teacher");
+        PlayerPrefs.SetString("previous_scene", "ClassDetailScene");
+
+        // Reuse the exact class-scoped conversation already resolved for the badge.
+        // If it is unavailable, ChatPageController will call the same RPC itself.
+        if (Guid.TryParse(currentTeacherConversationId, out _))
+            PlayerPrefs.SetString("selected_chat_conversation_id", currentTeacherConversationId);
+        else
+            PlayerPrefs.DeleteKey("selected_chat_conversation_id");
+
+        PlayerPrefs.Save();
+
+        const string sceneName = "ChatScene";
+        if (Application.CanStreamedLevelBeLoaded(sceneName))
+        {
+            SceneHistory.LoadScene(sceneName);
+        }
+        else
+        {
+            Debug.LogError("ChatScene is not included in Build Profiles / Scene List.");
+        }
     }
 
     private void OnAddChapterClicked()
     {
-        if (isCreatingChapter)
+        if (!isTeacher || isCreatingChapter)
             return;
 
         StartCoroutine(CreateChapterRoutine());
@@ -1246,6 +2667,9 @@ public class ClassDetailPageController : MonoBehaviour
         ChapterData chapter
     )
     {
+        if (!isTeacher)
+            return;
+
         if (chapter == null ||
             string.IsNullOrWhiteSpace(chapter.Id) ||
             !Guid.TryParse(chapter.Id, out _))
@@ -1303,7 +2727,7 @@ public class ClassDetailPageController : MonoBehaviour
 
         if (Application.CanStreamedLevelBeLoaded(sceneName))
         {
-            SceneManager.LoadScene(sceneName);
+            SceneHistory.LoadScene(sceneName);
         }
         else
         {
@@ -1600,7 +3024,7 @@ public class ClassDetailPageController : MonoBehaviour
         PlayerPrefs.Save();
 
         if (Application.CanStreamedLevelBeLoaded("CreateLessonScene"))
-            SceneManager.LoadScene("CreateLessonScene");
+            SceneHistory.LoadScene("CreateLessonScene");
         else
             Debug.LogError("CreateLessonScene is not in the Scene List.");
     }
@@ -1636,7 +3060,7 @@ public class ClassDetailPageController : MonoBehaviour
 
         if (Application.CanStreamedLevelBeLoaded(sceneName))
         {
-            SceneManager.LoadScene(sceneName);
+            SceneHistory.LoadScene(sceneName);
         }
         else
         {

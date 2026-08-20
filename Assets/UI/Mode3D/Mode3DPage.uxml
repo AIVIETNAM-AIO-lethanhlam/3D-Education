@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/UI/Mode3D/Mode3DPage.uss" />
+
+    <ui:VisualElement name="screen" class="screen">
+
+        <!-- Decorative perspective floor -->
+        <ui:VisualElement class="floor">
+            <ui:VisualElement class="floor-line floor-line-1" />
+            <ui:VisualElement class="floor-line floor-line-2" />
+            <ui:VisualElement class="floor-line floor-line-3" />
+        </ui:VisualElement>
+
+        <!-- Header -->
+        <ui:VisualElement name="header" class="header">
+
+            <!-- Large outer frame; icon size remains independent -->
+            <ui:VisualElement class="header-button-frame">
+                <ui:Button name="back-button"
+                           class="header-icon-button back-button" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="title-pill">
+                <ui:VisualElement class="status-dot" />
+                <ui:Label name="model-title-label"
+                          text="Engine Assembly · V6"
+                          class="title-label" />
+            </ui:VisualElement>
+
+            <!-- Large outer frame; icon size remains independent -->
+            <ui:VisualElement class="header-button-frame">
+                <ui:Button name="info-button"
+                           class="header-icon-button info-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Central glass board -->
+        <ui:VisualElement name="model-stage" class="model-stage">
+            <ui:VisualElement class="board-shadow" />
+            <ui:VisualElement class="glass-board">
+                <ui:VisualElement class="board-highlight" />
+                <ui:VisualElement class="marker marker-1">
+                    <ui:Label text="1" />
+                </ui:VisualElement>
+                <ui:VisualElement class="marker marker-2">
+                    <ui:Label text="2" />
+                </ui:VisualElement>
+                <ui:VisualElement class="marker marker-3">
+                    <ui:Label text="3" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="model-interaction-area"
+                              class="model-interaction-area" />
+        </ui:VisualElement>
+
+        <!-- Larger color palette -->
+        <ui:VisualElement name="color-panel" class="color-panel">
+            <ui:Button name="color-blue"
+                       class="color-dot color-blue selected" />
+            <ui:Button name="color-dark"
+                       class="color-dot color-dark" />
+            <ui:Button name="color-green"
+                       class="color-dot color-green" />
+            <ui:Button name="color-purple"
+                       class="color-dot color-purple" />
+        </ui:VisualElement>
+
+        <!-- Screenshot / VR with independent outer background -->
+        <ui:VisualElement class="right-actions">
+            <ui:VisualElement class="action-button-frame">
+                <ui:Button name="capture-button"
+                           class="action-icon-button capture-button" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="action-button-frame">
+                <ui:Button name="vr-button"
+                           class="action-icon-button vr-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Larger bottom toolbar -->
+        <ui:VisualElement class="bottom-toolbar">
+            <ui:VisualElement name="reset-frame"
+                              class="tool-button-frame selected-tool-frame">
+                <ui:Button name="reset-button"
+                           class="tool-button reset-button" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="zoom-frame"
+                              class="tool-button-frame">
+                <ui:Button name="zoom-button"
+                           class="tool-button zoom-button" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="focus-frame"
+                            class="tool-button-frame">
+                <ui:Button name="focus-button"
+                        class="tool-button focus-button" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="layers-frame"
+                            class="tool-button-frame">
+                <ui:Button name="layers-button"
+                        class="tool-button layers-button" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="auto-rotate-frame"
+                              class="tool-button-frame">
+                <ui:Button name="auto-rotate-button"
+                           class="tool-button auto-rotate-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Information popup -->
+        <ui:VisualElement name="info-overlay" class="overlay hidden">
+            <ui:VisualElement class="info-card">
+                <ui:VisualElement class="info-header">
+                    <ui:Label text="3D Model Information"
+                              class="info-title" />
+                    <ui:Button name="close-info-button"
+                               text="×"
+                               class="close-button" />
+                </ui:VisualElement>
+
+                <ui:Label
+                    text="Drag the model to rotate it. Use Zoom to enlarge it and Reset to return to the original view."
+                    class="info-text" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:Label name="toast-label"
+                  text="Saved"
+                  class="toast hidden" />
+    </ui:VisualElement>
+</ui:UXML>

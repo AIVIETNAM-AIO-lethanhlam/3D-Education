@@ -75,7 +75,7 @@ public class R2StorageService : MonoBehaviour
         onSuccess?.Invoke(request.downloadHandler.text);
     }
 
-    private string BuildFullR2Url(string pathOrUrl)
+    public string BuildFullR2Url(string pathOrUrl)
     {
         if (pathOrUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
             pathOrUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))

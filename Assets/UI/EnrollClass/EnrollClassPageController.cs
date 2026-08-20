@@ -365,6 +365,21 @@ public class EnrollClassPageController : MonoBehaviour
                             membership.class_id] = membership;
                     }
 
+                    int enrolledCount = memberships.Count(item =>
+                        NormalizeMembershipStatus(item?.status) == "enrolled"
+                    );
+
+                    int pendingCount = memberships.Count(item =>
+                        NormalizeMembershipStatus(item?.status) == "pending"
+                    );
+
+                    Debug.Log(
+                        $"[EnrollClass] Memberships loaded: " +
+                        $"{memberships.Length} total, " +
+                        $"{enrolledCount} enrolled, " +
+                        $"{pendingCount} pending."
+                    );
+
                     BuildCourseData(records);
                     BuildCategoryButtons();
                     RefreshCourseList();
@@ -643,7 +658,11 @@ public class EnrollClassPageController : MonoBehaviour
             "visibility-badge");
 
         visibilityBadge.AddToClassList(
-            course.Visibility == "private"
+            string.Equals(
+                course.Visibility,
+                "private",
+                StringComparison.OrdinalIgnoreCase
+            )
                 ? "visibility-private"
                 : "visibility-public");
 
@@ -747,9 +766,13 @@ public class EnrollClassPageController : MonoBehaviour
         }
 
         string targetStatus =
-            course.Visibility == "private"
+            string.Equals(
+                course.Visibility,
+                "private",
+                StringComparison.OrdinalIgnoreCase
+            )
                 ? "pending"
-                : "active";
+                : "enrolled";
 
         ApplyEnrollButtonState(
             enrollButton,
@@ -875,8 +898,8 @@ public class EnrollClassPageController : MonoBehaviour
 
         course.EnrollmentStatus = targetStatus;
 
-        if (targetStatus == "active" &&
-            previousStatus != "active")
+        if (targetStatus == "enrolled" &&
+            previousStatus != "enrolled")
         {
             course.EnrolledCount++;
         }
@@ -887,7 +910,7 @@ public class EnrollClassPageController : MonoBehaviour
             false);
 
         Debug.Log(
-            targetStatus == "active"
+            targetStatus == "enrolled"
                 ? $"Enrolled successfully: {course.Code}"
                 : $"Enrollment request pending: {course.Code}"
         );
@@ -927,7 +950,7 @@ public class EnrollClassPageController : MonoBehaviour
         string normalized =
             NormalizeMembershipStatus(status);
 
-        if (normalized == "active")
+        if (normalized == "enrolled")
         {
             button.text = "Enrolled";
             button.AddToClassList("enrolled-button");
@@ -1002,10 +1025,11 @@ public class EnrollClassPageController : MonoBehaviour
     {
         PlayerPrefs.SetString(
             "current_role",
-            "student");
+            "student"
+        );
         PlayerPrefs.Save();
 
-        SceneManager.LoadScene("MyClassesScene");
+        SceneHistory.GoBack("MyClassesScene");
     }
 
     private void OnSearchValueChanged(
@@ -1052,7 +1076,10 @@ public class EnrollClassPageController : MonoBehaviour
 
         return value switch
         {
-            "active" => "active",
+            // Legacy value from the old database flow.
+            // Treat it as enrolled so old rows still render correctly.
+            "active" => "enrolled",
+            "enrolled" => "enrolled",
             "pending" => "pending",
             "rejected" => "rejected",
             _ => string.Empty

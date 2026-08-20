@@ -107,3 +107,22 @@ public class LessonAssetRecordList
 {
     public LessonAssetRecord[] items;
 }
+
+[Serializable]
+public class Class3DModelData
+{
+    public string asset_id;
+    public string lesson_id;
+    public string lesson_title;
+    public string chapter_id;
+    public string chapter_title;
+    public int chapter_order;
+    public string file_name;
+    public string storage_bucket;
+    public string storage_path;
+    public string mime_type;
+    public string file_extension;
+    public long file_size_bytes;
+    public int display_order;
+}
+

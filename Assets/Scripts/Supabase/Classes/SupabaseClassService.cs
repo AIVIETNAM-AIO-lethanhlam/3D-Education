@@ -207,6 +207,145 @@ public static class SupabaseClassService
             onError);
     }
 
+
+    public static IEnumerator GetClassDetailStats(
+        string classId,
+        Action<ClassDetailStats> onSuccess,
+        Action<string> onError)
+    {
+        if (!SupabaseSession.IsLoggedIn)
+        {
+            onError?.Invoke("Không có phiên đăng nhập hợp lệ.");
+            yield break;
+        }
+
+        if (!Guid.TryParse(classId, out _))
+        {
+            onError?.Invoke("classId không đúng định dạng UUID.");
+            yield break;
+        }
+
+        string escapedClassId = Uri.EscapeDataString(classId.Trim());
+        string query =
+            "class_detail_stats_view" +
+            $"?class_id=eq.{escapedClassId}" +
+            "&select=*" +
+            "&limit=1";
+
+        yield return SupabaseRestService.Get(
+            query,
+            json =>
+            {
+                if (!TryParseClassDetailStats(
+                        json,
+                        out ClassDetailStats stats,
+                        out string parseError))
+                {
+                    onError?.Invoke(parseError);
+                    return;
+                }
+
+                onSuccess?.Invoke(stats);
+            },
+            onError);
+    }
+
+    public static IEnumerator GetClassEnrolledStudents(
+        string classId,
+        Action<ClassMemberStudent[]> onSuccess,
+        Action<string> onError)
+    {
+        if (!SupabaseSession.IsLoggedIn)
+        {
+            onError?.Invoke("Không có phiên đăng nhập hợp lệ.");
+            yield break;
+        }
+
+        if (!Guid.TryParse(classId, out _))
+        {
+            onError?.Invoke("classId không đúng định dạng UUID.");
+            yield break;
+        }
+
+        string escapedClassId = Uri.EscapeDataString(classId.Trim());
+
+        // The embedded profiles relation comes from:
+        // class_members.user_id -> profiles.id
+        string query =
+            "class_members" +
+            $"?class_id=eq.{escapedClassId}" +
+            "&member_role=eq.student" +
+            "&status=eq.enrolled" +
+            "&select=id,class_id,user_id,member_role,status,joined_at," +
+            "profiles(full_name,avatar_url,role)" +
+            "&order=joined_at.asc";
+
+        yield return SupabaseRestService.Get(
+            query,
+            json =>
+            {
+                if (!TryParseClassMembers(
+                        json,
+                        out ClassMemberStudent[] students,
+                        out string parseError))
+                {
+                    onError?.Invoke(parseError);
+                    return;
+                }
+
+                onSuccess?.Invoke(students);
+            },
+            onError);
+    }
+
+    public static IEnumerator GetUserPresence(
+        string userId,
+        Action<UserPresenceRecord> onSuccess,
+        Action<string> onError)
+    {
+        if (!Guid.TryParse(userId, out _))
+        {
+            onError?.Invoke("userId không đúng định dạng UUID.");
+            yield break;
+        }
+
+        string escapedUserId = Uri.EscapeDataString(userId.Trim());
+
+        yield return SupabaseRestService.Get(
+            "user_presence" +
+            $"?user_id=eq.{escapedUserId}" +
+            "&select=user_id,is_online,last_seen_at,updated_at" +
+            "&limit=1",
+            json =>
+            {
+                string trimmed = json?.Trim() ?? string.Empty;
+
+                try
+                {
+                    string wrapped = "{\"items\":" + trimmed + "}";
+                    UserPresenceRecordArrayWrapper wrapper =
+                        JsonUtility.FromJson<UserPresenceRecordArrayWrapper>(wrapped);
+
+                    UserPresenceRecord result =
+                        wrapper?.items != null && wrapper.items.Length > 0
+                            ? wrapper.items[0]
+                            : null;
+
+                    onSuccess?.Invoke(result);
+                }
+                catch (Exception exception)
+                {
+                    onError?.Invoke(
+                        "Không parse được trạng thái online: " +
+                        exception.Message
+                    );
+                }
+            },
+            onError);
+    }
+
+
+
     public static IEnumerator UnenrollStudent(
         string classId,
         Action onSuccess,
@@ -361,6 +500,78 @@ public static class SupabaseClassService
             $"classes?id=eq.{escapedId}",
             _ => onSuccess?.Invoke(),
             onError);
+    }
+
+
+
+    private static bool TryParseClassDetailStats(
+        string json,
+        out ClassDetailStats stats,
+        out string error)
+    {
+        stats = null;
+        string trimmed = json?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            error = "Supabase trả về response rỗng.";
+            return false;
+        }
+
+        try
+        {
+            string wrapped = "{\"items\":" + trimmed + "}";
+            ClassDetailStatsArrayWrapper wrapper =
+                JsonUtility.FromJson<ClassDetailStatsArrayWrapper>(wrapped);
+
+            if (wrapper?.items == null || wrapper.items.Length == 0)
+            {
+                error = "Không tìm thấy thống kê của lớp học.";
+                return false;
+            }
+
+            stats = wrapper.items[0];
+            error = null;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            error = "Không parse được thống kê lớp học: " + exception.Message;
+            return false;
+        }
+    }
+
+    private static bool TryParseClassMembers(
+        string json,
+        out ClassMemberStudent[] students,
+        out string error)
+    {
+        students = Array.Empty<ClassMemberStudent>();
+        string trimmed = json?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            error = "Supabase trả về response rỗng khi tải student list.";
+            return false;
+        }
+
+        try
+        {
+            string wrapped = "{\"items\":" + trimmed + "}";
+            ClassMemberStudentArrayWrapper wrapper =
+                JsonUtility.FromJson<ClassMemberStudentArrayWrapper>(wrapped);
+
+            students = wrapper?.items ?? Array.Empty<ClassMemberStudent>();
+            error = null;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            error =
+                "Không parse được danh sách student: " +
+                exception.Message;
+            return false;
+        }
     }
 
 

@@ -1,0 +1,923 @@
+/* =========================================================
+   ROOT
+   ========================================================= */
+
+.chat-root {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    background-color: rgb(247, 249, 253);
+
+    /* Assets/Resources/Fonts/PlusJakartaSans.* */
+    -unity-font-definition: resource("Fonts/PlusJakartaSans-Regular");
+}
+
+.safe-area {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.chat-header {
+    height: 112px;
+    min-height: 112px;
+
+    flex-direction: row;
+    align-items: center;
+
+    /* Keep the two outer edges of the header perfectly symmetrical. */
+    padding-left: 18px;
+    padding-right: 18px;
+    /* Extra space below the phone camera / punch-hole area. */
+    padding-top: 34px;
+    padding-bottom: 8px;
+
+    background-color: rgb(255, 255, 255);
+}
+
+.round-icon-button {
+    width: 42px;
+    height: 42px;
+
+    min-width: 42px;
+    min-height: 42px;
+
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    border-top-left-radius: 21px;
+    border-top-right-radius: 21px;
+    border-bottom-left-radius: 21px;
+    border-bottom-right-radius: 21px;
+
+    background-color: rgb(241, 246, 255);
+
+    align-items: center;
+    justify-content: center;
+
+}
+
+.round-icon-button:hover {
+    background-color: rgb(228, 237, 252);
+}
+
+.round-icon-button:active {
+    background-color: rgb(214, 226, 247);
+}
+
+.button-icon {
+    width: 20px;
+    height: 20px;
+
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.back-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/back.png");
+}
+
+.menu-icon {
+    width: 18px;
+    height: 18px;
+
+    background-image: url("project://database/Assets/UI/Images/Icons/menu.png");
+}
+
+.phone-icon {
+    width: 19px;
+    height: 19px;
+
+    background-image: url("project://database/Assets/UI/Images/Icons/phone.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.teacher-avatar-wrapper {
+    width: 46px;
+    height: 46px;
+
+    min-width: 46px;
+    min-height: 46px;
+
+    margin-left: 12px;
+    margin-right: 10px;
+}
+
+.teacher-avatar {
+    width: 44px;
+    height: 44px;
+
+    border-top-left-radius: 22px;
+    border-top-right-radius: 22px;
+    border-bottom-left-radius: 22px;
+    border-bottom-right-radius: 22px;
+
+    background-color: rgb(249, 158, 18);
+
+    align-items: center;
+    justify-content: center;
+}
+
+.teacher-avatar-text {
+    color: white;
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.online-dot {
+    position: absolute;
+
+    right: 0;
+    bottom: 1px;
+
+    width: 12px;
+    height: 12px;
+
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+
+    border-left-color: white;
+    border-right-color: white;
+    border-top-color: white;
+    border-bottom-color: white;
+
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+
+    background-color: rgb(22, 190, 93);
+}
+
+.teacher-information {
+    flex-grow: 1;
+    min-width: 0;
+
+    justify-content: center;
+}
+
+.teacher-name {
+    margin-bottom: 0;
+    padding-bottom: 0;
+
+    color: rgb(20, 31, 54);
+    font-size: 14px;
+    -unity-font-style: bold;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.teacher-status-row {
+    min-height: 16px;
+    margin-top: 1px;
+
+    flex-direction: row;
+    align-items: center;
+}
+
+.presence-status-group {
+    height: 16px;
+
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.status-dot {
+    width: 3px;
+    height: 3px;
+    min-width: 6px;
+    min-height: 6px;
+
+    margin-top: 2px;
+    margin-left: 0;
+    margin-right: 3px;
+    flex-shrink: 0;
+
+    border-top-left-radius: 50%;
+    border-top-right-radius: 50%;
+    border-bottom-left-radius: 50%;
+    border-bottom-right-radius: 50%;
+
+    background-color: rgb(22, 190, 93);
+}
+
+.teacher-status {
+    margin-left: 0;
+    padding-left: 0;
+
+    color: rgb(22, 190, 93);
+    font-size: 10px;
+    -unity-text-align: middle-left;
+}
+
+.status-divider {
+    margin-left: 4px;
+    margin-right: 4px;
+
+    color: rgb(160, 170, 190);
+    font-size: 9px;
+}
+
+.teacher-position {
+    max-width: 90px;
+
+    color: rgb(130, 142, 165);
+    font-size: 9px;
+
+    white-space: normal;
+}
+
+.header-actions {
+    margin-left: 6px;
+    margin-right: 0;
+
+    flex-direction: row;
+    align-items: center;
+}
+
+.header-actions .round-icon-button {
+    margin-left: 6px;
+}
+
+/* First action does not need an extra leading gap.
+   This keeps the visual weight balanced with the back-button side. */
+.header-actions .round-icon-button:first-child {
+    margin-left: 0;
+}
+
+
+/* =========================================================
+   COURSE BANNER
+   ========================================================= */
+
+.course-banner {
+    height: 44px;
+    min-height: 44px;
+
+    margin-left: 16px;
+    margin-right: 16px;
+    margin-bottom: 10px;
+
+    padding-left: 13px;
+    padding-right: 13px;
+
+    flex-direction: row;
+    align-items: center;
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+
+    border-left-color: rgb(210, 222, 243);
+    border-right-color: rgb(210, 222, 243);
+    border-top-color: rgb(210, 222, 243);
+    border-bottom-color: rgb(210, 222, 243);
+
+    border-top-left-radius: 22px;
+    border-top-right-radius: 22px;
+    border-bottom-left-radius: 22px;
+    border-bottom-right-radius: 22px;
+
+    background-color: rgb(248, 251, 255);
+}
+
+.course-icon {
+    width: 17px;
+    height: 17px;
+
+    min-width: 17px;
+    min-height: 17px;
+
+    margin-right: 8px;
+
+    background-image: url("project://database/Assets/UI/Images/Icons/course.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.course-label {
+    flex-grow: 1;
+
+    color: rgb(28, 94, 194);
+    font-size: 10px;
+    -unity-font-style: bold;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* =========================================================
+   SCROLL VIEW
+   ========================================================= */
+
+.message-scroll-view {
+    flex-grow: 1;
+
+    border-top-width: 1px;
+    border-top-color: rgb(231, 236, 246);
+
+    background-color: rgb(247, 249, 253);
+}
+
+.message-scroll-view > .unity-scroll-view__content-viewport {
+    flex-grow: 1;
+}
+
+.message-scroll-view > .unity-scroll-view__content-viewport >
+.unity-scroll-view__content-container {
+    flex-grow: 1;
+}
+
+.message-container {
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 18px;
+    padding-bottom: 12px;
+}
+
+
+/* =========================================================
+   DATE SEPARATOR
+   ========================================================= */
+
+.date-separator {
+    width: 100%;
+
+    margin-bottom: 18px;
+
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.separator-line {
+    flex-grow: 1;
+    height: 1px;
+
+    background-color: rgb(223, 229, 240);
+}
+
+.date-label {
+    margin-left: 12px;
+    margin-right: 12px;
+
+    color: rgb(112, 128, 157);
+    font-size: 9px;
+    -unity-font-style: bold;
+}
+
+
+/* =========================================================
+   MESSAGE ROWS
+   ========================================================= */
+
+.message-row {
+    width: 100%;
+    margin-bottom: 10px;
+
+    flex-direction: row;
+}
+
+.outgoing-row {
+    justify-content: flex-end;
+}
+
+.incoming-row {
+    justify-content: flex-start;
+    align-items: flex-end;
+}
+
+.outgoing-message-group {
+    width: 77%;
+    max-width: 360px;
+
+    align-items: flex-end;
+}
+
+.incoming-message-group {
+    width: 77%;
+    max-width: 360px;
+
+    align-items: flex-start;
+}
+
+.message-bubble {
+    padding-left: 15px;
+    padding-right: 15px;
+
+    /* Gọn chiều cao bubble hơn, đặc biệt với tin nhắn ngắn như "hello". */
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.outgoing-bubble {
+    border-top-left-radius: 17px;
+    border-top-right-radius: 17px;
+    border-bottom-left-radius: 17px;
+    border-bottom-right-radius: 6px;
+
+    background-color: rgb(11, 74, 183);
+}
+
+.incoming-bubble {
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+
+    border-left-color: rgb(220, 226, 238);
+    border-right-color: rgb(220, 226, 238);
+    border-top-color: rgb(220, 226, 238);
+    border-bottom-color: rgb(220, 226, 238);
+
+    border-top-left-radius: 17px;
+    border-top-right-radius: 17px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 17px;
+
+    background-color: rgb(255, 255, 255);
+}
+
+.message-text {
+    font-size: 13px;
+    -unity-font-style: bold;
+
+    white-space: normal;
+}
+
+.outgoing-message-text {
+    color: rgb(255, 255, 255);
+}
+
+.incoming-message-text {
+    color: rgb(25, 37, 61);
+}
+
+.message-time {
+    margin-top: 1px;
+
+    color: rgb(130, 143, 166);
+    font-size: 8px;
+}
+
+.outgoing-time {
+    margin-right: 4px;
+}
+
+.incoming-time {
+    margin-left: 4px;
+}
+
+
+/* =========================================================
+   AVATARS
+   ========================================================= */
+
+.incoming-avatar-slot {
+    width: 39px;
+    min-width: 39px;
+
+    /*
+     * Row đang chứa cả bubble + dòng thời gian ở phía dưới.
+     * Vì vậy nếu chỉ align-self:flex-end thì avatar sẽ xuống ngang với time.
+     * Nâng avatar lên bằng đúng vùng meta để avatar nằm sát cạnh bubble.
+     */
+    align-self: flex-end;
+    align-items: flex-start;
+    justify-content: flex-end;
+
+    /*
+     * Căn avatar ngang với dòng thời gian.
+     * Nâng avatar nhẹ khỏi đáy message group để tâm avatar
+     * thẳng hàng với timestamp.
+     */
+    margin-bottom: 7px;
+}
+
+.student-avatar,
+.teacher-small-avatar {
+    width: 30px;
+    height: 30px;
+
+    min-width: 30px;
+    min-height: 30px;
+
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+
+    background-color: rgb(249, 158, 18);
+
+    align-items: center;
+    justify-content: center;
+}
+
+.teacher-small-avatar {
+    margin-right: 9px;
+}
+
+.student-avatar-text,
+.teacher-small-avatar-text {
+    color: white;
+    font-size: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+
+/* =========================================================
+   TYPING INDICATOR
+   ========================================================= */
+
+.typing-row {
+    width: 100%;
+    margin-top: 2px;
+    margin-bottom: 24px;
+
+    flex-direction: row;
+    align-items: flex-end;
+}
+
+.typing-bubble {
+    width: 58px;
+    height: 32px;
+
+    padding-left: 10px;
+    padding-right: 10px;
+
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+
+    border-left-color: rgb(220, 226, 238);
+    border-right-color: rgb(220, 226, 238);
+    border-top-color: rgb(220, 226, 238);
+    border-bottom-color: rgb(220, 226, 238);
+
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 16px;
+
+    background-color: white;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+
+    background-color: rgb(160, 174, 199);
+}
+
+
+/* =========================================================
+   INPUT AREA
+   ========================================================= */
+
+.message-input-section {
+    height: 74px;
+    min-height: 74px;
+
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-top: 10px;
+    padding-bottom: 12px;
+
+    flex-direction: row;
+    align-items: center;
+
+    border-top-width: 1px;
+    border-top-color: rgb(226, 232, 242);
+
+    background-color: rgb(255, 255, 255);
+}
+
+.input-side-button,
+.send-button {
+    width: 42px;
+    height: 42px;
+
+    min-width: 42px;
+    min-height: 42px;
+
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    border-top-left-radius: 21px;
+    border-top-right-radius: 21px;
+    border-bottom-left-radius: 21px;
+    border-bottom-right-radius: 21px;
+
+    align-items: center;
+    justify-content: center;
+}
+
+.input-side-button {
+    margin-right: 8px;
+
+    background-color: rgb(241, 246, 255);
+}
+
+.send-button {
+    margin-left: 8px;
+
+    background-color: rgb(224, 233, 250);
+}
+
+.send-button.enabled {
+    background-color: rgb(29, 91, 199);
+}
+
+.attachment-icon {
+    width: 20px;
+    height: 20px;
+
+    background-image: url("project://database/Assets/UI/Images/Icons/attachment.png");
+    -unity-background-scale-mode: scale-to-fit;
+
+}
+
+.send-icon {
+    width: 19px;
+    height: 19px;
+
+    /* Trạng thái mặc định: icon send màu đen. */
+    background-image: url("project://database/Assets/UI/Images/Icons/send.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* Khi ô nhập có nội dung: đổi sang icon trắng. */
+.send-icon.send-icon-active {
+    background-image: url("project://database/Assets/UI/Images/Icons/send-white.png");
+}
+
+.message-input-wrapper {
+    flex-grow: 1;
+    height: 42px;
+
+    justify-content: center;
+
+    border-top-left-radius: 21px;
+    border-top-right-radius: 21px;
+    border-bottom-left-radius: 21px;
+    border-bottom-right-radius: 21px;
+
+    background-color: rgb(244, 247, 252);
+}
+
+.message-input {
+    flex-grow: 1;
+    height: 42px;
+
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.message-input > .unity-base-text-field__input {
+    height: 42px;
+
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    color: rgb(25, 37, 61);
+    background-color: rgba(0, 0, 0, 0);
+
+    font-size: 12px;
+    -unity-text-align: middle-left;
+}
+
+.input-placeholder {
+    position: absolute;
+
+    left: 15px;
+    right: 15px;
+    top: 0;
+    bottom: 0;
+
+    color: rgb(145, 157, 180);
+    font-size: 12px;
+
+    -unity-text-align: middle-left;
+
+}
+
+
+/* =========================================================
+   SMALL SCREEN
+   ========================================================= */
+
+@media (max-width: 390px) {
+    .chat-header {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .teacher-avatar-wrapper {
+        margin-left: 8px;
+        margin-right: 7px;
+    }
+
+    .header-actions .round-icon-button {
+        margin-left: 5px;
+    }
+
+    .teacher-position {
+        max-width: 70px;
+    }
+
+    .message-container {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .outgoing-message-group,
+    .incoming-message-group {
+        width: 80%;
+    }
+}
+/* =========================================================
+   REAL-TIME CHAT STATES
+   ========================================================= */
+
+.online-dot.offline,
+.status-dot.offline {
+    background-color: rgb(160, 170, 190);
+}
+
+.teacher-status.offline {
+    color: rgb(130, 142, 165);
+}
+
+.empty-chat {
+    flex-grow: 1;
+    min-height: 220px;
+    align-items: center;
+    justify-content: center;
+    padding-left: 24px;
+    padding-right: 24px;
+}
+
+.empty-chat-title {
+    color: rgb(30, 43, 69);
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.empty-chat-description {
+    margin-top: 6px;
+    color: rgb(130, 142, 165);
+    font-size: 10px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.message-meta-row {
+    margin-top: 1px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.outgoing-message-group .message-meta-row {
+    justify-content: flex-end;
+}
+
+.incoming-message-group .message-meta-row {
+    justify-content: flex-start;
+}
+
+.message-seen-status {
+    margin-left: 6px;
+    color: rgb(29, 91, 199);
+    font-size: 8px;
+    -unity-font-style: bold;
+}
+
+.message-delivered-status {
+    margin-left: 6px;
+    color: rgb(130, 143, 166);
+    font-size: 8px;
+}
+
+/* Small Messenger-style read receipt shown on the latest outgoing message. */
+.seen-avatar {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+
+    margin-left: 6px;
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(255, 255, 255);
+    border-right-color: rgb(255, 255, 255);
+    border-top-color: rgb(255, 255, 255);
+    border-bottom-color: rgb(255, 255, 255);
+
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+
+    background-color: rgb(249, 158, 18);
+    align-items: center;
+    justify-content: center;
+}
+
+.seen-avatar-text {
+    color: rgb(255, 255, 255);
+    font-size: 6px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.typing-content {
+    align-items: flex-start;
+}
+
+.typing-label {
+    margin-top: 3px;
+    margin-left: 3px;
+    color: rgb(112, 128, 157);
+    font-size: 8px;
+    -unity-font-style: bold;
+}
+
+.message-load-error {
+    margin-top: 12px;
+    color: rgb(196, 56, 56);
+    font-size: 10px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+
+/* =========================================================
+   HEADER EDGE BALANCE
+   Left edge: 18px -> back button
+   Right edge: more button -> 18px
+   ========================================================= */
+.chat-header > #back-button {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.chat-header > .header-actions {
+    margin-right: 0;
+}

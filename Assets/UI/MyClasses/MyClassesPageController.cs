@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -404,12 +405,15 @@ public class MyClassesPageController : MonoBehaviour
 
     private void LoadStudentClasses()
     {
-        if (!SupabaseSession.IsLoggedIn)
+        if (!SupabaseSession.IsLoggedIn ||
+            !Guid.TryParse(SupabaseSession.UserId, out _))
         {
             ShowStudentEmptyState();
+
             Debug.LogError(
-                "Không tìm thấy phiên đăng nhập của student."
+                "[MyClasses] Không tìm thấy phiên đăng nhập hợp lệ của student."
             );
+
             return;
         }
 
@@ -423,28 +427,269 @@ public class MyClassesPageController : MonoBehaviour
 
             Label loadingLabel =
                 new Label("Loading your classes...");
+
             loadingLabel.AddToClassList(
-                "classes-state-message");
+                "classes-state-message"
+            );
+
             studentClassesContainer.Add(loadingLabel);
         }
 
+        /*
+         * Không phụ thuộc hoàn toàn vào student_enrolled_classes_view.
+         * Controller đọc trực tiếp class_members.status = enrolled,
+         * sau đó tải thông tin từng class từ bảng classes.
+         *
+         * Điều này tránh trường hợp view cũ vẫn lọc status = active
+         * nên trả về 0 lớp dù class_members đã có row enrolled.
+         */
         StartCoroutine(
-            SupabaseClassService.GetStudentEnrolledClasses(
-                records =>
-                {
-                    BuildStudentClassCards(records);
-                    LoadStudentActiveQuizzes();
-                },
-                error =>
-                {
-                    Debug.LogError(
-                        "Không tải được lớp của student: " +
-                        error
-                    );
+            LoadStudentClassesDirectlyFromSupabase()
+        );
+    }
 
-                    ShowStudentEmptyState();
+    private IEnumerator LoadStudentClassesDirectlyFromSupabase()
+    {
+        string studentId =
+            Uri.EscapeDataString(
+                SupabaseSession.UserId.Trim()
+            );
+
+        string membershipQuery =
+            "class_members" +
+            $"?user_id=eq.{studentId}" +
+            "&member_role=eq.student" +
+            "&status=eq.enrolled" +
+            "&select=id,class_id,user_id,status,joined_at" +
+            "&order=joined_at.desc";
+
+        string membershipJson = null;
+        string membershipError = null;
+
+        yield return SupabaseRestService.Get(
+            membershipQuery,
+            json => membershipJson = json,
+            error => membershipError = error
+        );
+
+        if (!string.IsNullOrWhiteSpace(membershipError))
+        {
+            Debug.LogError(
+                "[MyClasses] Không tải được class_members: " +
+                membershipError
+            );
+
+            ShowStudentEmptyState();
+            yield break;
+        }
+
+        if (!TryParseArray(
+                membershipJson,
+                out StudentMembershipRow[] memberships,
+                out string membershipParseError))
+        {
+            Debug.LogError(
+                "[MyClasses] Không parse được class_members: " +
+                membershipParseError
+            );
+
+            ShowStudentEmptyState();
+            yield break;
+        }
+
+        Debug.Log(
+            $"[MyClasses] Enrolled memberships loaded: " +
+            $"{memberships.Length}"
+        );
+
+        if (memberships.Length == 0)
+        {
+            BuildStudentClassCards(
+                Array.Empty<StudentEnrolledClass>()
+            );
+
+            yield break;
+        }
+
+        List<StudentEnrolledClass> studentClasses =
+            new();
+
+        foreach (StudentMembershipRow membership in memberships)
+        {
+            if (membership == null ||
+                !Guid.TryParse(membership.class_id, out _))
+            {
+                continue;
+            }
+
+            SupabaseClass classRecord = null;
+            string classError = null;
+
+            yield return SupabaseClassService.GetClassById(
+                membership.class_id,
+                result => classRecord = result,
+                error => classError = error
+            );
+
+            if (!string.IsNullOrWhiteSpace(classError))
+            {
+                Debug.LogWarning(
+                    $"[MyClasses] Không tải được class " +
+                    $"{membership.class_id}: {classError}"
+                );
+
+                continue;
+            }
+
+            if (classRecord == null)
+                continue;
+
+            string teacherName = "Unknown Teacher";
+            string teacherAvatarUrl = string.Empty;
+
+            if (Guid.TryParse(classRecord.teacher_id, out _))
+            {
+                yield return LoadTeacherProfile(
+                    classRecord.teacher_id,
+                    (name, avatarUrl) =>
+                    {
+                        teacherName = name;
+                        teacherAvatarUrl = avatarUrl;
+                    }
+                );
+            }
+
+            studentClasses.Add(
+                new StudentEnrolledClass
+                {
+                    membership_id =
+                        membership.id ?? string.Empty,
+
+                    student_id =
+                        membership.user_id ??
+                        SupabaseSession.UserId,
+
+                    joined_at =
+                        membership.joined_at ??
+                        string.Empty,
+
+                    class_id =
+                        classRecord.id ?? membership.class_id,
+
+                    category_id =
+                        classRecord.category_id ??
+                        string.Empty,
+
+                    teacher_id =
+                        classRecord.teacher_id ??
+                        string.Empty,
+
+                    class_name =
+                        classRecord.class_name ??
+                        "Untitled Class",
+
+                    description =
+                        classRecord.description ??
+                        string.Empty,
+
+                    class_code =
+                        classRecord.class_code ??
+                        string.Empty,
+
+                    visibility =
+                        NormalizeVisibility(
+                            classRecord.visibility
+                        ),
+
+                    cover_image_url =
+                        classRecord.cover_image_url ??
+                        string.Empty,
+
+                    cover_template =
+                        classRecord.cover_template ??
+                        string.Empty,
+
+                    teacher_name =
+                        teacherName,
+
+                    teacher_avatar_url =
+                        teacherAvatarUrl,
+
+                    progress_percent = 0f
                 }
-            )
+            );
+        }
+
+        Debug.Log(
+            $"[MyClasses] Student classes built: " +
+            $"{studentClasses.Count}"
+        );
+
+        BuildStudentClassCards(
+            studentClasses.ToArray()
+        );
+
+        if (studentClasses.Count > 0)
+            LoadStudentActiveQuizzes();
+    }
+
+    private IEnumerator LoadTeacherProfile(
+        string teacherId,
+        Action<string, string> onLoaded)
+    {
+        string escapedTeacherId =
+            Uri.EscapeDataString(
+                teacherId.Trim()
+            );
+
+        string json = null;
+        string error = null;
+
+        yield return SupabaseRestService.Get(
+            "profiles" +
+            $"?id=eq.{escapedTeacherId}" +
+            "&select=full_name,avatar_url" +
+            "&limit=1",
+            response => json = response,
+            message => error = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            Debug.LogWarning(
+                "[MyClasses] Không tải được teacher profile: " +
+                error
+            );
+
+            onLoaded?.Invoke(
+                "Unknown Teacher",
+                string.Empty
+            );
+
+            yield break;
+        }
+
+        if (!TryParseArray(
+                json,
+                out TeacherProfileRow[] profiles,
+                out _)
+            || profiles.Length == 0)
+        {
+            onLoaded?.Invoke(
+                "Unknown Teacher",
+                string.Empty
+            );
+
+            yield break;
+        }
+
+        TeacherProfileRow profile = profiles[0];
+
+        onLoaded?.Invoke(
+            string.IsNullOrWhiteSpace(profile.full_name)
+                ? "Unknown Teacher"
+                : profile.full_name.Trim(),
+            profile.avatar_url ?? string.Empty
         );
     }
 
@@ -534,15 +779,31 @@ public class MyClassesPageController : MonoBehaviour
         code.AddToClassList($"course-code-{theme}");
         metaRow.Add(code);
 
-        VisualElement activeDot = new VisualElement();
-        activeDot.AddToClassList("status-dot");
-        activeDot.AddToClassList("status-dot-public");
-        metaRow.Add(activeDot);
+        bool isPublic = string.Equals(
+            data.visibility,
+            "public",
+            StringComparison.OrdinalIgnoreCase
+        );
 
-        Label activeLabel = new Label("Active");
-        activeLabel.AddToClassList("status-label");
-        activeLabel.AddToClassList("status-public");
-        metaRow.Add(activeLabel);
+        VisualElement visibilityDot = new VisualElement();
+        visibilityDot.AddToClassList("status-dot");
+        visibilityDot.AddToClassList(
+            isPublic
+                ? "status-dot-public"
+                : "status-dot-private"
+        );
+        metaRow.Add(visibilityDot);
+
+        Label visibilityLabel = new Label(
+            isPublic ? "Public" : "Private"
+        );
+        visibilityLabel.AddToClassList("status-label");
+        visibilityLabel.AddToClassList(
+            isPublic
+                ? "status-public"
+                : "status-private"
+        );
+        metaRow.Add(visibilityLabel);
 
         info.Add(metaRow);
 
@@ -764,6 +1025,8 @@ public class MyClassesPageController : MonoBehaviour
     private void OpenStudentClass(
         StudentEnrolledClass data)
     {
+        ClassInteractionHistory.Record(data.class_id);
+
         PlayerPrefs.SetString(
             "selected_class_id",
             data.class_id ?? string.Empty);
@@ -777,7 +1040,7 @@ public class MyClassesPageController : MonoBehaviour
         if (Application.CanStreamedLevelBeLoaded(
                 sceneName))
         {
-            SceneManager.LoadScene(sceneName);
+            SceneHistory.LoadScene(sceneName);
         }
         else
         {
@@ -903,7 +1166,7 @@ public class MyClassesPageController : MonoBehaviour
             return;
         }
 
-        SceneManager.LoadScene(sceneName);
+        SceneHistory.LoadScene(sceneName);
     }
 
     private void OpenEnrollClassScene()
@@ -919,7 +1182,7 @@ public class MyClassesPageController : MonoBehaviour
             return;
         }
 
-        SceneManager.LoadScene(sceneName);
+        SceneHistory.LoadScene(sceneName);
     }
 
     private void OpenTeacherClass(SupabaseClass data)
@@ -928,6 +1191,8 @@ public class MyClassesPageController : MonoBehaviour
             return;
 
         // Lưu thông tin class để ClassDetailScene sử dụng
+        ClassInteractionHistory.Record(data.id);
+
         PlayerPrefs.SetString("selected_class_id", data.id ?? string.Empty);
         PlayerPrefs.SetString("selected_class_name", data.class_name ?? string.Empty);
         PlayerPrefs.Save();
@@ -936,7 +1201,7 @@ public class MyClassesPageController : MonoBehaviour
 
         if (Application.CanStreamedLevelBeLoaded(sceneName))
         {
-            SceneManager.LoadScene(sceneName);
+            SceneHistory.LoadScene(sceneName);
         }
         else
         {
@@ -962,6 +1227,81 @@ public class MyClassesPageController : MonoBehaviour
                 error => Debug.LogError(error)
             )
         );
+    }
+
+    private static string NormalizeVisibility(
+        string visibility)
+    {
+        return string.Equals(
+            visibility?.Trim(),
+            "private",
+            StringComparison.OrdinalIgnoreCase
+        )
+            ? "private"
+            : "public";
+    }
+
+    private static bool TryParseArray<T>(
+        string json,
+        out T[] items,
+        out string error)
+    {
+        items = Array.Empty<T>();
+
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            error = "Supabase returned an empty response.";
+            return false;
+        }
+
+        try
+        {
+            string wrapped =
+                "{\"items\":" + json.Trim() + "}";
+
+            ArrayWrapper<T> wrapper =
+                JsonUtility.FromJson<ArrayWrapper<T>>(
+                    wrapped
+                );
+
+            items =
+                wrapper?.items ??
+                Array.Empty<T>();
+
+            error = null;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            error =
+                "Could not parse Supabase response: " +
+                exception.Message;
+
+            return false;
+        }
+    }
+
+    [Serializable]
+    private class ArrayWrapper<T>
+    {
+        public T[] items;
+    }
+
+    [Serializable]
+    private class StudentMembershipRow
+    {
+        public string id;
+        public string class_id;
+        public string user_id;
+        public string status;
+        public string joined_at;
+    }
+
+    [Serializable]
+    private class TeacherProfileRow
+    {
+        public string full_name;
+        public string avatar_url;
     }
 
     private static void SetVisible(VisualElement element, bool visible)

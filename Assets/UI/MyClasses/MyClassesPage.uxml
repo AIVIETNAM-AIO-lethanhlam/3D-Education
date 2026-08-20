@@ -222,7 +222,7 @@
                 class="role-content">
 
                 <ui:VisualElement
-                    name="student-state-container"
+                    name="student-state-container" tooltip="Shown only when no enrolled classes are returned"
                     class="student-state-container">
 
                     <ui:VisualElement

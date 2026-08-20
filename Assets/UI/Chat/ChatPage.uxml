@@ -1,0 +1,89 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="ChatPage.uss"/>
+
+    <ui:VisualElement name="chat-root" class="chat-root">
+        <ui:VisualElement name="safe-area" class="safe-area">
+            <ui:VisualElement name="chat-header" class="chat-header">
+                <ui:Button name="back-button" class="round-icon-button">
+                    <ui:VisualElement class="button-icon back-icon"/>
+                </ui:Button>
+
+                <ui:VisualElement class="teacher-avatar-wrapper">
+                    <ui:VisualElement class="teacher-avatar">
+                        <ui:Label name="partner-avatar-text" text="U" class="teacher-avatar-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement name="header-online-dot" class="online-dot offline"/>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="teacher-information">
+                    <ui:Label name="teacher-name" text="Chat user" class="teacher-name"/>
+                    <ui:VisualElement class="teacher-status-row">
+                        <ui:VisualElement class="presence-status-group">
+                            <ui:VisualElement name="status-dot" class="status-dot offline"/>
+                            <ui:Label name="teacher-status" text="Offline" class="teacher-status offline"/>
+                        </ui:VisualElement>
+                        <ui:Label text="•" class="status-divider"/>
+                        <ui:Label name="teacher-position" text="User" class="teacher-position"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="header-actions">
+                    <ui:Button name="call-button" class="round-icon-button">
+                        <ui:VisualElement class="button-icon phone-icon"/>
+                    </ui:Button>
+                    <ui:Button name="more-button" class="round-icon-button">
+                        <ui:VisualElement class="button-icon menu-icon"/>
+                    </ui:Button>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="course-banner">
+                <ui:VisualElement class="course-icon"/>
+                <ui:Label name="course-label" text="Direct message" class="course-label"/>
+            </ui:VisualElement>
+
+            <ui:ScrollView name="message-scroll-view" class="message-scroll-view" mode="Vertical"
+                           horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden">
+                <ui:VisualElement name="message-container" class="message-container">
+                    <ui:VisualElement name="date-separator" class="date-separator">
+                        <ui:VisualElement class="separator-line"/>
+                        <ui:Label name="date-label" text="Today" class="date-label"/>
+                        <ui:VisualElement class="separator-line"/>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="empty-chat" class="empty-chat">
+                        <ui:Label text="No messages yet" class="empty-chat-title"/>
+                        <ui:Label text="Send a message to start the conversation." class="empty-chat-description"/>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="typing-row" class="typing-row">
+                        <ui:VisualElement class="teacher-small-avatar">
+                            <ui:Label name="typing-avatar-text" text="U" class="teacher-small-avatar-text"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="typing-content">
+                            <ui:VisualElement class="typing-bubble">
+                                <ui:VisualElement class="typing-dot"/>
+                                <ui:VisualElement class="typing-dot"/>
+                                <ui:VisualElement class="typing-dot"/>
+                            </ui:VisualElement>
+                            <ui:Label name="typing-label" text="Typing..." class="typing-label"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:ScrollView>
+
+            <ui:VisualElement class="message-input-section">
+                <ui:Button name="attachment-button" class="input-side-button">
+                    <ui:VisualElement class="attachment-icon"/>
+                </ui:Button>
+                <ui:VisualElement class="message-input-wrapper">
+                    <ui:TextField name="message-input" class="message-input" multiline="False"/>
+                    <ui:Label name="input-placeholder" text="Type a message..." class="input-placeholder" picking-mode="Ignore"/>
+                </ui:VisualElement>
+                <ui:Button name="send-button" class="send-button">
+                    <ui:VisualElement name="send-icon" class="send-icon"/>
+                </ui:Button>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

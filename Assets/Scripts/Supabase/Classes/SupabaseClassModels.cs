@@ -98,3 +98,70 @@ public class StudentActiveQuizArrayWrapper
 {
     public StudentActiveQuiz[] items;
 }
+
+// One row returned by public.class_detail_stats_view.
+[Serializable]
+public class ClassDetailStats
+{
+    public string class_id;
+    public string class_name;
+    public string class_code;
+    public string teacher_id;
+    public string teacher_name;
+    public string teacher_avatar_url;
+    public int student_count;
+    public int lesson_count;
+    public float average_score;
+    public bool has_average_score;
+}
+
+[Serializable]
+public class ClassDetailStatsArrayWrapper
+{
+    public ClassDetailStats[] items;
+}
+
+// One enrolled student in a class, returned from class_members with an embedded profile.
+[Serializable]
+public class ClassMemberStudent
+{
+    public string id;
+    public string class_id;
+    public string user_id;
+    public string member_role;
+    public string status;
+    public string joined_at;
+    public ClassMemberProfile profiles;
+
+    [NonSerialized] public bool is_online;
+    [NonSerialized] public string last_seen_at;
+}
+
+[Serializable]
+public class ClassMemberProfile
+{
+    public string full_name;
+    public string avatar_url;
+    public string role;
+}
+
+[Serializable]
+public class ClassMemberStudentArrayWrapper
+{
+    public ClassMemberStudent[] items;
+}
+
+[Serializable]
+public class UserPresenceRecord
+{
+    public string user_id;
+    public bool is_online;
+    public string last_seen_at;
+    public string updated_at;
+}
+
+[Serializable]
+public class UserPresenceRecordArrayWrapper
+{
+    public UserPresenceRecord[] items;
+}

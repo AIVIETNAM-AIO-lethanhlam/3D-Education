@@ -492,13 +492,6 @@ public class GeneralHeaderController : IDisposable
 
     private void HandleBackClicked()
     {
-        /*
-         * Nếu Scene hiện tại có đăng ký xử lý Back riêng,
-         * GeneralHeader sẽ ưu tiên callback đó.
-         *
-         * Nếu không có callback riêng, nút Back tự động quay
-         * về Scene trước đó thông qua SceneHistory.
-         */
         if (BackClicked != null)
         {
             BackClicked.Invoke();

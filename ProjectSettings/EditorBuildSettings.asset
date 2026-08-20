@@ -5,6 +5,9 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
+  - enabled: 0
+    path: Assets/VRMode/Scene/VRScene.unity
+    guid: 0a965b04e48eb304b97811670b38c5a7
   - enabled: 1
     path: Assets/Scenes/SplashScene.unity
     guid: f3af9cb6dfa139c46a7e83618ab16d18
@@ -53,9 +56,16 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/ARModels/Scenes/ARScene.unity
     guid: 72742e0afadbfe247a93ef773db7ada6
+  - enabled: 1
+    path: Assets/Scenes/ChatScene.unity
+    guid: 0c67f48c4d840c74a9429f32fe19b228
+  - enabled: 1
+    path: Assets/Scenes/ChatAIScene.unity
+    guid: 07ca9de35c1e9cb45b8aca169b299aff
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: ac4a33b71edaaed4a8cf7efbca392c0b, type: 2}
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: bdc425842afcfcf4f83ed3deeca353d0, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
     com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 9064d2f3d57d72f4295bff5897b23967, type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 6da80fd6f1097be4ca1b0cbc7f4478b2, type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 2f3389a82a254b340a90df9d6518f205, type: 2}

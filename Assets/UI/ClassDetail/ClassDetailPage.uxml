@@ -10,8 +10,8 @@
                 <ui:Button name="back-button" text="‹" class="round-header-button back-button" />
 
                 <ui:VisualElement class="class-title-container">
-                    <ui:Label name="semester-label" text="SEMESTER 2 · 2024–2025" class="semester-label" />
-                    <ui:Label name="class-title-label" text="EE301 – Circuit Analysis" class="class-title-label" />
+                    <ui:Label name="semester-label" text="CLASS OVERVIEW" class="semester-label" />
+                    <ui:Label name="class-title-label" text="Loading class..." class="class-title-label" />
                 </ui:VisualElement>
 
                 <ui:Button name="more-button" text="⋮" class="round-header-button more-button" />
@@ -19,30 +19,31 @@
 
             <ui:VisualElement class="teacher-card">
                 <ui:VisualElement class="teacher-avatar">
-                    <ui:Label name="teacher-initial-label" text="TQ" class="teacher-initial-label" />
+                    <ui:Label name="teacher-initial-label" text="T" class="teacher-initial-label" />
                 </ui:VisualElement>
 
                 <ui:VisualElement class="teacher-information">
-                    <ui:Label name="teacher-name-label" text="Dr. Trần Minh Quân" class="teacher-name-label" />
-                    <ui:Label name="teacher-position-label" text="Associate Professor" class="teacher-position-label" />
+                    <ui:Label name="teacher-name-label" text="Teacher" class="teacher-name-label" />
+                    <ui:Label name="teacher-position-label" text="Class instructor" class="teacher-position-label" />
                 </ui:VisualElement>
 
                 <ui:Button name="teacher-message-button" class="teacher-message-button">
                     <ui:VisualElement class="teacher-message-icon" />
+                    <ui:Label name="teacher-message-unread-badge" text="0" class="teacher-message-unread-badge hidden" />
                 </ui:Button>
             </ui:VisualElement>
 
             <ui:VisualElement class="statistics-row">
                 <ui:VisualElement class="statistic-item">
-                    <ui:Label name="student-count-label" text="34" class="statistic-value" />
+                    <ui:Label name="student-count-label" text="0" class="statistic-value" />
                     <ui:Label text="Students" class="statistic-name" />
                 </ui:VisualElement>
                 <ui:VisualElement class="statistic-item">
-                    <ui:Label name="module-count-label" text="5" class="statistic-value" />
-                    <ui:Label text="Modules" class="statistic-name" />
+                    <ui:Label name="module-count-label" text="0" class="statistic-value" />
+                    <ui:Label text="Lessons" class="statistic-name" />
                 </ui:VisualElement>
                 <ui:VisualElement class="statistic-item statistic-last">
-                    <ui:Label name="average-score-label" text="89%" class="statistic-value" />
+                    <ui:Label name="average-score-label" text="0%" class="statistic-value" />
                     <ui:Label text="Avg Score" class="statistic-name" />
                 </ui:VisualElement>
             </ui:VisualElement>
@@ -51,7 +52,9 @@
         <ui:VisualElement class="tab-navigation">
             <ui:Button name="syllabus-tab-button" text="Syllabus" class="tab-button tab-button-active" />
             <ui:Button name="labs-tab-button" text="3D Labs" class="tab-button" />
-            <ui:Button name="student-list-tab-button" text="Student List" class="tab-button" />
+            <ui:Button name="student-list-tab-button" text="Student List" class="tab-button">
+                <ui:VisualElement name="student-list-unread-dot" class="student-list-unread-dot hidden" picking-mode="Ignore" />
+            </ui:Button>
         </ui:VisualElement>
 
         <ui:ScrollView name="content-scroll-view" mode="Vertical" class="content-scroll-view">
@@ -59,17 +62,17 @@
                 <ui:VisualElement class="progress-card">
                     <ui:VisualElement class="progress-heading-row">
                         <ui:Label text="Overall Progress" class="progress-title" />
-                        <ui:Label name="progress-percent-label" text="52%" class="progress-percent" />
+                        <ui:Label name="progress-percent-label" text="0%" class="progress-percent" />
                     </ui:VisualElement>
                     <ui:VisualElement class="progress-bottom-row">
                         <ui:VisualElement class="progress-track">
                             <ui:VisualElement name="progress-fill" class="progress-fill" />
                         </ui:VisualElement>
-                        <ui:Label name="progress-detail-label" text="8 / 13 lessons" class="progress-detail" />
+                        <ui:Label name="progress-detail-label" text="0 / 0 lessons" class="progress-detail" />
                     </ui:VisualElement>
                 </ui:VisualElement>
 
-                <ui:VisualElement class="reorder-preview">
+                <ui:VisualElement name="reorder-preview" class="reorder-preview">
                     <ui:VisualElement class="reorder-preview-icon" />
                     <ui:Label text="Preview drag &amp; drop reordering" class="reorder-preview-text" />
                 </ui:VisualElement>
@@ -89,14 +92,73 @@
                            class="edit-content-button hidden" />
             </ui:VisualElement>
 
-            <ui:VisualElement name="labs-content" class="empty-tab-content hidden">
-                <ui:Label text="3D Labs" class="empty-state-title" />
-                <ui:Label text="3D learning resources will be displayed here." class="empty-state-description" />
+            <ui:VisualElement name="labs-content" class="labs-content hidden">
+                <ui:Label
+                    text="Interactive 3D models tied to course content. Tap a card to launch the viewer."
+                    class="labs-description" />
+
+                <ui:VisualElement name="labs-loading-state" class="labs-status-card">
+                    <ui:Label text="Loading 3D models..." class="labs-status-title" />
+                    <ui:Label
+                        text="Getting the model files belonging to this class."
+                        class="labs-status-description" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="labs-empty-state" class="labs-status-card hidden">
+                    <ui:Label text="No 3D models yet" class="labs-status-title" />
+                    <ui:Label
+                        text="3D model files uploaded to lessons in this class will appear here."
+                        class="labs-status-description" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="labs-error-state" class="labs-status-card labs-error-state hidden">
+                    <ui:Label text="Unable to load 3D models" class="labs-status-title" />
+                    <ui:Label name="labs-error-label" text="" class="labs-status-description" />
+                    <ui:Button name="labs-retry-button" text="Try Again" class="labs-retry-button" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="model-card-list" class="model-card-list" />
             </ui:VisualElement>
 
-            <ui:VisualElement name="student-list-content" class="empty-tab-content hidden">
-                <ui:Label text="Student List" class="empty-state-title" />
-                <ui:Label text="Students enrolled in this class will be displayed here." class="empty-state-description" />
+            <ui:VisualElement name="student-list-content" class="student-list-content hidden">
+                <ui:VisualElement class="student-list-heading">
+                    <ui:Label name="student-list-count-label"
+                              text="0 ENROLLED STUDENTS"
+                              class="student-list-count-label" />
+                    <ui:VisualElement class="student-online-summary">
+                        <ui:VisualElement class="student-online-summary-dot" />
+                        <ui:Label name="student-online-count-label"
+                                  text="0 Online"
+                                  class="student-online-count-label" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement name="student-list-loading-state"
+                                  class="student-list-state">
+                    <ui:Label text="Loading students..."
+                              class="student-list-state-title" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="student-list-empty-state"
+                                  class="student-list-state hidden">
+                    <ui:Label text="No enrolled students"
+                              class="student-list-state-title" />
+                    <ui:Label text="Students who enroll in this class will appear here."
+                              class="student-list-state-description" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="student-list-error-state"
+                                  class="student-list-state hidden">
+                    <ui:Label name="student-list-error-label"
+                              text="Unable to load students."
+                              class="student-list-state-title student-list-error-label" />
+                    <ui:Button name="student-list-retry-button"
+                               text="Try Again"
+                               class="student-list-retry-button" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="student-card-list"
+                                  class="student-card-list" />
             </ui:VisualElement>
         </ui:ScrollView>
 

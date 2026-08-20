@@ -16,6 +16,12 @@ public static class SupabaseConfig
     public static string RestUrl =>
         ProjectUrl.TrimEnd('/') + "/rest/v1";
 
+    public static string FunctionsUrl =>
+        ProjectUrl.TrimEnd('/') + "/functions/v1";
+
+    public static string AIChatFunctionUrl =>
+        FunctionsUrl + "/ai-chat";
+
     public static bool TryValidate(out string error)
     {
         if (string.IsNullOrWhiteSpace(ProjectUrl))

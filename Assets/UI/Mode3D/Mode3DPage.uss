@@ -1,0 +1,549 @@
+/* =========================================================
+   MODE 3D - FIGMA PORTRAIT LAYOUT
+   ========================================================= */
+
+.screen {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    background-color: rgb(5, 18, 45);
+    -unity-font-definition: url("project://database/Assets/Resources/Fonts/PlusJakartaSans-Regular.ttf");
+}
+
+/* ---------- Header ---------- */
+
+.header {
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    top: 150px;
+    height: 58px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Outer background frame matching Figma */
+.header-button-frame {
+    width: 100px;
+    height: 100px;
+    min-width: 100px;
+    min-height: 100px;
+    border-radius: 28px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(68, 82, 111, 0.80);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255,255,255,0.28);
+    border-right-color: rgba(255,255,255,0.28);
+    border-top-color: rgba(255,255,255,0.28);
+    border-bottom-color: rgba(255,255,255,0.28);
+}
+
+/* Inner icon button; changing frame does not stretch icon */
+.header-icon-button {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 2px;
+    border-radius: 13px;
+    background-color: rgba(0,0,0,0);
+    -unity-background-scale-mode: scale-to-fit;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.back-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/back.png");
+}
+
+.info-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/info.png");
+}
+
+.title-pill {
+    height: 80px;
+    min-width: 360px;
+    max-width: 420px;
+    padding-left: 18px;
+    padding-right: 18px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    border-radius: 23px;
+    background-color: rgba(66, 79, 108, 0.86);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255,255,255,0.22);
+    border-right-color: rgba(255,255,255,0.22);
+    border-top-color: rgba(255,255,255,0.22);
+    border-bottom-color: rgba(255,255,255,0.22);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    margin-right: 10px;
+    background-color: rgb(39, 197, 159);
+}
+
+.title-label {
+    color: rgb(244, 247, 255);
+    font-size: 24px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+}
+
+/* ---------- Central tilted glass board ---------- */
+
+.model-stage {
+    position: absolute;
+    left: 18%;
+    right: 12%;
+    top: 38%;
+    height: 18%;
+    rotate: 7deg;
+}
+
+.board-shadow {
+    position: absolute;
+    left: 5px;
+    right: -8px;
+    top: 8px;
+    bottom: -10px;
+    border-radius: 24px;
+    background-color: rgba(0, 5, 18, 0.34);
+}
+
+.glass-board {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    border-radius: 24px;
+    background-color: rgba(22, 43, 88, 0.34);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(69, 111, 195, 0.28);
+    border-right-color: rgba(69, 111, 195, 0.28);
+    border-top-color: rgba(69, 111, 195, 0.28);
+    border-bottom-color: rgba(69, 111, 195, 0.28);
+}
+
+.board-highlight {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    top: 50%;
+    height: 1px;
+    background-color: rgba(102, 144, 222, 0.10);
+}
+
+.model-interaction-area {
+    position: absolute;
+    left: -8%;
+    right: -8%;
+    top: -24%;
+    bottom: -24%;
+}
+
+/* ---------- Number markers ---------- */
+
+.marker {
+    position: absolute;
+    width: 39px;
+    height: 39px;
+    border-radius: 20px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(10, 42, 91, 0.25);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(55, 113, 216, 0.30);
+    border-right-color: rgba(55, 113, 216, 0.30);
+    border-top-color: rgba(55, 113, 216, 0.30);
+    border-bottom-color: rgba(55, 113, 216, 0.30);
+}
+
+.marker Label {
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    color: rgb(224, 237, 255);
+    font-size: 8px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    background-color: rgba(56, 118, 219, 0.52);
+}
+
+.marker-1 {
+    left: 27%;
+    top: 32%;
+}
+
+.marker-2 {
+    right: 14%;
+    bottom: 7%;
+}
+
+.marker-3 {
+    right: 17%;
+    top: -18%;
+}
+
+/* ---------- Color palette ---------- */
+
+.color-panel {
+    position: absolute;
+    left: 40px;
+    top: 42%;
+    width: 70px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    align-items: center;
+    border-radius: 30px;
+    background-color: rgba(61, 73, 101, 0.88);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255,255,255,0.20);
+    border-right-color: rgba(255,255,255,0.20);
+    border-top-color: rgba(255,255,255,0.20);
+    border-bottom-color: rgba(255,255,255,0.20);
+}
+
+.color-dot {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 0;
+    border-radius: 16px;
+
+    border-left-width: 4px;
+    border-right-width: 4px;
+    border-top-width: 4px;
+    border-bottom-width: 4px;
+    border-left-color: rgba(255,255,255,0.12);
+    border-right-color: rgba(255,255,255,0.12);
+    border-top-color: rgba(255,255,255,0.12);
+    border-bottom-color: rgba(255,255,255,0.12);
+}
+
+.color-dot.selected {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    border-radius: 18px;
+
+    border-left-width: 3px;
+    border-right-width: 3px;
+    border-top-width: 3px;
+    border-bottom-width: 3px;
+    border-left-color: rgb(245,248,255);
+    border-right-color: rgb(245,248,255);
+    border-top-color: rgb(245,248,255);
+    border-bottom-color: rgb(245,248,255);
+}
+
+.color-blue { background-color: rgb(45, 94, 216); }
+.color-dark { background-color: rgb(30, 34, 62); }
+.color-green { background-color: rgb(34, 156, 77); }
+.color-purple { background-color: rgb(121, 53, 208); }
+
+/* ---------- Floor ---------- */
+
+.floor {
+    position: absolute;
+    left: -20%;
+    right: -20%;
+    top: 58%;
+    bottom: 0;
+    rotate: 8deg;
+}
+
+.floor-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: rgba(37, 79, 148, 0.18);
+}
+
+.floor-line-1 { top: 12%; }
+.floor-line-2 { top: 43%; }
+.floor-line-3 { top: 74%; }
+
+/* ---------- Right actions ---------- */
+
+.right-actions {
+    position: absolute;
+    right: 70px;
+    bottom: 240px;
+    width: 70px;
+    align-items: center;
+}
+
+.action-button-frame {
+    width: 120px;
+    height: 120px;
+    min-width: 120px;
+    min-height: 120px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    
+    border-radius: 30px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(5, 87, 210);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255,255,255,0.24);
+    border-right-color: rgba(255,255,255,0.24);
+    border-top-color: rgba(255,255,255,0.24);
+    border-bottom-color: rgba(255,255,255,0.24);
+}
+
+/* Icon size is independent from outer blue frame */
+.action-icon-button {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    min-height: 50px;
+    padding: 2px;
+    border-radius: 14px;
+    background-color: rgba(0,0,0,0);
+    -unity-background-scale-mode: scale-to-fit;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.capture-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/camera.png");
+}
+
+.vr-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/vr.png");
+}
+
+/* ---------- Bottom toolbar ---------- */
+
+.bottom-toolbar {
+    position: absolute;
+    left: 50%;
+    bottom: 80px;
+    translate: -50% 0;
+
+    width: 600px;
+    height: 120px;
+    padding-left: 30px;
+    padding-right: 30px;
+
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+
+    border-radius: 60px;
+    background-color: rgba(59, 69, 94, 0.95);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255,255,255,0.22);
+    border-right-color: rgba(255,255,255,0.22);
+    border-top-color: rgba(255,255,255,0.22);
+    border-bottom-color: rgba(255,255,255,0.22);
+}
+
+/*
+ * The frame is the blue outer background.
+ * The icon button remains smaller, so selecting a tool does not enlarge
+ * or distort the PNG icon.
+ */
+.tool-button-frame {
+    width: 82px;
+    height: 82px;
+    min-width: 82px;
+    min-height: 82px;
+
+    border-radius: 41px;
+    align-items: center;
+    justify-content: center;
+
+    background-color: rgba(0,0,0,0);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255,255,255,0);
+    border-right-color: rgba(255,255,255,0);
+    border-top-color: rgba(255,255,255,0);
+    border-bottom-color: rgba(255,255,255,0);
+}
+
+.tool-button-frame.selected-tool-frame {
+    background-color: rgb(5, 87, 210);
+
+    border-left-color: rgba(255,255,255,0.26);
+    border-right-color: rgba(255,255,255,0.26);
+    border-top-color: rgba(255,255,255,0.26);
+    border-bottom-color: rgba(255,255,255,0.26);
+}
+
+.tool-button {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+
+    padding: 2px;
+    border-radius: 19px;
+
+    color: rgb(229, 235, 248);
+    font-size: 22px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    -unity-background-scale-mode: scale-to-fit;
+
+    background-color: rgba(0,0,0,0);
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.reset-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/reset.png");
+}
+
+.zoom-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/zoom.png");
+}
+
+.auto-rotate-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/rotate.png");
+}
+
+.focus-button {
+    padding-bottom: 4px;
+}
+
+.layers-button {
+    padding-bottom: 5px;
+}
+
+.focus-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/chip.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.layers-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/layers.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* ---------- Popup and toast ---------- */
+
+.overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 5, 18, 0.66);
+}
+
+.info-card {
+    width: 82%;
+    max-width: 340px;
+    padding: 18px;
+    border-radius: 20px;
+    background-color: rgb(23, 37, 67);
+}
+
+.info-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.info-title {
+    color: white;
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.info-text {
+    color: rgb(199, 209, 230);
+    font-size: 12px;
+    white-space: normal;
+}
+
+.close-button {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 15px;
+    color: white;
+    font-size: 20px;
+    background-color: rgba(255,255,255,0.08);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.toast {
+    position: absolute;
+    left: 50%;
+    bottom: 90px;
+    translate: -50% 0;
+    padding: 7px 13px;
+    border-radius: 14px;
+    color: white;
+    font-size: 11px;
+    background-color: rgba(21, 30, 49, 0.94);
+}
+
+.hidden {
+    display: none;
+}

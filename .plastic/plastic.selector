@@ -1,4 +1,0 @@
-repository "3D Education@local"
-  path "/"
-    br "/main"
-    co "/main"

@@ -2021,18 +2021,7 @@ public class CreateClassPageController : MonoBehaviour
 
     private void ReturnToMyClasses()
     {
-        if (Application.CanStreamedLevelBeLoaded(
-            "MyClassesScene"
-        ))
-        {
-            SceneManager.LoadScene("MyClassesScene");
-        }
-        else
-        {
-            Debug.LogError(
-                "Không tìm thấy MyClassesScene trong Build Settings."
-            );
-        }
+        SceneHistory.GoBack("MyClassesScene");
     }
 
     private static void SetElementVisible(

@@ -40,7 +40,7 @@
 
             </ui:VisualElement>
 
-            <!-- ACTIVE COURSE BANNER -->
+            <!-- ACTIVE CLASSES BANNER -->
             <ui:VisualElement class="active-course-banner">
 
                 <ui:VisualElement class="banner-circle banner-circle-large"/>
@@ -50,13 +50,23 @@
                 <ui:VisualElement class="banner-content">
 
                     <ui:Label
-                        text="Semester 2 · 2024–2025"
-                        class="semester-label"/>
-
-                    <ui:Label
-                        name="active-course-count-label"
-                        text="3 Active Courses"
+                        name="active-class-count-label"
+                        text="Loading classes..."
                         class="active-course-label"/>
+
+                    <ui:VisualElement class="banner-class-breakdown">
+                        <ui:Label
+                            name="public-class-count-label"
+                            text="0 Public"
+                            class="banner-breakdown-label"/>
+
+                        <ui:VisualElement class="banner-breakdown-dot"/>
+
+                        <ui:Label
+                            name="private-class-count-label"
+                            text="0 Private"
+                            class="banner-breakdown-label"/>
+                    </ui:VisualElement>
 
                     <ui:Button
                         name="my-classes-banner-button"
@@ -163,7 +173,7 @@
                 </ui:VisualElement>
             </ui:ScrollView>
 
-            <!-- RECENTLY VIEWED -->
+            <!-- RECENT CLASSES -->
             <ui:VisualElement class="section-header recently-header">
                 <ui:Label
                     name="recent-section-title"
@@ -183,158 +193,12 @@
 
             <ui:Label
                 name="recent-filter-label"
-                text="Filtered: Chemistry"
+                text=""
                 class="recent-filter-label"/>
 
             <ui:VisualElement
                 name="recent-course-list"
-                class="recent-course-list">
-
-                <!-- COURSE 1 -->
-                <ui:Button
-                    name="fluid-mechanics-card"
-                    class="course-card">
-
-                    <ui:VisualElement class="course-card-content">
-
-                        <ui:VisualElement class="course-leading course-leading-blue">
-                            <ui:VisualElement class="course-book-icon icon-book-blue"/>
-                        </ui:VisualElement>
-
-                        <ui:VisualElement class="course-information">
-
-                            <ui:Label
-                                text="Fluid Mechanics"
-                                class="course-title"/>
-
-                            <ui:VisualElement class="course-progress-row">
-                                <ui:Label text="Physics" class="course-category"/>
-
-                                <ui:VisualElement class="progress-track">
-                                    <ui:VisualElement
-                                        class="progress-fill progress-blue progress-72"/>
-                                </ui:VisualElement>
-
-                                <ui:Label text="72%" class="progress-text"/>
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-
-                        <ui:VisualElement class="progress-circle progress-circle-blue">
-                            <ui:Label text="72" class="progress-circle-value"/>
-                        </ui:VisualElement>
-
-                    </ui:VisualElement>
-                </ui:Button>
-
-                <!-- COURSE 2 -->
-                <ui:Button
-                    name="thermodynamics-card"
-                    class="course-card">
-
-                    <ui:VisualElement class="course-card-content">
-
-                        <ui:VisualElement class="course-leading course-leading-purple">
-                            <ui:VisualElement class="course-book-icon icon-book-purple"/>
-                        </ui:VisualElement>
-
-                        <ui:VisualElement class="course-information">
-
-                            <ui:Label
-                                text="Thermodynamics"
-                                class="course-title"/>
-
-                            <ui:VisualElement class="course-progress-row">
-                                <ui:Label text="Physics" class="course-category"/>
-
-                                <ui:VisualElement class="progress-track">
-                                    <ui:VisualElement
-                                        class="progress-fill progress-purple progress-45"/>
-                                </ui:VisualElement>
-
-                                <ui:Label text="45%" class="progress-text"/>
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-
-                        <ui:VisualElement class="progress-circle progress-circle-purple">
-                            <ui:Label text="45" class="progress-circle-value"/>
-                        </ui:VisualElement>
-
-                    </ui:VisualElement>
-                </ui:Button>
-
-                <!-- COURSE 3 -->
-                <ui:Button
-                    name="circuit-analysis-card"
-                    class="course-card">
-
-                    <ui:VisualElement class="course-card-content">
-
-                        <ui:VisualElement class="course-leading course-leading-green">
-                            <ui:VisualElement class="course-book-icon icon-book-green"/>
-                        </ui:VisualElement>
-
-                        <ui:VisualElement class="course-information">
-
-                            <ui:Label
-                                text="Circuit Analysis"
-                                class="course-title"/>
-
-                            <ui:VisualElement class="course-progress-row">
-                                <ui:Label text="Engineering" class="course-category"/>
-
-                                <ui:VisualElement class="progress-track">
-                                    <ui:VisualElement
-                                        class="progress-fill progress-green progress-90"/>
-                                </ui:VisualElement>
-
-                                <ui:Label text="90%" class="progress-text"/>
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-
-                        <ui:VisualElement class="progress-circle progress-circle-green">
-                            <ui:Label text="90" class="progress-circle-value"/>
-                        </ui:VisualElement>
-
-                    </ui:VisualElement>
-                </ui:Button>
-
-                <!-- COURSE 4 -->
-                <ui:Button
-                    name="machine-learning-card"
-                    class="course-card">
-
-                    <ui:VisualElement class="course-card-content">
-
-                        <ui:VisualElement class="course-leading course-leading-red">
-                            <ui:VisualElement class="course-book-icon icon-book-red"/>
-                        </ui:VisualElement>
-
-                        <ui:VisualElement class="course-information">
-
-                            <ui:Label
-                                text="Machine Learning"
-                                class="course-title"/>
-
-                            <ui:VisualElement class="course-progress-row">
-                                <ui:Label text="AI &amp; ML" class="course-category"/>
-
-                                <ui:VisualElement class="progress-track">
-                                    <ui:VisualElement
-                                        class="progress-fill progress-red progress-30"/>
-                                </ui:VisualElement>
-
-                                <ui:Label text="30%" class="progress-text"/>
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-
-                        <ui:VisualElement class="progress-circle progress-circle-red">
-                            <ui:Label text="30" class="progress-circle-value"/>
-                        </ui:VisualElement>
-
-                    </ui:VisualElement>
-                </ui:Button>
-
-            </ui:VisualElement>
+                class="recent-course-list"/>
 
             <ui:VisualElement
                 name="recent-empty-state"

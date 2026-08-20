@@ -3,8 +3,23 @@
     flex-direction: column;
     background-color: rgb(247, 249, 253);
     color: rgb(20, 37, 76);
-    -unity-font-definition: resource("Fonts/Inter_24pt-Regular");
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Regular.ttf");
 }
+
+/* =========================================================
+   PLUS JAKARTA SANS
+   ========================================================= */
+
+.main-home-root,
+.main-home-root Label,
+.main-home-root Button,
+.main-home-root TextField,
+.main-home-root .unity-text-element,
+.main-home-root .unity-button,
+.main-home-root .unity-text-field__input {
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Regular.ttf");
+}
+
 
 /* =========================================================
    MAIN SCROLL VIEW
@@ -766,3 +781,205 @@
 .empty-state-action-button:active {
     opacity: 0.72;
 }
+
+/* =========================================================
+   ACTIVE CLASSES — DYNAMIC DATA
+   ========================================================= */
+
+.active-course-banner {
+    height: 154px;
+}
+
+.banner-content {
+    padding-right: 72px;
+}
+
+.active-course-label {
+    margin-bottom: 6px;
+    font-size: 20px;
+    white-space: normal;
+}
+
+.banner-class-breakdown {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 11px;
+}
+
+.banner-breakdown-label {
+    color: rgba(255, 255, 255, 0.84);
+    font-size: 11px;
+    -unity-text-align: middle-left;
+}
+
+.banner-breakdown-dot {
+    width: 4px;
+    height: 4px;
+    margin-left: 8px;
+    margin-right: 8px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.55);
+}
+
+.my-classes-button {
+    width: 124px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+}
+
+.my-classes-button .unity-button__text {
+    display: none;
+}
+
+.my-classes-button-content {
+    width: 100%;
+    height: 100%;
+    flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.my-classes-button-text {
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.my-classes-arrow {
+    width: 16px;
+    height: 24px;
+    margin-left: 6px;
+    margin-top: 0;
+    padding: 0;
+    font-size: 20px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+/* =========================================================
+   RECENT CLASSES — DYNAMIC CARDS
+   ========================================================= */
+
+.recent-class-card {
+    width: 100%;
+    min-height: 84px;
+    margin-bottom: 12px;
+    padding: 0;
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 18px;
+    background-color: white;
+}
+
+.recent-class-card-content {
+    flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
+    padding: 13px;
+}
+
+.recent-class-icon-shell {
+    width: 45px;
+    height: 45px;
+    min-width: 45px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    border-radius: 23px;
+    background-color: rgb(232, 240, 255);
+}
+
+.recent-class-icon {
+    width: 23px;
+    height: 23px;
+    background-image: url("project://database/Assets/UI/Images/Icons/book.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(0, 70, 180);
+}
+
+.recent-class-information {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    justify-content: center;
+    margin-right: 8px;
+}
+
+.recent-class-title {
+    width: 100%;
+    margin-bottom: 5px;
+    color: rgb(20, 37, 76);
+    font-size: 15px;
+    -unity-font-style: bold;
+    white-space: normal;
+    overflow: hidden;
+    -unity-text-align: middle-left;
+}
+
+.recent-class-meta-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.recent-class-category,
+.recent-class-visibility,
+.recent-class-time {
+    color: rgb(92, 106, 140);
+    font-size: 10px;
+    -unity-text-align: middle-left;
+}
+
+.recent-class-separator {
+    margin-left: 6px;
+    margin-right: 6px;
+    color: rgb(156, 168, 192);
+    font-size: 10px;
+}
+
+.recent-class-arrow {
+    width: 22px;
+    min-width: 22px;
+    flex-shrink: 0;
+    color: rgb(35, 79, 158);
+    font-size: 22px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.recent-loading-label,
+.recent-empty-label {
+    width: 100%;
+    min-height: 78px;
+    padding: 20px;
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 16px;
+    background-color: white;
+    color: rgb(92, 106, 140);
+    font-size: 12px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+/* Student recent class metadata */
+.recent-class-teacher {
+    color: rgb(92, 106, 140);
+    font-size: 10px;
+    max-width: 90px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.recent-class-meta-row {
+    flex-wrap: wrap;
+}
+
