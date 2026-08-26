@@ -33,7 +33,7 @@
                     </ui:VisualElement>
                 </ui:VisualElement>
 
-                <ui:VisualElement name="video-wrapper">
+                <ui:VisualElement name="video-wrapper" class="video-wrapper">
                     <ui:VisualElement name="video-section" class="video-section">
                         <ui:VisualElement class="video-grid-background"/>
                         <ui:VisualElement class="video-name-badge">
@@ -105,6 +105,18 @@
         </ui:ScrollView>
 
         <ui:Button name="ai-assistant-button" class="ai-assistant-button"><ui:VisualElement class="ai-button-icon icon-ai-sparkle-white"/></ui:Button>
+
+
+        <ui:VisualElement name="pdf-viewer-overlay" class="pdf-viewer-overlay hidden">
+            <ui:VisualElement name="pdf-viewer-header" class="pdf-viewer-header">
+                <ui:Button name="pdf-viewer-close" text="×" tooltip="Close PDF" class="pdf-viewer-close"/>
+                <ui:Label name="pdf-viewer-file-name" text="PDF file" class="pdf-viewer-file-name"/>
+                <ui:Button name="pdf-viewer-download" text="Download" class="pdf-viewer-download"/>
+            </ui:VisualElement>
+            <ui:VisualElement name="pdf-viewer-content" class="pdf-viewer-content pdf-scrollbar-hidden">
+                <ui:Label name="pdf-viewer-status" text="Loading PDF..." class="pdf-viewer-status"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
 
         <ui:VisualElement name="resource-modal-overlay" class="resource-modal-overlay hidden">
             <ui:VisualElement class="resource-modal-card">

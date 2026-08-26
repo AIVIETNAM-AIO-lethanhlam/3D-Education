@@ -9,21 +9,23 @@
         <!-- Header -->
         <ui:VisualElement name="header" class="header">
 
-            <ui:Button name="back-button"
-                       class="back-button"
-                       tooltip="Back">
+            <ui:VisualElement class="header-left">
+                <ui:Button name="back-button"
+                           class="back-button"
+                           tooltip="Back">
 
-                <ui:VisualElement class="back-icon"/>
-            </ui:Button>
+                    <ui:VisualElement class="back-icon"/>
+                </ui:Button>
 
-            <ui:VisualElement class="header-center">
-                <ui:Label name="lesson-label"
-                          text="Lesson 8"
-                          class="lesson-label"/>
+                <ui:VisualElement class="header-title-group">
+                    <ui:Label name="lesson-label"
+                              text="Lesson 8"
+                              class="lesson-label"/>
 
-                <ui:Label name="header-quiz-title"
-                          text="Quiz 01"
-                          class="header-quiz-title"/>
+                    <ui:Label name="header-quiz-title"
+                              text="Quiz 01"
+                              class="header-quiz-title"/>
+                </ui:VisualElement>
             </ui:VisualElement>
 
             <ui:VisualElement name="status-badge"
@@ -137,10 +139,28 @@
 
                 </ui:VisualElement>
 
-                <!-- Notice -->
-                <ui:VisualElement class="notice-card">
 
-                    <ui:VisualElement class="notice-icon"/>
+                <!-- Attempt history.
+                     Currently populated with temporary demo data in StartQuizPageController
+                     so the UI can be reviewed before Supabase quiz_attempts is connected. -->
+                <ui:VisualElement name="attempt-history-section"
+                                  class="attempt-history-section hidden">
+
+                    <ui:VisualElement class="attempt-history-heading">
+                        <ui:VisualElement class="attempt-history-clock-icon"/>
+                        <ui:Label text="ATTEMPT HISTORY"
+                                  class="attempt-history-title"/>
+                        <ui:VisualElement class="attempt-history-line"/>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="attempt-history-container"
+                                      class="attempt-history-container"/>
+                </ui:VisualElement>
+
+                <!-- Notice -->
+                <ui:VisualElement name="notice-card" class="notice-card">
+
+                    <ui:Label text="!" class="notice-icon"/>
 
                     <ui:VisualElement class="notice-content">
 

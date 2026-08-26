@@ -29,8 +29,11 @@
 
             </ui:VisualElement>
 
-            <!-- Giữ header cân bằng -->
-            <ui:VisualElement class="header-placeholder"/>
+            <!-- Right menu -->
+            <ui:Button
+                name="quiz-menu-button"
+                text="⋮"
+                class="quiz-menu-button"/>
 
         </ui:VisualElement>
 
@@ -64,6 +67,11 @@
             mode="Vertical">
 
             <ui:VisualElement class="quiz-content">
+
+                <ui:Label
+                    name="quiz-message-label"
+                    text=""
+                    class="quiz-message-label hidden"/>
 
                 <!-- Question card -->
                 <ui:VisualElement class="question-card">
@@ -106,7 +114,7 @@
 
                             <ui:Label
                                 name="answer-a-label"
-                                text="Capacitor"
+                                text="Answer A"
                                 class="answer-text"/>
 
                         </ui:VisualElement>
@@ -125,7 +133,7 @@
 
                             <ui:Label
                                 name="answer-b-label"
-                                text="Voltage Regulator"
+                                text="Answer B"
                                 class="answer-text"/>
 
                         </ui:VisualElement>
@@ -144,7 +152,7 @@
 
                             <ui:Label
                                 name="answer-c-label"
-                                text="Diode"
+                                text="Answer C"
                                 class="answer-text"/>
 
                         </ui:VisualElement>
@@ -163,12 +171,29 @@
 
                             <ui:Label
                                 name="answer-d-label"
-                                text="Resistor"
+                                text="Answer D"
                                 class="answer-text"/>
 
                         </ui:VisualElement>
 
                     </ui:Button>
+
+                </ui:VisualElement>
+
+                <!-- Review navigation: below answer D, review mode only -->
+                <ui:VisualElement
+                    name="review-navigation"
+                    class="review-navigation hidden">
+
+                    <ui:Button
+                        name="review-prev-button"
+                        text="&lt;"
+                        class="review-nav-button review-nav-button-left"/>
+
+                    <ui:Button
+                        name="review-next-button"
+                        text="&gt;"
+                        class="review-nav-button review-nav-button-right"/>
 
                 </ui:VisualElement>
 
@@ -183,6 +208,113 @@
                 name="next-question-button"
                 text="Next Question →"
                 class="next-question-button"/>
+
+        </ui:VisualElement>
+
+        <!-- Right question navigator drawer -->
+        <ui:VisualElement
+            name="quiz-drawer-overlay"
+            class="quiz-drawer-overlay hidden">
+
+            <ui:VisualElement
+                name="quiz-drawer-scrim"
+                class="quiz-drawer-scrim"/>
+
+            <ui:VisualElement
+                name="quiz-drawer-panel"
+                class="quiz-drawer-panel">
+
+                <ui:VisualElement class="quiz-drawer-header">
+
+                    <ui:Label
+                        name="quiz-drawer-title"
+                        text="Questions"
+                        class="quiz-drawer-title"/>
+
+                    <ui:Button
+                        name="quiz-drawer-close-button"
+                        text="×"
+                        class="quiz-drawer-close-button"/>
+
+                </ui:VisualElement>
+
+                <ui:VisualElement
+                    name="quiz-drawer-question-grid"
+                    class="quiz-drawer-question-grid"/>
+
+                <ui:Button
+                    name="quiz-drawer-action-button"
+                    text="Nộp bài"
+                    class="quiz-drawer-action-button"/>
+
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <!-- Submit confirmation -->
+        <ui:VisualElement
+            name="submit-confirm-overlay"
+            class="submit-confirm-overlay hidden">
+
+            <ui:VisualElement class="submit-confirm-card">
+
+                <ui:Label
+                    text="Xác nhận nộp bài"
+                    class="submit-confirm-title"/>
+
+                <ui:Label
+                    name="submit-confirm-message"
+                    text="Bạn có chắc chắn muốn nộp bài?"
+                    class="submit-confirm-message"/>
+
+                <ui:VisualElement class="submit-confirm-actions">
+
+                    <ui:Button
+                        name="submit-confirm-cancel-button"
+                        text="Hủy"
+                        class="submit-confirm-cancel-button"/>
+
+                    <ui:Button
+                        name="submit-confirm-submit-button"
+                        text="Nộp bài"
+                        class="submit-confirm-submit-button"/>
+
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <ui:VisualElement
+            name="result-overlay"
+            class="result-overlay hidden">
+
+            <ui:VisualElement class="result-card">
+
+                <ui:Label
+                    text="Quiz Submitted"
+                    class="result-title"/>
+
+                <ui:Label
+                    name="result-correct-label"
+                    text="Correct: 0 / 0"
+                    class="result-correct-label"/>
+
+                <ui:Label
+                    name="result-score-label"
+                    text="Score: 0 / 10"
+                    class="result-score-label"/>
+
+                <ui:Label
+                    text="Your answers have been saved."
+                    class="result-message"/>
+
+                <ui:Button
+                    name="result-back-button"
+                    text="Back to Quiz Overview"
+                    class="result-back-button"/>
+
+            </ui:VisualElement>
 
         </ui:VisualElement>
 

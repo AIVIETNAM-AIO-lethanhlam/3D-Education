@@ -1249,68 +1249,74 @@ public class CreateLessonPageController : MonoBehaviour
             }
         }
 
-        // 2. Upload Exercise PDF lên Cloudflare R2 & Gọi AI Phân Tách Câu Hỏi
+        // 2. Quiz PDF is handled ENTIRELY by the hosted Edge Function.
+        //
+        // Unity sends the LOCAL PDF once:
+        // local PDF -> parse-quiz-pdf
+        // -> Gemini parse
+        // -> Cloudflare R2 upload
+        // -> lesson_assets
+        // -> quizzes / quiz_questions / quiz_options.
+        //
+        // IMPORTANT: Do NOT upload the quiz PDF to R2 again from Unity.
         if (!string.IsNullOrWhiteSpace(selectedExercisePath))
         {
-            string uploadedPath = null;
-            string storagePath = $"{teacherId}/{classId}/{lessonId}/exercise/{Guid.NewGuid():N}.pdf";
-            error = null;
+            if (quizService == null)
+            {
+                FailSaving(
+                    "Thiếu SupabaseQuizService. Không thể xử lý Quiz PDF."
+                );
+                yield break;
+            }
 
-            yield return r2StorageService.UploadFile(
-                "lesson-documents", // R2 Bucket Name
-                storagePath,
-                selectedExercisePath,
-                "application/pdf",
-                path => uploadedPath = path,
-                message => error = message
+            SetSaveProgress(
+                72f,
+                "Đang phân tích Quiz PDF và lưu dữ liệu..."
             );
 
-            if (!string.IsNullOrWhiteSpace(error))
+            ParseQuizPdfResponse quizResult = null;
+            string quizError = null;
+
+            string quizTitle =
+                lessonTitleField?.value?.Trim();
+
+            if (string.IsNullOrWhiteSpace(quizTitle))
             {
-                FailSaving(error);
-                yield break;
+                quizTitle = "Bài tập";
             }
 
-            LessonAssetInsert asset = new()
-            {
-                lesson_id = lessonId,
-                uploaded_by = teacherId,
-                asset_type = "quiz_pdf",
-                file_name = Path.GetFileName(selectedExercisePath),
-                storage_bucket = "lesson-documents",
-                storage_path = uploadedPath,
-                mime_type = "application/pdf",
-                file_extension = ".pdf",
-                file_size_bytes = new FileInfo(selectedExercisePath).Length,
-                display_order = 0
-            };
+            yield return quizService.CallParseQuizFunctionDetailed(
+                lessonId,
+                quizTitle,
+                selectedExercisePath,
+                response => quizResult = response,
+                message => quizError = message
+            );
 
-            yield return lessonService.CreateLessonAsset(asset, () => { }, message => error = message);
-            if (!string.IsNullOrWhiteSpace(error))
+            if (!string.IsNullOrWhiteSpace(quizError) ||
+                quizResult == null ||
+                !quizResult.success ||
+                string.IsNullOrWhiteSpace(quizResult.quiz_id))
             {
-                FailSaving(error);
-                yield break;
-            }
-
-            // 🔥 TỰ ĐỘNG GỌI AI BÓC TÁCH CÂU HỎI TỪ PDF (KHI UPDATE LESSON)
-            if (quizService != null)
-            {
-                SetSaveProgress(80f, "AI đang bóc tách câu hỏi từ PDF bài tập...");
-                bool isQuizParsed = false;
-
-                yield return quizService.CallParseQuizFunction(
-                    lessonId,
-                    teacherId,
-                    lessonTitleField?.value?.Trim() ?? "Bài tập",
-                    uploadedPath,
-                    success => isQuizParsed = success
+                FailSaving(
+                    string.IsNullOrWhiteSpace(quizError)
+                        ? "Backend không tạo được Quiz từ PDF."
+                        : quizError
                 );
-
-                if (!isQuizParsed)
-                {
-                    Debug.LogWarning("Không thể tự động bóc tách đề thi AI, nhưng bài học vẫn được lưu.");
-                }
+                yield break;
             }
+
+            Debug.Log(
+                "[CreateLessonPageController] Quiz update pipeline completed. " +
+                $"Quiz ID: {quizResult.quiz_id}, " +
+                $"Asset ID: {quizResult.lesson_asset_id}, " +
+                $"R2: {quizResult.storage?.bucket}/{quizResult.storage?.path}"
+            );
+
+            SetSaveProgress(
+                82f,
+                "Quiz đã được lưu thành công."
+            );
         }
 
         // 3. Upload 3D GLB Model lên Cloudflare R2
@@ -1374,8 +1380,10 @@ public class CreateLessonPageController : MonoBehaviour
             return;
         }
 
-        bool requiresStorage = selectedDocumentPaths.Count > 0 ||
-            !string.IsNullOrWhiteSpace(selectedExercisePath) ||
+        // Lecture documents and GLB models are still uploaded by Unity.
+        // Quiz PDFs are now uploaded by the hosted parse-quiz-pdf Edge Function.
+        bool requiresStorage =
+            selectedDocumentPaths.Count > 0 ||
             modelSelected;
 
         if (requiresStorage && r2StorageService == null)
@@ -1517,83 +1525,60 @@ public class CreateLessonPageController : MonoBehaviour
             completedUploads++;
         }
 
-        // 2. Upload Exercise / Quiz PDF lên Cloudflare R2 & Tự động gọi AI bóc tách
+        // 2. Quiz PDF is handled ENTIRELY by parse-quiz-pdf.
+        //
+        // Edge Function performs:
+        // Gemini parse -> R2 upload -> lesson_assets -> quizzes
+        // -> quiz_questions -> quiz_options.
+        //
+        // Unity must NOT upload the same quiz PDF to R2 again.
         if (!string.IsNullOrWhiteSpace(selectedExercisePath))
         {
+            if (quizService == null)
+            {
+                FailSaving(
+                    "Thiếu SupabaseQuizService. Không thể xử lý Quiz PDF."
+                );
+                yield break;
+            }
+
             SetSaveProgress(
                 CalculateUploadProgress(completedUploads, totalUploads),
-                "Uploading exercise PDF to R2..."
+                "Đang phân tích Quiz PDF và lưu dữ liệu..."
             );
 
-            string exerciseStoragePath = $"{teacherId}/{classId}/{createdLesson.id}/exercise/{Guid.NewGuid():N}.pdf";
-            string uploadedExercisePath = null;
-            operationError = null;
+            ParseQuizPdfResponse quizResult = null;
+            string quizError = null;
 
-            yield return r2StorageService.UploadFile(
-                "lesson-documents", // R2 Bucket Name
-                exerciseStoragePath,
+            yield return quizService.CallParseQuizFunctionDetailed(
+                createdLesson.id,
+                createdLesson.title,
                 selectedExercisePath,
-                "application/pdf",
-                path => uploadedExercisePath = path,
-                error => operationError = error
+                response => quizResult = response,
+                message => quizError = message
             );
 
-            if (!string.IsNullOrWhiteSpace(operationError))
+            if (!string.IsNullOrWhiteSpace(quizError) ||
+                quizResult == null ||
+                !quizResult.success ||
+                string.IsNullOrWhiteSpace(quizResult.quiz_id))
             {
-                FailSaving(operationError);
-                yield break;
-            }
-
-            LessonAssetInsert exerciseAsset = new()
-            {
-                lesson_id = createdLesson.id,
-                uploaded_by = teacherId,
-                asset_type = "quiz_pdf",
-                file_name = Path.GetFileName(selectedExercisePath),
-                storage_bucket = "lesson-documents",
-                storage_path = uploadedExercisePath,
-                mime_type = "application/pdf",
-                file_extension = ".pdf",
-                file_size_bytes = new FileInfo(selectedExercisePath).Length,
-                display_order = 0
-            };
-
-            yield return lessonService.CreateLessonAsset(
-                exerciseAsset,
-                () => { },
-                error => operationError = error
-            );
-
-            if (!string.IsNullOrWhiteSpace(operationError))
-            {
-                FailSaving(operationError);
-                yield break;
-            }
-
-            // 🔥 TỰ ĐỘNG GỌI AI BÓC TÁCH CÂU HỎI TỪ PDF (KHI TẠO LESSON MỚI)
-            if (quizService != null)
-            {
-                SetSaveProgress(
-                    CalculateUploadProgress(completedUploads, totalUploads),
-                    "AI đang bóc tách câu hỏi từ PDF bài tập..."
+                FailSaving(
+                    string.IsNullOrWhiteSpace(quizError)
+                        ? "Backend không tạo được Quiz từ PDF."
+                        : quizError
                 );
-
-                bool isQuizParsed = false;
-                yield return quizService.CallParseQuizFunction(
-                    createdLesson.id,
-                    teacherId,
-                    createdLesson.title,
-                    uploadedExercisePath,
-                    success => isQuizParsed = success
-                );
-
-                if (!isQuizParsed)
-                {
-                    Debug.LogWarning("Không thể tự động bóc tách đề thi AI, nhưng bài học vẫn được tạo thành công.");
-                }
+                yield break;
             }
 
             completedUploads++;
+
+            Debug.Log(
+                "[CreateLessonPageController] Quiz create pipeline completed. " +
+                $"Quiz ID: {quizResult.quiz_id}, " +
+                $"Asset ID: {quizResult.lesson_asset_id}, " +
+                $"R2: {quizResult.storage?.bucket}/{quizResult.storage?.path}"
+            );
         }
 
         // 3. Upload 3D GLB Model lên Cloudflare R2

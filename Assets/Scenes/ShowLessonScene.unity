@@ -153,9 +153,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ShowLessonPageController
   previousSceneName: ClassDetailScene
   editLessonSceneName: CreateLessonScene
-  quizSceneName: DoExerciseScene
   interactiveModelSceneName: InteractiveModelScene
+  arModelsSceneName: ARScene
   aiSceneName: AIScene
+  modelSignedUrlLifetimeSeconds: 3600
+  r2PublicBaseUrl: 
+  r2SignedUrlFunctionName: ' r2-signed-url'
   showTeacherControls: 1
 --- !u!114 &354097096
 MonoBehaviour:

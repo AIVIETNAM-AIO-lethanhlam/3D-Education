@@ -1,22 +1,19 @@
 <engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElementsSchema.xsd" editor-extension-mode="False">
-    <!-- Dùng đường dẫn tương đối gọi file USS cùng thư mục -->
     <Style src="AR_HUD.uss" />
-    
+
     <engine:VisualElement name="root" class="root-container">
         <!-- Top Bar -->
         <engine:VisualElement name="top-bar" class="top-bar">
-            <!-- Nút Back -->
             <engine:Button name="back-button" class="back-btn">
                 <engine:VisualElement class="btn-icon icon-back" />
             </engine:Button>
 
-            <!-- Nút Menu -->
             <engine:Button name="menu-button" class="menu-btn">
                 <engine:VisualElement class="btn-icon icon-menu" />
             </engine:Button>
         </engine:VisualElement>
 
-        <!-- Menu Panel chứa các nút con -->
+        <!-- Menu -->
         <engine:VisualElement name="menu-panel" class="menu-panel hidden">
             <engine:Button name="toggle-visibility-btn" class="sub-menu-btn">
                 <engine:VisualElement name="visibility-icon" class="btn-icon" />
@@ -31,7 +28,12 @@
             </engine:Button>
         </engine:VisualElement>
 
-        <!-- Pop-up Danh Sách Mô Hình -->
+        <!-- Loading / Error -->
+        <engine:VisualElement name="loading-panel" class="loading-panel hidden">
+            <engine:Label name="loading-label" text="Đang tải mô hình 3D..." class="loading-label" />
+        </engine:VisualElement>
+
+        <!-- Popup danh sách model của lesson -->
         <engine:VisualElement name="model-popup" class="popup-overlay hidden">
             <engine:VisualElement class="popup-card">
                 <engine:VisualElement class="popup-header">
@@ -41,7 +43,7 @@
                     </engine:Button>
                 </engine:VisualElement>
 
-                <engine:ScrollView name="model-scroll-view" class="model-scroll-view">
+                <engine:ScrollView name="model-scroll-view" class="model-scroll-view" vertical-scroller-visibility="Hidden">
                     <engine:VisualElement name="model-list-container" />
                 </engine:ScrollView>
             </engine:VisualElement>

@@ -1,9 +1,14 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
-using UnityEngine.SceneManagement; // 🔹 Đã thêm SceneManagement
 
 namespace ARHeartTest
 {
+    /// <summary>
+    /// UI Toolkit manager cho ARScene.
+    /// Danh sách model bây giờ lấy trực tiếp từ ARHeartPlacementController.ModelCount /
+    /// GetModelName(), vì controller có thể chứa runtime models từ Supabase hoặc fallback prefabs.
+    /// </summary>
     public class ARUIManagerUIToolkit : MonoBehaviour
     {
         [Header("UI Document Reference")]
@@ -23,7 +28,6 @@ namespace ARHeartTest
         [Header("Sprite for Model List Button")]
         [SerializeField] private Sprite modelListIconSprite;
 
-        // Buttons
         private Button backButton;
         private Button menuButton;
         private VisualElement menuPanel;
@@ -32,50 +36,58 @@ namespace ARHeartTest
         private Button toggleRotateBtn;
         private Button modelListBtn;
 
-        // Inner Icon Elements
         private VisualElement visibilityIcon;
         private VisualElement rotateIcon;
         private VisualElement modelListIcon;
 
-        // Pop-up Elements
         private VisualElement modelPopup;
         private Button closePopupBtn;
         private VisualElement modelListContainer;
 
-        // States
-        private bool isMenuOpen = false;
+        private VisualElement loadingPanel;
+        private Label loadingLabel;
+
+        private bool isMenuOpen;
         private bool isModelVisible = true;
-        private bool isAutoRotating = false;
+        private bool isAutoRotating;
 
         private void OnEnable()
         {
-            if (uiDocument == null) uiDocument = GetComponent<UIDocument>();
-            if (arController == null) arController = FindAnyObjectByType<ARHeartPlacementController>();
+            if (uiDocument == null)
+                uiDocument = GetComponent<UIDocument>();
+
+            if (arController == null)
+                arController = FindAnyObjectByType<ARHeartPlacementController>();
+
+            if (uiDocument == null)
+            {
+                Debug.LogError("[AR UI] UIDocument is missing.");
+                return;
+            }
 
             VisualElement root = uiDocument.rootVisualElement;
-            if (root == null) return;
+            if (root == null)
+                return;
 
-            // Nút chính
             backButton = root.Q<Button>("back-button");
             menuButton = root.Q<Button>("menu-button");
             menuPanel = root.Q<VisualElement>("menu-panel");
 
-            // Nút con
             toggleVisibilityBtn = root.Q<Button>("toggle-visibility-btn");
             toggleRotateBtn = root.Q<Button>("toggle-rotate-btn");
             modelListBtn = root.Q<Button>("model-list-btn");
 
-            // Phần tử Icon con bên trong nút
             visibilityIcon = root.Q<VisualElement>("visibility-icon");
             rotateIcon = root.Q<VisualElement>("rotate-icon");
             modelListIcon = root.Q<VisualElement>("model-list-icon");
 
-            // Pop-up
             modelPopup = root.Q<VisualElement>("model-popup");
             closePopupBtn = root.Q<Button>("close-popup-btn");
             modelListContainer = root.Q<VisualElement>("model-list-container");
 
-            // Sự kiện Click
+            loadingPanel = root.Q<VisualElement>("loading-panel");
+            loadingLabel = root.Q<Label>("loading-label");
+
             if (backButton != null) backButton.clicked += OnBackClicked;
             if (menuButton != null) menuButton.clicked += ToggleMenuPanel;
             if (toggleVisibilityBtn != null) toggleVisibilityBtn.clicked += OnToggleVisibilityClicked;
@@ -83,15 +95,31 @@ namespace ARHeartTest
             if (modelListBtn != null) modelListBtn.clicked += OpenModelPopup;
             if (closePopupBtn != null) closePopupBtn.clicked += CloseModelPopup;
 
-            // Gán Icon cho nút Danh sách mô hình
-            if (modelListIcon != null && modelListIconSprite != null)
+            if (arController != null)
             {
-                modelListIcon.style.backgroundImage = new StyleBackground(modelListIconSprite);
+                arController.ModelListChanged += OnModelListChanged;
+                arController.ModelChanged += OnModelChanged;
+                arController.LoadingStateChanged += OnLoadingStateChanged;
+
+                isModelVisible = arController.IsModelVisible;
+                isAutoRotating = arController.IsAutoRotating;
             }
 
-            // Khởi tạo trạng thái giao diện
+            if (modelListIcon != null && modelListIconSprite != null)
+                modelListIcon.style.backgroundImage = new StyleBackground(modelListIconSprite);
+
             UpdateVisibilityUI();
             UpdateRotateUI();
+            UpdateModelListButtonState();
+            HideLoadingPanel();
+        }
+
+        private void Start()
+        {
+            // OnEnable có thể chạy trước ARHeartPlacementController.Start.
+            // Refresh một frame sau để count/list chắc chắn đồng bộ.
+            PopulateModelList();
+            UpdateModelListButtonState();
         }
 
         private void OnDisable()
@@ -102,131 +130,209 @@ namespace ARHeartTest
             if (toggleRotateBtn != null) toggleRotateBtn.clicked -= OnToggleRotateClicked;
             if (modelListBtn != null) modelListBtn.clicked -= OpenModelPopup;
             if (closePopupBtn != null) closePopupBtn.clicked -= CloseModelPopup;
+
+            if (arController != null)
+            {
+                arController.ModelListChanged -= OnModelListChanged;
+                arController.ModelChanged -= OnModelChanged;
+                arController.LoadingStateChanged -= OnLoadingStateChanged;
+            }
         }
 
-        /// <summary>
-        /// Xử lý khi nhấn nút Back: Quay về ShowLessonScene và giữ nguyên Role
-        /// </summary>
         private void OnBackClicked()
         {
-            Debug.Log("[AR UI] Back Button Clicked!");
-
-            // Lấy lại Scene cần quay về (Mặc định là ShowLessonScene)
             string targetScene = PlayerPrefs.GetString("previous_scene", "ShowLessonScene");
-            if (string.IsNullOrEmpty(targetScene))
-            {
+            if (string.IsNullOrWhiteSpace(targetScene))
                 targetScene = "ShowLessonScene";
-            }
 
-            // Đảm bảo Role vẫn được lưu lại chính xác trong PlayerPrefs
             string currentRole = PlayerPrefs.GetString("current_role", "student");
             PlayerPrefs.SetString("current_role", currentRole);
             PlayerPrefs.Save();
 
-            Debug.Log($"[AR UI] Returning to {targetScene} with User Role: {currentRole}");
+            Debug.Log($"[AR UI] Returning to {targetScene}. Role={currentRole}");
 
-            // Thực hiện chuyển scene
             if (Application.CanStreamedLevelBeLoaded(targetScene))
-            {
                 SceneManager.LoadScene(targetScene);
-            }
             else
-            {
-                Debug.LogError($"[AR UI] Scene '{targetScene}' chưa được thêm vào Build Settings!");
-            }
+                Debug.LogError($"[AR UI] Scene '{targetScene}' is not in Build Profiles.");
         }
 
         private void ToggleMenuPanel()
         {
             isMenuOpen = !isMenuOpen;
-            if (menuPanel != null)
-            {
-                if (isMenuOpen) menuPanel.RemoveFromClassList("hidden");
-                else menuPanel.AddToClassList("hidden");
-            }
+
+            if (menuPanel == null)
+                return;
+
+            if (isMenuOpen)
+                menuPanel.RemoveFromClassList("hidden");
+            else
+                menuPanel.AddToClassList("hidden");
         }
 
         private void OnToggleVisibilityClicked()
         {
-            isModelVisible = (arController != null) ? arController.ToggleVisibility() : !isModelVisible;
+            isModelVisible = arController != null
+                ? arController.ToggleVisibility()
+                : !isModelVisible;
+
             UpdateVisibilityUI();
         }
 
         private void UpdateVisibilityUI()
         {
             if (visibilityIcon == null) return;
+
             Sprite targetSprite = isModelVisible ? showWhiteSprite : hideWhiteSprite;
             if (targetSprite != null)
-            {
                 visibilityIcon.style.backgroundImage = new StyleBackground(targetSprite);
-            }
         }
 
         private void OnToggleRotateClicked()
         {
-            isAutoRotating = (arController != null) ? arController.ToggleAutoRotate() : !isAutoRotating;
+            isAutoRotating = arController != null
+                ? arController.ToggleAutoRotate()
+                : !isAutoRotating;
+
             UpdateRotateUI();
         }
 
         private void UpdateRotateUI()
         {
             if (rotateIcon == null) return;
+
             Sprite targetSprite = isAutoRotating ? rotateWhiteSprite : noRotateWhiteSprite;
             if (targetSprite != null)
-            {
                 rotateIcon.style.backgroundImage = new StyleBackground(targetSprite);
-            }
         }
 
         private void OpenModelPopup()
         {
+            PopulateModelList();
+
             if (modelPopup != null)
-            {
-                PopulateModelList();
                 modelPopup.RemoveFromClassList("hidden");
-            }
-            if (isMenuOpen) ToggleMenuPanel();
+
+            if (isMenuOpen)
+                ToggleMenuPanel();
         }
 
         private void CloseModelPopup()
         {
             if (modelPopup != null)
-            {
                 modelPopup.AddToClassList("hidden");
-            }
         }
 
         private void PopulateModelList()
         {
-            if (modelListContainer == null || arController == null) return;
+            if (modelListContainer == null)
+                return;
 
             modelListContainer.Clear();
-            var prefabs = arController.ModelPrefabs;
+
+            if (arController == null || arController.ModelCount <= 0)
+            {
+                Label empty = new Label("Bài học này chưa có mô hình 3D.");
+                empty.AddToClassList("model-empty-label");
+                modelListContainer.Add(empty);
+                return;
+            }
+
             int currentIndex = arController.CurrentModelIndex;
 
-            for (int i = 0; i < prefabs.Count; i++)
+            for (int i = 0; i < arController.ModelCount; i++)
             {
-                if (prefabs[i] == null) continue;
-
                 int modelIndex = i;
-                string modelName = prefabs[i].name.Replace("Root", "").Replace("Prefab", "");
+                string modelName = arController.GetModelName(i);
 
-                Button itemBtn = new Button { text = modelName };
-                itemBtn.AddToClassList("model-item-btn");
+                Button itemButton = new Button();
+                itemButton.AddToClassList("model-item-btn");
+
+                VisualElement textArea = new VisualElement();
+                textArea.AddToClassList("model-item-text-area");
+
+                Label nameLabel = new Label(modelName);
+                nameLabel.AddToClassList("model-item-name");
+
+                Label stateLabel = new Label();
+                stateLabel.AddToClassList("model-item-state");
+                stateLabel.text = arController.IsModelCached(i) ? "Đã tải" : "Nhấn để mở";
+
+                textArea.Add(nameLabel);
+                textArea.Add(stateLabel);
+                itemButton.Add(textArea);
 
                 if (modelIndex == currentIndex)
-                {
-                    itemBtn.AddToClassList("model-item-btn-selected");
-                }
+                    itemButton.AddToClassList("model-item-btn-selected");
 
-                itemBtn.clicked += () =>
+                itemButton.clicked += () =>
                 {
+                    if (arController == null || arController.IsLoadingModel)
+                        return;
+
                     arController.SpawnModelIndex(modelIndex);
                     CloseModelPopup();
                 };
 
-                modelListContainer.Add(itemBtn);
+                modelListContainer.Add(itemButton);
             }
+        }
+
+        private void OnModelListChanged()
+        {
+            PopulateModelList();
+            UpdateModelListButtonState();
+        }
+
+        private void OnModelChanged(int index)
+        {
+            PopulateModelList();
+        }
+
+        private void OnLoadingStateChanged(bool loading, string message)
+        {
+            if (loading)
+            {
+                if (loadingLabel != null)
+                    loadingLabel.text = string.IsNullOrWhiteSpace(message)
+                        ? "Đang tải mô hình 3D..."
+                        : message;
+
+                if (loadingPanel != null)
+                    loadingPanel.RemoveFromClassList("hidden");
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(message))
+                {
+                    HideLoadingPanel();
+                }
+                else
+                {
+                    // Dùng cùng panel để hiển thị lỗi ngắn gọn.
+                    if (loadingLabel != null)
+                        loadingLabel.text = message;
+
+                    if (loadingPanel != null)
+                        loadingPanel.RemoveFromClassList("hidden");
+                }
+
+                PopulateModelList();
+            }
+
+            UpdateModelListButtonState();
+        }
+
+        private void HideLoadingPanel()
+        {
+            if (loadingPanel != null)
+                loadingPanel.AddToClassList("hidden");
+        }
+
+        private void UpdateModelListButtonState()
+        {
+            if (modelListBtn != null)
+                modelListBtn.SetEnabled(arController != null && arController.ModelCount > 0 && !arController.IsLoadingModel);
         }
     }
 }

@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
+[RequireComponent(typeof(SupabaseRuntimeRestService))]
 public class StartQuizPageController : MonoBehaviour
 {
     [Header("UI Document")]
@@ -12,6 +13,11 @@ public class StartQuizPageController : MonoBehaviour
     [Header("Navigation")]
     [SerializeField] private string fallbackBackScene = "ShowLessonScene";
     [SerializeField] private string quizSceneName = "DoQuizScene";
+
+    // Keep the scene that originally opened StartQuizScene separate from
+    // "previous_scene", because DoQuizScene also uses "previous_scene".
+    private const string StartQuizOriginSceneKey = "start_quiz_origin_scene";
+    private const string PreviousSceneKey = "previous_scene";
 
     [Header("Demo Data")]
     [SerializeField] private string lessonName = "Lesson 8";
@@ -37,6 +43,8 @@ public class StartQuizPageController : MonoBehaviour
     [SerializeField] private string closeDateIso = "2026-10-27T23:59:00";
 
     private VisualElement root;
+    private ScrollView quizScrollView;
+    private SupabaseRuntimeRestService restService;
 
     private Button backButton;
     private Button startQuizButton;
@@ -55,8 +63,12 @@ public class StartQuizPageController : MonoBehaviour
 
     private VisualElement statusBadge;
     private VisualElement confirmationOverlay;
+    private VisualElement attemptHistorySection;
+    private VisualElement attemptHistoryContainer;
+    private VisualElement noticeCard;
 
     private bool isStartingQuiz;
+    private QuizAttemptView[] loadedAttempts = Array.Empty<QuizAttemptView>();
 
     private void Awake()
     {
@@ -64,6 +76,8 @@ public class StartQuizPageController : MonoBehaviour
         {
             uiDocument = GetComponent<UIDocument>();
         }
+
+        restService = GetComponent<SupabaseRuntimeRestService>();
     }
 
     private void OnEnable()
@@ -78,10 +92,14 @@ public class StartQuizPageController : MonoBehaviour
 
         root = uiDocument.rootVisualElement;
 
+        CacheStartQuizOriginScene();
+
         FindElements();
+        HideScrollbars();
         RegisterEvents();
         LoadQuizData();
         RefreshAvailability();
+        StartCoroutine(LoadAttemptHistoryRoutine());
     }
 
     private void OnDisable()
@@ -91,6 +109,7 @@ public class StartQuizPageController : MonoBehaviour
 
     private void FindElements()
     {
+        quizScrollView = root.Q<ScrollView>("content-scroll");
         backButton = root.Q<Button>("back-button");
         startQuizButton = root.Q<Button>("start-quiz-button");
         cancelStartButton = root.Q<Button>("cancel-start-button");
@@ -119,6 +138,27 @@ public class StartQuizPageController : MonoBehaviour
         confirmationOverlay = root.Q<VisualElement>(
             "confirmation-overlay"
         );
+
+        attemptHistorySection = root.Q<VisualElement>(
+            "attempt-history-section"
+        );
+
+        attemptHistoryContainer = root.Q<VisualElement>(
+            "attempt-history-container"
+        );
+
+        noticeCard = root.Q<VisualElement>("notice-card");
+    }
+
+    private void HideScrollbars()
+    {
+        if (quizScrollView == null)
+        {
+            return;
+        }
+
+        quizScrollView.verticalScrollerVisibility = ScrollerVisibility.Hidden;
+        quizScrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
     }
 
     private void RegisterEvents()
@@ -263,6 +303,448 @@ public class StartQuizPageController : MonoBehaviour
         }
     }
 
+
+    private IEnumerator LoadAttemptHistoryRoutine()
+    {
+        HideAttemptHistory();
+        loadedAttempts = Array.Empty<QuizAttemptView>();
+
+        if (restService == null)
+        {
+            Debug.LogError("[StartQuizPageController] SupabaseRuntimeRestService is missing.");
+            yield break;
+        }
+
+        string quizId = PlayerPrefs.GetString("selected_quiz_id", string.Empty);
+        string studentId = PlayerPrefs.GetString("user_id", string.Empty);
+
+        if (!Guid.TryParse(quizId, out _) || !Guid.TryParse(studentId, out _))
+        {
+            Debug.LogWarning("[StartQuizPageController] selected_quiz_id or user_id is invalid.");
+            yield break;
+        }
+
+        string response = null;
+        string error = null;
+
+        string path =
+            "rest/v1/quiz_attempts" +
+            "?select=id,quiz_id,student_id,status,score,started_at,submitted_at" +
+            "&quiz_id=eq." + UnityEngine.Networking.UnityWebRequest.EscapeURL(quizId) +
+            "&student_id=eq." + UnityEngine.Networking.UnityWebRequest.EscapeURL(studentId) +
+            "&status=eq.submitted" +
+            "&order=started_at.asc";
+
+        yield return restService.SendJson(
+            UnityEngine.Networking.UnityWebRequest.kHttpVerbGET,
+            path,
+            null,
+            null,
+            value => response = value,
+            message => error = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            Debug.LogError("[StartQuizPageController] Cannot load attempt history: " + error);
+            HideAttemptHistory();
+            yield break;
+        }
+
+        QuizAttemptDbList wrapper = ParseList<QuizAttemptDbList>(response);
+
+        if (wrapper?.items == null || wrapper.items.Length == 0)
+        {
+            loadedAttempts = Array.Empty<QuizAttemptView>();
+            HideAttemptHistory();
+            RefreshAvailability();
+            Debug.Log("[StartQuizPageController] No previous submitted attempts.");
+            yield break;
+        }
+
+        QuizAttemptView[] attempts = new QuizAttemptView[wrapper.items.Length];
+        int fallbackTotalQuestions = PlayerPrefs.GetInt(
+            "selected_quiz_questions",
+            totalQuestions
+        );
+
+        for (int i = 0; i < wrapper.items.Length; i++)
+        {
+            QuizAttemptDbRow dbAttempt = wrapper.items[i];
+
+            QuizAttemptView view = new QuizAttemptView
+            {
+                attempt_id = dbAttempt.id,
+                quiz_id = dbAttempt.quiz_id,
+                student_id = dbAttempt.student_id,
+                attempt_number = i + 1,
+                started_at = dbAttempt.started_at,
+                submitted_at = dbAttempt.submitted_at,
+                duration_seconds = CalculateDurationSeconds(
+                    dbAttempt.started_at,
+                    dbAttempt.submitted_at
+                ),
+                total_questions = fallbackTotalQuestions,
+                correct_count = 0,
+                score = (float)Math.Round(
+                    dbAttempt.score,
+                    2,
+                    MidpointRounding.AwayFromZero
+                ),
+                status = dbAttempt.status
+            };
+
+            string responsesJson = null;
+            string responsesError = null;
+
+            yield return restService.SendJson(
+                UnityEngine.Networking.UnityWebRequest.kHttpVerbGET,
+                "rest/v1/quiz_responses?select=id,is_correct&attempt_id=eq." +
+                UnityEngine.Networking.UnityWebRequest.EscapeURL(dbAttempt.id),
+                null,
+                null,
+                value => responsesJson = value,
+                message => responsesError = message
+            );
+
+            if (string.IsNullOrWhiteSpace(responsesError))
+            {
+                QuizResponseHistoryList responseWrapper =
+                    ParseList<QuizResponseHistoryList>(responsesJson);
+
+                if (responseWrapper?.items != null)
+                {
+                    view.total_questions = responseWrapper.items.Length;
+                    int correct = 0;
+
+                    foreach (QuizResponseHistoryRow item in responseWrapper.items)
+                    {
+                        if (item != null && item.is_correct)
+                            correct++;
+                    }
+
+                    view.correct_count = correct;
+                }
+            }
+
+            attempts[i] = view;
+        }
+
+        loadedAttempts = attempts;
+        RenderAttemptHistory();
+        ApplyAttemptedQuizState();
+    }
+
+    private static int CalculateDurationSeconds(string startedAt, string submittedAt)
+    {
+        if (!DateTime.TryParse(
+                startedAt,
+                null,
+                System.Globalization.DateTimeStyles.RoundtripKind,
+                out DateTime started))
+            return 0;
+
+        if (!DateTime.TryParse(
+                submittedAt,
+                null,
+                System.Globalization.DateTimeStyles.RoundtripKind,
+                out DateTime submitted))
+            return 0;
+
+        return Mathf.Max(
+            0,
+            Mathf.RoundToInt((float)(submitted - started).TotalSeconds)
+        );
+    }
+
+    private void RenderAttemptHistory()
+    {
+        if (attemptHistoryContainer == null ||
+            attemptHistorySection == null)
+        {
+            return;
+        }
+
+        attemptHistoryContainer.Clear();
+
+        if (loadedAttempts == null || loadedAttempts.Length == 0)
+        {
+            attemptHistorySection.AddToClassList("hidden");
+            return;
+        }
+
+        for (int i = 0; i < loadedAttempts.Length; i++)
+        {
+            QuizAttemptView attempt = loadedAttempts[i];
+            if (attempt == null) continue;
+
+            attemptHistoryContainer.Add(
+                CreateAttemptCard(attempt, i)
+            );
+        }
+
+        attemptHistorySection.RemoveFromClassList("hidden");
+    }
+
+    private VisualElement CreateAttemptCard(
+        QuizAttemptView attempt,
+        int index)
+    {
+        VisualElement card = new();
+        card.AddToClassList("attempt-card");
+
+        VisualElement header = new();
+        header.AddToClassList("attempt-card-header");
+
+        VisualElement headingLeft = new();
+        headingLeft.AddToClassList("attempt-heading-left");
+
+        int displayAttemptNumber =
+            attempt.attempt_number > 0
+                ? attempt.attempt_number
+                : index + 1;
+
+        Label number = new(displayAttemptNumber.ToString());
+        number.AddToClassList("attempt-number");
+
+        Label title = new("Attempt");
+        title.AddToClassList("attempt-title");
+
+        Label submittedStatus = new(
+            string.IsNullOrWhiteSpace(attempt.submitted_at)
+                ? "In Progress"
+                : "Submitted"
+        );
+        submittedStatus.AddToClassList("attempt-status");
+
+        headingLeft.Add(number);
+        headingLeft.Add(title);
+        header.Add(headingLeft);
+        header.Add(submittedStatus);
+
+        VisualElement body = new();
+        body.AddToClassList("attempt-body");
+
+        AddAttemptRow(
+            body,
+            "Started On",
+            FormatAttemptDate(attempt.started_at)
+        );
+
+        AddAttemptDivider(body);
+
+        AddAttemptRow(
+            body,
+            "Submitted On",
+            string.IsNullOrWhiteSpace(attempt.submitted_at)
+                ? "—"
+                : FormatAttemptDate(attempt.submitted_at)
+        );
+
+        AddAttemptDivider(body);
+
+        AddAttemptRow(
+            body,
+            "Time Taken",
+            FormatDuration(attempt.duration_seconds)
+        );
+
+        AddAttemptDivider(body);
+
+        float maxGrade = PlayerPrefs.GetFloat(
+            "selected_quiz_maximum_grade",
+            maximumGrade
+        );
+
+        Label scoreValue = AddAttemptRow(
+            body,
+            "Grade / Score",
+            $"{attempt.score:0.##} / {maxGrade:0.##}"
+        );
+        scoreValue?.AddToClassList("attempt-score");
+
+        Button review = new();
+        review.text = "Review Attempt";
+        review.AddToClassList("review-attempt-button");
+
+        string capturedAttemptId = attempt.attempt_id;
+        review.clicked += () =>
+        {
+            if (string.IsNullOrWhiteSpace(capturedAttemptId))
+            {
+                Debug.LogWarning(
+                    "[StartQuizPageController] Review Attempt has no attempt id."
+                );
+                return;
+            }
+
+            PlayerPrefs.SetString("selected_attempt_id", capturedAttemptId);
+            PlayerPrefs.SetString("quiz_mode", "review");
+            PlayerPrefs.SetString(
+                PreviousSceneKey,
+                SceneManager.GetActiveScene().name
+            );
+            PlayerPrefs.Save();
+
+            Debug.Log(
+                "[StartQuizPageController] Opening review mode. " +
+                $"Attempt ID: {capturedAttemptId}"
+            );
+
+            if (Application.CanStreamedLevelBeLoaded(quizSceneName))
+            {
+                SceneManager.LoadScene(quizSceneName);
+            }
+            else
+            {
+                Debug.LogError(
+                    $"[StartQuizPageController] Scene '{quizSceneName}' " +
+                    "was not found in Build Profiles."
+                );
+            }
+        };
+
+        body.Add(review);
+
+        card.Add(header);
+        card.Add(body);
+
+        return card;
+    }
+
+    private static Label AddAttemptRow(
+        VisualElement parent,
+        string labelText,
+        string valueText)
+    {
+        VisualElement row = new();
+        row.AddToClassList("attempt-row");
+
+        Label label = new(labelText);
+        label.AddToClassList("attempt-row-label");
+
+        Label value = new(valueText);
+        value.AddToClassList("attempt-row-value");
+
+        row.Add(label);
+        row.Add(value);
+        parent.Add(row);
+
+        return value;
+    }
+
+    private static void AddAttemptDivider(
+        VisualElement parent)
+    {
+        VisualElement divider = new();
+        divider.AddToClassList("attempt-row-divider");
+        parent.Add(divider);
+    }
+
+    private void ApplyAttemptedQuizState()
+    {
+        QuizAttemptView bestAttempt = null;
+
+        foreach (QuizAttemptView attempt in loadedAttempts)
+        {
+            if (attempt == null ||
+                string.IsNullOrWhiteSpace(attempt.submitted_at))
+            {
+                continue;
+            }
+
+            if (bestAttempt == null ||
+                attempt.score > bestAttempt.score)
+            {
+                bestAttempt = attempt;
+            }
+        }
+
+        if (bestAttempt == null)
+        {
+            return;
+        }
+
+        SetStatus("COMPLETED", "status-completed");
+
+        if (startQuizButton != null)
+        {
+            startQuizButton.text = "Start New Attempt";
+        }
+
+        if (noticeCard != null)
+        {
+            noticeCard.AddToClassList("hidden");
+        }
+    }
+
+    private void HideAttemptHistory()
+    {
+        attemptHistoryContainer?.Clear();
+        attemptHistorySection?.AddToClassList("hidden");
+    }
+
+    private static string FormatAttemptDate(string iso)
+    {
+        if (DateTime.TryParse(
+                iso,
+                null,
+                System.Globalization.DateTimeStyles.RoundtripKind,
+                out DateTime date))
+        {
+            return date.ToLocalTime().ToString(
+                "MMM d, yyyy · hh:mm tt"
+            );
+        }
+
+        return string.IsNullOrWhiteSpace(iso) ? "—" : iso;
+    }
+
+    private static string FormatDuration(int seconds)
+    {
+        seconds = Mathf.Max(0, seconds);
+
+        int hours = seconds / 3600;
+        int minutes = (seconds % 3600) / 60;
+        int secs = seconds % 60;
+
+        if (hours > 0)
+        {
+            return $"{hours}h {minutes}m {secs}s";
+        }
+
+        if (minutes > 0)
+        {
+            return $"{minutes} mins {secs} secs";
+        }
+
+        return $"{secs} secs";
+    }
+
+    private static T ParseList<T>(string json)
+        where T : class
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonUtility.FromJson<T>(
+                $"{{\"items\":{json}}}"
+            );
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError(
+                "[StartQuizPageController] Cannot parse attempt history: " +
+                exception.Message
+            );
+            return null;
+        }
+    }
+
     private void RefreshAvailability()
     {
         if (!checkAvailabilityByDate)
@@ -367,6 +849,9 @@ public class StartQuizPageController : MonoBehaviour
         statusBadge.RemoveFromClassList(
             "status-not-attempted"
         );
+        statusBadge.RemoveFromClassList(
+            "status-completed"
+        );
 
         if (!string.IsNullOrWhiteSpace(statusClass))
         {
@@ -374,39 +859,138 @@ public class StartQuizPageController : MonoBehaviour
         }
     }
 
-    private void HandleBackClicked()
+    private void CacheStartQuizOriginScene()
     {
-        string previousScene = PlayerPrefs.GetString(
-            "previous_scene",
-            fallbackBackScene
-        );
+        string activeScene =
+            SceneManager.GetActiveScene().name;
 
-        if (string.IsNullOrWhiteSpace(previousScene))
+        string previousScene =
+            PlayerPrefs.GetString(
+                PreviousSceneKey,
+                string.Empty
+            );
+
+        // Only store a real scene that opened StartQuizScene.
+        // Do NOT replace the origin with StartQuizScene/DoQuizScene when
+        // returning from quiz attempt or review.
+        if (!string.IsNullOrWhiteSpace(previousScene) &&
+            previousScene != activeScene &&
+            previousScene != quizSceneName)
         {
-            previousScene = fallbackBackScene;
+            PlayerPrefs.SetString(
+                StartQuizOriginSceneKey,
+                previousScene
+            );
+            PlayerPrefs.Save();
+
+            Debug.Log(
+                "[StartQuizPageController] Cached StartQuiz origin scene: " +
+                previousScene
+            );
+
+            return;
         }
 
-        if (!Application.CanStreamedLevelBeLoaded(previousScene))
+        // If this is the first time and no valid origin has been saved,
+        // use the configured fallback.
+        if (!PlayerPrefs.HasKey(StartQuizOriginSceneKey) &&
+            !string.IsNullOrWhiteSpace(fallbackBackScene))
+        {
+            PlayerPrefs.SetString(
+                StartQuizOriginSceneKey,
+                fallbackBackScene
+            );
+            PlayerPrefs.Save();
+        }
+    }
+
+    private string ResolveBackScene()
+    {
+        string activeScene =
+            SceneManager.GetActiveScene().name;
+
+        string targetScene =
+            PlayerPrefs.GetString(
+                StartQuizOriginSceneKey,
+                string.Empty
+            );
+
+        if (string.IsNullOrWhiteSpace(targetScene) ||
+            targetScene == activeScene ||
+            targetScene == quizSceneName)
+        {
+            string previousScene =
+                PlayerPrefs.GetString(
+                    PreviousSceneKey,
+                    string.Empty
+                );
+
+            if (!string.IsNullOrWhiteSpace(previousScene) &&
+                previousScene != activeScene &&
+                previousScene != quizSceneName)
+            {
+                targetScene = previousScene;
+            }
+            else
+            {
+                targetScene = fallbackBackScene;
+            }
+        }
+
+        return targetScene;
+    }
+
+    private void HandleBackClicked()
+    {
+        if (isStartingQuiz)
+        {
+            return;
+        }
+
+        // If the start confirmation is open, Back closes the popup first.
+        if (confirmationOverlay != null &&
+            !confirmationOverlay.ClassListContains("hidden"))
+        {
+            HideConfirmation();
+            return;
+        }
+
+        string targetScene =
+            ResolveBackScene();
+
+        if (!Application.CanStreamedLevelBeLoaded(targetScene))
         {
             Debug.LogWarning(
-                $"[StartQuizPageController] Scene '{previousScene}' " +
+                $"[StartQuizPageController] Scene '{targetScene}' " +
                 "is not available. Using fallback scene."
             );
 
-            previousScene = fallbackBackScene;
+            targetScene = fallbackBackScene;
         }
 
-        if (Application.CanStreamedLevelBeLoaded(previousScene))
-        {
-            SceneManager.LoadScene(previousScene);
-        }
-        else
+        if (!Application.CanStreamedLevelBeLoaded(targetScene))
         {
             Debug.LogError(
-                $"[StartQuizPageController] Cannot load scene " +
-                $"'{previousScene}'. Add it to Build Profiles."
+                $"[StartQuizPageController] Cannot load scene '{targetScene}'. " +
+                "Add it to Build Profiles."
             );
+            return;
         }
+
+        // Update the common navigation key for the destination scene,
+        // but keep start_quiz_origin_scene intact until navigation succeeds.
+        PlayerPrefs.SetString(
+            PreviousSceneKey,
+            SceneManager.GetActiveScene().name
+        );
+        PlayerPrefs.Save();
+
+        Debug.Log(
+            "[StartQuizPageController] Back -> " +
+            targetScene
+        );
+
+        SceneManager.LoadScene(targetScene);
     }
 
     private void HandleStartQuizClicked()
@@ -456,13 +1040,15 @@ public class StartQuizPageController : MonoBehaviour
             string.Empty
         );
 
+        PlayerPrefs.SetString("quiz_mode", "attempt");
+
         PlayerPrefs.SetString(
             "quiz_started_at",
             DateTime.UtcNow.ToString("O")
         );
 
         PlayerPrefs.SetString(
-            "previous_scene",
+            PreviousSceneKey,
             SceneManager.GetActiveScene().name
         );
 
@@ -522,4 +1108,57 @@ public class StartQuizPageController : MonoBehaviour
             yield return null;
         }
     }
+}
+
+[Serializable]
+public class QuizAttemptDbRow
+{
+    public string id;
+    public string quiz_id;
+    public string student_id;
+    public string status;
+    public float score;
+    public string started_at;
+    public string submitted_at;
+}
+
+[Serializable]
+public class QuizAttemptDbList
+{
+    public QuizAttemptDbRow[] items;
+}
+
+[Serializable]
+public class QuizResponseHistoryRow
+{
+    public string id;
+    public bool is_correct;
+}
+
+[Serializable]
+public class QuizResponseHistoryList
+{
+    public QuizResponseHistoryRow[] items;
+}
+
+[Serializable]
+public class QuizAttemptView
+{
+    public string attempt_id;
+    public string quiz_id;
+    public string student_id;
+    public int attempt_number;
+    public string started_at;
+    public string submitted_at;
+    public int duration_seconds;
+    public int total_questions;
+    public int correct_count;
+    public float score;
+    public string status;
+}
+
+[Serializable]
+public class QuizAttemptViewList
+{
+    public QuizAttemptView[] items;
 }
