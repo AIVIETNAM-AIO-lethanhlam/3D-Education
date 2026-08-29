@@ -37,7 +37,7 @@
         <engine:VisualElement name="model-popup" class="popup-overlay hidden">
             <engine:VisualElement class="popup-card">
                 <engine:VisualElement class="popup-header">
-                    <engine:Label text="Danh Sách Mô Hình 3D" class="popup-title" />
+                    <engine:Label text="Mô Hình 3D Trong Lớp" class="popup-title" />
                     <engine:Button name="close-popup-btn" class="popup-close-btn">
                         <engine:Label text="X" class="popup-close-text" />
                     </engine:Button>
@@ -46,6 +46,40 @@
                 <engine:ScrollView name="model-scroll-view" class="model-scroll-view" vertical-scroller-visibility="Hidden">
                     <engine:VisualElement name="model-list-container" />
                 </engine:ScrollView>
+
+                <!-- Teacher-only controls -->
+                <engine:VisualElement name="teacher-model-actions" class="teacher-model-actions hidden">
+                    <engine:Button name="teacher-edit-models-btn" text="Chỉnh sửa" class="teacher-action-btn" />
+                    <engine:Button name="teacher-done-models-btn" text="Hoàn tất" class="teacher-action-btn" />
+                </engine:VisualElement>
+            </engine:VisualElement>
+        </engine:VisualElement>
+
+        <!-- Teacher add model popup -->
+        <engine:VisualElement name="add-model-popup" class="popup-overlay hidden">
+            <engine:VisualElement class="add-model-card">
+                <engine:VisualElement class="popup-header">
+                    <engine:Label text="Thêm mô hình 3D" class="popup-title" />
+                    <engine:Button name="close-add-model-btn" class="popup-close-btn">
+                        <engine:Label text="X" class="popup-close-text" />
+                    </engine:Button>
+                </engine:VisualElement>
+
+                <engine:Label text="Chọn file" class="add-model-field-title" />
+                <engine:Button name="choose-model-file-btn" text="Chọn file GLB" class="add-model-file-btn" />
+                <engine:Label name="selected-model-file-label" text="Chưa chọn file" class="add-model-file-name" />
+
+                <engine:Label text="Thêm vào" class="add-model-field-title add-model-field-gap" />
+                <engine:DropdownField name="target-lesson-dropdown" class="add-model-dropdown" />
+
+                <engine:Label name="add-model-error-label" text="" class="add-model-error-label hidden" />
+
+                <engine:Button name="confirm-add-model-btn" text="Thêm" class="add-model-submit-btn" />
+
+                <engine:VisualElement name="upload-progress-row" class="upload-progress-row hidden">
+                    <engine:Label name="upload-spinner-label" text="◐" class="upload-spinner-label" />
+                    <engine:Label name="upload-progress-label" text="Đang tải mô hình..." class="upload-progress-label" />
+                </engine:VisualElement>
             </engine:VisualElement>
         </engine:VisualElement>
     </engine:VisualElement>

@@ -62,6 +62,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/ChatAIScene.unity
     guid: 07ca9de35c1e9cb45b8aca169b299aff
+  - enabled: 1
+    path: Assets/Scenes/Mode3DScene.unity
+    guid: 8ccce987a0bad0d4684035dd9a03cd5d
+  - enabled: 1
+    path: Assets/VRModeNew/Scene/VRClassroomScene.unity
+    guid: ef1d567e60eeaf24c973ef335667d9f3
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: ac4a33b71edaaed4a8cf7efbca392c0b, type: 2}
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: bdc425842afcfcf4f83ed3deeca353d0, type: 2}

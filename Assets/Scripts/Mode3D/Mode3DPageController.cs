@@ -1,10 +1,88 @@
+using System;
 using System.Collections;
+using System.IO;
+using System.Reflection;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
+using GLTFast;
 
 public class Mode3DPageController : MonoBehaviour
 {
+    private const string Mode3DSceneName = "Mode3DScene";
+
+    // The current Mode3DScene screenshot shows that Mode3DUIDocument only has
+    // a UIDocument component. This bootstrap makes the scene self-healing:
+    // whenever Mode3DScene is loaded, attach this controller automatically
+    // if it is missing.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void RegisterMode3DBootstrap()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoadedBootstrap;
+        SceneManager.sceneLoaded += OnSceneLoadedBootstrap;
+    }
+
+    private static void OnSceneLoadedBootstrap(
+        Scene scene,
+        LoadSceneMode mode)
+    {
+        if (!string.Equals(
+                scene.name,
+                Mode3DSceneName,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        Mode3DPageController existing =
+            FindAnyObjectByType<Mode3DPageController>();
+
+        if (existing != null)
+            return;
+
+        UIDocument[] documents =
+            FindObjectsByType<UIDocument>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+
+        UIDocument target = null;
+
+        foreach (UIDocument document in documents)
+        {
+            if (document == null)
+                continue;
+
+            if (string.Equals(
+                    document.gameObject.name,
+                    "Mode3DUIDocument",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                target = document;
+                break;
+            }
+
+            if (target == null)
+                target = document;
+        }
+
+        if (target == null)
+        {
+            Debug.LogError(
+                "[Mode3D] Bootstrap could not find a UIDocument in Mode3DScene.");
+            return;
+        }
+
+        Mode3DPageController controller =
+            target.gameObject.AddComponent<Mode3DPageController>();
+
+        controller.uiDocument = target;
+
+        Debug.Log(
+            "[Mode3D] Mode3DPageController was missing and has been attached automatically to " +
+            target.gameObject.name + ".");
+    }
     [Header("UI")]
     [SerializeField] private UIDocument uiDocument;
 
@@ -12,6 +90,30 @@ public class Mode3DPageController : MonoBehaviour
     [SerializeField] private Transform modelRoot;
     [SerializeField] private Renderer[] modelRenderers;
     [SerializeField] private Camera modelCamera;
+
+    [Header("Mode3D camera composition")]
+    [Tooltip("The UI root is transparent; this camera color preserves the original navy background.")]
+    [SerializeField] private Color mode3DBackgroundColor =
+        new Color(5f / 255f, 18f / 255f, 45f / 255f, 1f);
+
+    [Tooltip("Layer forced onto runtime-loaded GLB objects so Main Camera can render them.")]
+    [SerializeField] private int runtimeModelLayer = 0;
+
+    [Header("Runtime model from ShowLessonScene")]
+    [Tooltip("Load selected_model_url passed by ShowLessonScene when Mode3DScene opens.")]
+    [SerializeField] private bool loadRuntimeModelFromPlayerPrefs = true;
+
+    [Tooltip("Remove placeholder/model children already under ModelRoot before loading the lesson GLB.")]
+    [SerializeField] private bool clearExistingModelChildren = true;
+
+    private bool runtimeModelLoaded;
+    private bool runtimeModelLoading;
+
+    // Keep the glTFast importer alive for as long as this scene uses the
+    // instantiated model. glTFast owns meshes/materials/textures imported from
+    // the GLB; disposing it immediately after InstantiateMainSceneAsync can leave
+    // Renderer components in the hierarchy but their assets invalid/invisible.
+    private GltfImport activeGltfImport;
 
     [Header("Automatic model fitting")]
     [SerializeField] private bool fitModelOnStart = true;
@@ -26,7 +128,14 @@ public class Mode3DPageController : MonoBehaviour
 
     [Tooltip("Vertical position matching the center of the Figma glass board.")]
     [Range(0.25f, 0.75f)]
-    [SerializeField] private float targetViewportCenterY = 0.475f;
+    [SerializeField] private float targetViewportCenterY = 0.545f;
+
+    [Header("Touch gestures")]
+    [Tooltip("Horizontal one-finger drag rotates the model left/right.")]
+    [SerializeField] private float touchRotationSensitivity = 0.22f;
+
+    [Tooltip("Two-finger pinch controls model zoom.")]
+    [SerializeField] private float pinchZoomSensitivity = 1.0f;
 
     [SerializeField] private float fitDelaySeconds = 0.15f;
 
@@ -104,8 +213,38 @@ public class Mode3DPageController : MonoBehaviour
         propertyBlock = new MaterialPropertyBlock();
     }
 
-    private void Start()
+    private async void Start()
     {
+        Debug.Log(
+            "[Mode3D] Controller started." +
+            $"\nselected_model_name: {PlayerPrefs.GetString("selected_model_name", string.Empty)}" +
+            $"\nselected_model_url present: {!string.IsNullOrWhiteSpace(PlayerPrefs.GetString("selected_model_url", string.Empty))}" +
+            $"\nprevious_scene: {PlayerPrefs.GetString("previous_scene", previousSceneName)}");
+
+        if (loadRuntimeModelFromPlayerPrefs)
+        {
+            bool loaded = await LoadCurrentLessonModelAsync();
+
+            if (!this)
+                return;
+
+            if (loaded)
+            {
+                // Let Unity finish creating renderer bounds before fitting.
+                StartCoroutine(FitRuntimeModelAfterAsyncLoad());
+            }
+            else if (fitModelOnStart)
+            {
+                StartCoroutine(FitModelAfterLoading());
+            }
+            else
+            {
+                SaveCurrentPoseAsDefault();
+            }
+
+            return;
+        }
+
         if (fitModelOnStart)
             StartCoroutine(FitModelAfterLoading());
         else
@@ -119,6 +258,8 @@ public class Mode3DPageController : MonoBehaviour
             Debug.LogError("[Mode3D] UIDocument is missing.");
             return;
         }
+
+        ConfigureMode3DCamera();
 
         root = uiDocument.rootVisualElement;
 
@@ -150,7 +291,15 @@ public class Mode3DPageController : MonoBehaviour
         colorPurple = root.Q<Button>("color-purple");
 
         if (titleLabel != null)
-            titleLabel.text = modelTitle;
+        {
+            string selectedModelName =
+                PlayerPrefs.GetString("selected_model_name", string.Empty);
+
+            titleLabel.text =
+                !string.IsNullOrWhiteSpace(selectedModelName)
+                    ? selectedModelName
+                    : modelTitle;
+        }
 
         RegisterCallbacks();
     }
@@ -160,10 +309,427 @@ public class Mode3DPageController : MonoBehaviour
         UnregisterCallbacks();
     }
 
+    private void OnDestroy()
+    {
+        if (activeGltfImport != null)
+        {
+            try
+            {
+                activeGltfImport.Dispose();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    "[Mode3D] Failed to dispose glTFast importer during scene cleanup: " +
+                    exception.Message);
+            }
+
+            activeGltfImport = null;
+        }
+    }
+
     private void Update()
     {
-        if (autoRotate && modelRoot != null && !dragging)
+        HandleTouchGestures();
+
+        if (autoRotate && modelRoot != null && !dragging && Input.touchCount == 0)
             modelRoot.Rotate(Vector3.up, autoRotateSpeed * Time.deltaTime, Space.World);
+    }
+
+    /// <summary>
+    /// Loads the model selected by ShowLessonScene directly with glTFast.
+    /// This intentionally uses glTFast's typed API instead of reflection because
+    /// the installed package version already supports:
+    ///     new GltfImport()
+    ///     Load(Uri)
+    ///     InstantiateMainSceneAsync(Transform)
+    /// and this is the same API used successfully elsewhere in the project.
+    /// </summary>
+    private async Task<bool> LoadCurrentLessonModelAsync()
+    {
+        if (runtimeModelLoading)
+            return false;
+
+        runtimeModelLoading = true;
+
+        string modelUrl =
+            PlayerPrefs.GetString(
+                "selected_model_url",
+                string.Empty).Trim();
+
+        string storagePath =
+            PlayerPrefs.GetString(
+                "selected_model_storage_path",
+                string.Empty).Trim();
+
+        string modelName =
+            PlayerPrefs.GetString(
+                "selected_model_name",
+                string.Empty).Trim();
+
+        string fileName =
+            PlayerPrefs.GetString(
+                "selected_model_file_name",
+                string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(modelUrl) &&
+            IsHttpUrl(storagePath))
+        {
+            modelUrl = storagePath;
+        }
+
+        if (string.IsNullOrWhiteSpace(modelName))
+        {
+            modelName =
+                !string.IsNullOrWhiteSpace(fileName)
+                    ? Path.GetFileNameWithoutExtension(fileName)
+                    : "3D Model";
+        }
+
+        if (titleLabel != null)
+            titleLabel.text = modelName;
+
+        if (string.IsNullOrWhiteSpace(modelUrl))
+        {
+            runtimeModelLoading = false;
+
+            Debug.LogError(
+                "[Mode3D] selected_model_url is empty. " +
+                "Open Mode3DScene from ShowLessonScene.");
+
+            ShowToast("Model URL is missing");
+            return false;
+        }
+
+        if (!Uri.TryCreate(
+                modelUrl,
+                UriKind.Absolute,
+                out Uri modelUri))
+        {
+            runtimeModelLoading = false;
+
+            Debug.LogError(
+                "[Mode3D] Invalid model URL:\n" +
+                modelUrl);
+
+            ShowToast("Invalid model URL");
+            return false;
+        }
+
+        if (modelRoot == null)
+        {
+            GameObject rootObject =
+                new GameObject("ModelRoot");
+
+            modelRoot = rootObject.transform;
+        }
+
+        if (clearExistingModelChildren)
+        {
+            for (int i = modelRoot.childCount - 1; i >= 0; i--)
+            {
+                Transform child = modelRoot.GetChild(i);
+
+                if (child != null)
+                    Destroy(child.gameObject);
+            }
+
+            // Destroy executes at end of frame. Since this method is async rather
+            // than a coroutine, move old children away immediately as well.
+            modelRoot.DetachChildren();
+        }
+
+        ShowToast("Loading 3D model...");
+
+        Debug.Log(
+            "[Mode3D] Loading lesson model with glTFast." +
+            $"\nName: {modelName}" +
+            $"\nURL: {modelUrl}");
+
+        try
+        {
+            // Dispose only the PREVIOUS import when switching/reloading a model.
+            // Do not dispose the importer that backs the currently visible model.
+            if (activeGltfImport != null)
+            {
+                try
+                {
+                    activeGltfImport.Dispose();
+                }
+                catch
+                {
+                    // Ignore cleanup errors from an older import.
+                }
+
+                activeGltfImport = null;
+            }
+
+            activeGltfImport = new GltfImport();
+
+            bool loaded =
+                await activeGltfImport.Load(modelUri);
+
+            if (!loaded)
+            {
+                runtimeModelLoading = false;
+
+                Debug.LogError(
+                    "[Mode3D] glTFast could not load the GLB." +
+                    $"\nName: {modelName}" +
+                    $"\nURL: {modelUrl}");
+
+                ShowToast("Cannot load model");
+                activeGltfImport?.Dispose();
+                activeGltfImport = null;
+                return false;
+            }
+
+            bool instantiated =
+                await activeGltfImport.InstantiateMainSceneAsync(
+                    modelRoot);
+
+            if (!instantiated)
+            {
+                runtimeModelLoading = false;
+
+                Debug.LogError(
+                    "[Mode3D] glTFast loaded the GLB but could not instantiate its main scene.");
+
+                ShowToast("Cannot display model");
+                activeGltfImport?.Dispose();
+                activeGltfImport = null;
+                return false;
+            }
+
+            runtimeModelLoaded = true;
+            runtimeModelLoading = false;
+
+            DisableImportedCamerasAndLights(modelRoot);
+            ForceRuntimeModelVisible(modelRoot);
+
+            Renderer[] importedRenderers =
+                modelRoot.GetComponentsInChildren<Renderer>(true);
+
+            int rendererWithMaterialCount = 0;
+            int rendererWithMeshCount = 0;
+
+            foreach (Renderer importedRenderer in importedRenderers)
+            {
+                if (importedRenderer == null)
+                    continue;
+
+                if (importedRenderer.sharedMaterials != null &&
+                    importedRenderer.sharedMaterials.Length > 0)
+                {
+                    rendererWithMaterialCount++;
+                }
+
+                if (importedRenderer is SkinnedMeshRenderer skinned &&
+                    skinned.sharedMesh != null)
+                {
+                    rendererWithMeshCount++;
+                }
+                else
+                {
+                    MeshFilter filter =
+                        importedRenderer.GetComponent<MeshFilter>();
+
+                    if (filter != null && filter.sharedMesh != null)
+                        rendererWithMeshCount++;
+                }
+            }
+
+            Debug.Log(
+                "[Mode3D] GLB instantiated successfully." +
+                $"\nName: {modelName}" +
+                $"\nChildren under ModelRoot: {modelRoot.childCount}" +
+                $"\nRenderers: {importedRenderers.Length}" +
+                $"\nRenderers with mesh: {rendererWithMeshCount}" +
+                $"\nRenderers with materials: {rendererWithMaterialCount}");
+
+            // IMPORTANT: keep activeGltfImport alive. It owns the imported
+            // meshes/materials/textures used by the instantiated renderers.
+            return true;
+        }
+        catch (Exception exception)
+        {
+            runtimeModelLoading = false;
+
+            try
+            {
+                activeGltfImport?.Dispose();
+            }
+            catch
+            {
+                // Ignore cleanup errors.
+            }
+
+            activeGltfImport = null;
+
+            Debug.LogError(
+                "[Mode3D] Runtime model load exception:\n" +
+                exception);
+
+            ShowToast("Cannot display model");
+            return false;
+        }
+    }
+
+    private IEnumerator FitRuntimeModelAfterAsyncLoad()
+    {
+        // Wait a few frames because renderer bounds can settle after async GLB import.
+        for (int i = 0; i < 4; i++)
+            yield return null;
+
+        RefreshRenderers();
+
+        Debug.Log(
+            "[Mode3D] Preparing runtime model fit." +
+            $"\nRenderer count: {(modelRenderers == null ? 0 : modelRenderers.Length)}");
+
+        if (modelRenderers == null ||
+            modelRenderers.Length == 0)
+        {
+            Debug.LogError(
+                "[Mode3D] Model was instantiated but no Renderer was found under ModelRoot.");
+            ShowToast("Model has no renderer");
+            yield break;
+        }
+
+        if (fitModelOnStart)
+            yield return FitModelAfterLoading();
+        else
+            SaveCurrentPoseAsDefault();
+
+        ShowToast("Model loaded");
+
+        Debug.Log(
+            "[Mode3D] Runtime lesson model is ready." +
+            $"\nRenderer count: {modelRenderers.Length}" +
+            $"\nModelRoot position: {modelRoot.position}" +
+            $"\nModelRoot scale: {modelRoot.localScale}" +
+            BuildVisibilityDiagnostic());
+    }
+
+    private void ConfigureMode3DCamera()
+    {
+        if (modelCamera == null)
+            modelCamera = Camera.main;
+
+        if (modelCamera == null)
+        {
+            Debug.LogWarning("[Mode3D] Main Camera was not found.");
+            return;
+        }
+
+        // UI Toolkit is rendered after the camera. The previous `.screen` USS rule
+        // used an opaque navy background and therefore covered the successfully
+        // loaded 3D model. The camera now supplies that same navy background.
+        modelCamera.clearFlags = CameraClearFlags.SolidColor;
+        modelCamera.backgroundColor = mode3DBackgroundColor;
+
+        int safeLayer = Mathf.Clamp(runtimeModelLayer, 0, 31);
+        modelCamera.cullingMask |= 1 << safeLayer;
+
+        Debug.Log(
+            "[Mode3D] Camera configured for 3D visibility." +
+            $"\nCamera: {modelCamera.name}" +
+            $"\nCullingMask: {modelCamera.cullingMask}");
+    }
+
+    private void ForceRuntimeModelVisible(Transform rootTransform)
+    {
+        if (rootTransform == null)
+            return;
+
+        int safeLayer = Mathf.Clamp(runtimeModelLayer, 0, 31);
+
+        SetLayerRecursively(rootTransform.gameObject, safeLayer);
+
+        Renderer[] renderers =
+            rootTransform.GetComponentsInChildren<Renderer>(true);
+
+        foreach (Renderer rendererItem in renderers)
+        {
+            if (rendererItem == null)
+                continue;
+
+            rendererItem.enabled = true;
+
+            if (!rendererItem.gameObject.activeSelf)
+                rendererItem.gameObject.SetActive(true);
+        }
+
+        if (modelCamera == null)
+            modelCamera = Camera.main;
+
+        if (modelCamera != null)
+            modelCamera.cullingMask |= 1 << safeLayer;
+
+        Debug.Log(
+            "[Mode3D] Runtime model visibility normalized." +
+            $"\nLayer: {safeLayer}" +
+            $"\nRenderer count: {renderers.Length}");
+    }
+
+    private static void SetLayerRecursively(GameObject target, int layer)
+    {
+        if (target == null)
+            return;
+
+        target.layer = layer;
+
+        Transform targetTransform = target.transform;
+
+        for (int i = 0; i < targetTransform.childCount; i++)
+        {
+            Transform child = targetTransform.GetChild(i);
+
+            if (child != null)
+                SetLayerRecursively(child.gameObject, layer);
+        }
+    }
+
+    private static void DisableImportedCamerasAndLights(
+        Transform rootTransform)
+    {
+        if (rootTransform == null)
+            return;
+
+        Camera[] importedCameras =
+            rootTransform.GetComponentsInChildren<Camera>(true);
+
+        foreach (Camera importedCamera in importedCameras)
+        {
+            if (importedCamera != null)
+                importedCamera.enabled = false;
+        }
+
+        Light[] importedLights =
+            rootTransform.GetComponentsInChildren<Light>(true);
+
+        foreach (Light importedLight in importedLights)
+        {
+            if (importedLight != null)
+                importedLight.enabled = false;
+        }
+    }
+
+    private string BuildVisibilityDiagnostic()
+    {
+        if (modelCamera == null ||
+            !TryGetCombinedBounds(out Bounds bounds))
+        {
+            return "\nVisibility diagnostic: unavailable";
+        }
+
+        Vector3 viewport =
+            modelCamera.WorldToViewportPoint(bounds.center);
+
+        return
+            $"\nBounds center viewport: ({viewport.x:F3}, {viewport.y:F3}, {viewport.z:F3})" +
+            $"\nCamera enabled: {modelCamera.enabled}" +
+            $"\nCamera active: {modelCamera.gameObject.activeInHierarchy}";
     }
 
     private IEnumerator FitModelAfterLoading()
@@ -429,6 +995,96 @@ public class Mode3DPageController : MonoBehaviour
         SetModelColor(new Color32(126, 55, 218, 255), colorPurple);
     }
 
+    private void HandleTouchGestures()
+    {
+        if (modelRoot == null || !hasFittedPose)
+            return;
+
+        if (Input.touchCount == 1)
+        {
+            Touch touch = Input.GetTouch(0);
+
+            if (touch.phase == TouchPhase.Moved)
+            {
+                dragging = true;
+
+                Vector3 upAxis =
+                    modelCamera != null
+                        ? modelCamera.transform.up
+                        : Vector3.up;
+
+                // Only the horizontal finger movement rotates the model.
+                modelRoot.Rotate(
+                    upAxis,
+                    -touch.deltaPosition.x * touchRotationSensitivity,
+                    Space.World
+                );
+            }
+            else if (touch.phase == TouchPhase.Ended ||
+                     touch.phase == TouchPhase.Canceled)
+            {
+                dragging = false;
+            }
+
+            return;
+        }
+
+        if (Input.touchCount >= 2)
+        {
+            dragging = false;
+
+            Touch first = Input.GetTouch(0);
+            Touch second = Input.GetTouch(1);
+
+            Vector2 firstPrevious =
+                first.position - first.deltaPosition;
+
+            Vector2 secondPrevious =
+                second.position - second.deltaPosition;
+
+            float previousDistance =
+                Vector2.Distance(firstPrevious, secondPrevious);
+
+            float currentDistance =
+                Vector2.Distance(first.position, second.position);
+
+            if (previousDistance <= 0.001f)
+                return;
+
+            float ratio = currentDistance / previousDistance;
+
+            // Blend the raw pinch ratio so scaling feels controlled on a phone.
+            float adjustedRatio =
+                Mathf.Lerp(
+                    1f,
+                    ratio,
+                    Mathf.Max(0f, pinchZoomSensitivity));
+
+            ChangeZoomByRatio(adjustedRatio);
+        }
+    }
+
+    private void ChangeZoomByRatio(float ratio)
+    {
+        if (modelRoot == null || !hasFittedPose)
+            return;
+
+        float baseScale =
+            Mathf.Max(fittedScale.x, 0.0001f);
+
+        float currentMultiplier =
+            modelRoot.localScale.x / baseScale;
+
+        float targetMultiplier =
+            Mathf.Clamp(
+                currentMultiplier * ratio,
+                minZoomMultiplier,
+                maxZoomMultiplier);
+
+        modelRoot.localScale =
+            fittedScale * targetMultiplier;
+    }
+
     private void OnPointerDown(PointerDownEvent evt)
     {
         if (modelRoot == null || interactionArea == null)
@@ -459,17 +1115,16 @@ public class Mode3DPageController : MonoBehaviour
         Vector2 delta = currentPointerPosition - lastPointerPosition;
         lastPointerPosition = currentPointerPosition;
 
-        modelRoot.Rotate(
-            modelCamera != null ? modelCamera.transform.up : Vector3.up,
-            -delta.x * rotationSpeed,
-            Space.World
-        );
-
-        modelRoot.Rotate(
-            modelCamera != null ? modelCamera.transform.right : Vector3.right,
-            delta.y * rotationSpeed,
-            Space.World
-        );
+        // Mouse/editor drag: rotate only left/right around the camera's up axis.
+        // Vertical drag no longer tilts the model.
+        if (Input.touchCount == 0)
+        {
+            modelRoot.Rotate(
+                modelCamera != null ? modelCamera.transform.up : Vector3.up,
+                -delta.x * rotationSpeed,
+                Space.World
+            );
+        }
 
         evt.StopPropagation();
     }
@@ -674,20 +1329,50 @@ public class Mode3DPageController : MonoBehaviour
 
     private void GoBack()
     {
-        string rememberedScene = PlayerPrefs.GetString(
-            "previous_scene",
-            previousSceneName
-        );
+        string currentScene =
+            SceneManager.GetActiveScene().name;
+
+        string rememberedScene =
+            PlayerPrefs.GetString(
+                "previous_scene",
+                previousSceneName);
+
+        // ShowLessonScene sets previous_scene before opening Mode3DScene.
+        // Never reload Mode3DScene itself if stale PlayerPrefs exists.
+        if (string.IsNullOrWhiteSpace(rememberedScene) ||
+            string.Equals(
+                rememberedScene,
+                currentScene,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            rememberedScene = previousSceneName;
+        }
 
         if (!string.IsNullOrWhiteSpace(rememberedScene) &&
             Application.CanStreamedLevelBeLoaded(rememberedScene))
         {
-            SceneManager.LoadScene(rememberedScene);
+            Debug.Log(
+                "[Mode3D] Back -> " +
+                rememberedScene);
+
+            SceneManager.LoadScene(
+                rememberedScene);
+
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(previousSceneName))
-            SceneManager.LoadScene(previousSceneName);
+        if (!string.IsNullOrWhiteSpace(previousSceneName) &&
+            Application.CanStreamedLevelBeLoaded(previousSceneName))
+        {
+            SceneManager.LoadScene(
+                previousSceneName);
+        }
+        else
+        {
+            Debug.LogError(
+                "[Mode3D] Cannot go back. " +
+                $"Scene '{rememberedScene}' / '{previousSceneName}' is not in Build Profiles.");
+        }
     }
 
     private void OpenVRScene()
@@ -713,6 +1398,37 @@ public class Mode3DPageController : MonoBehaviour
         ShowToast("Screenshot saved");
 
         Debug.Log($"[Mode3D] Screenshot saved as {fileName}");
+    }
+
+    private static bool IsHttpUrl(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        return Uri.TryCreate(
+                   value.Trim(),
+                   UriKind.Absolute,
+                   out Uri uri) &&
+               (uri.Scheme == Uri.UriSchemeHttp ||
+                uri.Scheme == Uri.UriSchemeHttps);
+    }
+
+    private static string MakeSafeFileName(
+        string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return "model.glb";
+
+        foreach (char invalid in
+                 Path.GetInvalidFileNameChars())
+        {
+            fileName =
+                fileName.Replace(
+                    invalid,
+                    '_');
+        }
+
+        return fileName;
     }
 
     private void ShowToast(string message)

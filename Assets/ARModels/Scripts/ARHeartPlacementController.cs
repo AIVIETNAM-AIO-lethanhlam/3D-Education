@@ -89,6 +89,7 @@ namespace ARHeartTest
         [Serializable]
         private sealed class ModelLaunchManifest
         {
+            public string class_id;
             public string lesson_id;
             public string mode;
             public ModelLaunchItem[] models;
@@ -99,6 +100,8 @@ namespace ARHeartTest
         {
             public string asset_id;
             public string lesson_id;
+            public string lesson_title;
+            public int chapter_order;
             public string name;
             public string file_name;
             public string bucket;
@@ -111,6 +114,9 @@ namespace ARHeartTest
         private sealed class RuntimeModelRecord
         {
             public string assetId;
+            public string lessonId;
+            public string lessonTitle;
+            public int chapterOrder;
             public string name;
             public string fileName;
             public string bucket;
@@ -194,6 +200,9 @@ namespace ARHeartTest
                             runtimeModels.Add(new RuntimeModelRecord
                             {
                                 assetId = item.asset_id ?? string.Empty,
+                                lessonId = item.lesson_id ?? string.Empty,
+                                lessonTitle = string.IsNullOrWhiteSpace(item.lesson_title) ? "Lesson" : item.lesson_title,
+                                chapterOrder = item.chapter_order,
                                 name = displayName,
                                 fileName = item.file_name ?? string.Empty,
                                 bucket = item.bucket ?? string.Empty,
@@ -224,6 +233,9 @@ namespace ARHeartTest
                     runtimeModels.Add(new RuntimeModelRecord
                     {
                         assetId = PlayerPrefs.GetString("selected_model_asset_id", string.Empty),
+                        lessonId = PlayerPrefs.GetString("selected_model_lesson_id", string.Empty),
+                        lessonTitle = PlayerPrefs.GetString("selected_lesson_title", "Current Lesson"),
+                        chapterOrder = PlayerPrefs.GetInt("selected_chapter_order", 0),
                         name = string.IsNullOrWhiteSpace(legacyName) ? "3D Model" : legacyName,
                         fileName = PlayerPrefs.GetString("selected_model_file_name", string.Empty),
                         bucket = PlayerPrefs.GetString("selected_model_bucket", string.Empty),
@@ -257,6 +269,127 @@ namespace ARHeartTest
                 return "3D Model";
 
             return CleanModelName(modelPrefabs[index].name);
+        }
+
+        public string GetModelLessonId(int index)
+        {
+            if (!usesRuntimeManifest || index < 0 || index >= runtimeModels.Count)
+                return "fallback";
+
+            return string.IsNullOrWhiteSpace(runtimeModels[index].lessonId)
+                ? "unknown-lesson"
+                : runtimeModels[index].lessonId;
+        }
+
+        public string GetModelLessonTitle(int index)
+        {
+            if (!usesRuntimeManifest || index < 0 || index >= runtimeModels.Count)
+                return "Models";
+
+            return string.IsNullOrWhiteSpace(runtimeModels[index].lessonTitle)
+                ? "Lesson"
+                : runtimeModels[index].lessonTitle;
+        }
+
+        public int GetModelChapterOrder(int index)
+        {
+            if (!usesRuntimeManifest || index < 0 || index >= runtimeModels.Count)
+                return 0;
+
+            return runtimeModels[index].chapterOrder;
+        }
+
+        /// <summary>
+        /// Adds a model uploaded while ARScene is already open.
+        /// The model is immediately available to the lesson/model list without reloading the scene.
+        /// </summary>
+        public int AddRuntimeModel(
+            string assetId,
+            string lessonId,
+            string lessonTitle,
+            int chapterOrder,
+            string modelName,
+            string fileName,
+            string bucket,
+            string storagePath,
+            string url,
+            int displayOrder = 0)
+        {
+            if (string.IsNullOrWhiteSpace(lessonId) ||
+                string.IsNullOrWhiteSpace(url))
+            {
+                Debug.LogError(
+                    "[AR Runtime] Cannot append uploaded model: lessonId or URL is empty.");
+                return -1;
+            }
+
+            // Avoid duplicate rows if UI receives the same upload callback twice.
+            for (int i = 0; i < runtimeModels.Count; i++)
+            {
+                RuntimeModelRecord existing = runtimeModels[i];
+
+                if (!string.IsNullOrWhiteSpace(assetId) &&
+                    string.Equals(
+                        existing.assetId,
+                        assetId,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+
+                if (string.Equals(
+                        existing.lessonId,
+                        lessonId,
+                        StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(
+                        existing.url,
+                        url,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+
+            string safeFileName =
+                string.IsNullOrWhiteSpace(fileName)
+                    ? "model.glb"
+                    : fileName;
+
+            string safeName =
+                string.IsNullOrWhiteSpace(modelName)
+                    ? Path.GetFileNameWithoutExtension(safeFileName)
+                    : modelName;
+
+            runtimeModels.Add(
+                new RuntimeModelRecord
+                {
+                    assetId = assetId ?? string.Empty,
+                    lessonId = lessonId,
+                    lessonTitle =
+                        string.IsNullOrWhiteSpace(lessonTitle)
+                            ? "Lesson"
+                            : lessonTitle,
+                    chapterOrder = chapterOrder,
+                    name = safeName,
+                    fileName = safeFileName,
+                    bucket =
+                        string.IsNullOrWhiteSpace(bucket)
+                            ? "lesson-models"
+                            : bucket,
+                    storagePath = storagePath ?? url,
+                    url = url,
+                    fallbackUrl = url,
+                    displayOrder = displayOrder
+                });
+
+            usesRuntimeManifest = true;
+            int newIndex = runtimeModels.Count - 1;
+
+            Debug.Log(
+                $"[AR Runtime] Added uploaded model '{safeName}' to lesson '{lessonTitle}'.");
+
+            ModelListChanged?.Invoke();
+            return newIndex;
         }
 
         public bool IsModelCached(int index)

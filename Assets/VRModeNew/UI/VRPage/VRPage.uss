@@ -1,0 +1,586 @@
+/* ============================================================
+   VRPage.uss
+   Fixed icon assets + perfectly aligned vertical buttons
+   ============================================================ */
+
+.vr-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Every top control uses EXACTLY the same dimensions. */
+.vr-circle-button {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    max-width: 48px;
+    max-height: 48px;
+
+    padding: 0;
+    margin: 0;
+
+    border-radius: 24px;
+    border-width: 1px;
+    border-color: rgba(70, 80, 95, 0.20);
+    background-color: rgba(255, 255, 255, 0.97);
+
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+}
+
+.vr-circle-button:active {
+    scale: 0.95;
+}
+
+/* Same icon box for ALL controls. */
+.vr-button-icon {
+    width: 23px;
+    height: 23px;
+
+    min-width: 23px;
+    min-height: 23px;
+    max-width: 23px;
+    max-height: 23px;
+
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* ------------------------------------------------------------
+   Back
+   ------------------------------------------------------------ */
+
+.vr-back-button {
+    position: absolute;
+    left: 20px;
+    top: 52px;
+}
+
+.back-icon {
+    background-image: url('project://database/Assets/UI/Images/Icons/back.png');
+}
+
+/* ------------------------------------------------------------
+   Top-right vertical menu
+
+   IMPORTANT:
+   All four buttons have the SAME x position.
+   No individual right/left offset is used.
+   ------------------------------------------------------------ */
+
+.vertical-menu-root {
+    position: absolute;
+
+    right: 20px;
+    top: 52px;
+
+    width: 48px;
+
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.menu-item {
+    position: relative;
+
+    width: 48px;
+    height: 48px;
+
+    min-width: 48px;
+    min-height: 48px;
+    max-width: 48px;
+    max-height: 48px;
+
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+/* Use the REAL PNG assets instead of text glyphs. */
+.menu-icon {
+    background-image: url('project://database/Assets/UI/Images/Icons/menu.png');
+}
+
+.models-icon {
+    background-image: url('project://database/Assets/UI/Images/Icons/dots-menu.png');
+}
+
+.eye-icon {
+    background-image: url('project://database/Assets/UI/Images/Icons/eye.png');
+}
+
+.eye-off-icon {
+    background-image: url('project://database/Assets/UI/Images/Icons/eye-off.png');
+}
+
+.rotate-icon {
+    background-image: url('project://database/Assets/UI/Images/Icons/rotate.png');
+}
+
+.no-rotate-icon {
+    background-image: url('project://database/Assets/UI/Images/Icons/no-rotate.png');
+}
+
+.menu-hidden {
+    display: none;
+}
+
+.model-loading-label {
+    position: absolute;
+    left: 50%;
+    top: 52%;
+    translate: -50% -50%;
+    padding-top: 9px;
+    padding-right: 14px;
+    padding-bottom: 9px;
+    padding-left: 14px;
+    border-radius: 14px;
+    background-color: rgba(20, 30, 45, 0.82);
+    color: rgb(255, 255, 255);
+    font-size: 13px;
+    -unity-text-align: middle-center;
+}
+
+.model-browser-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    padding-left: 18px;
+    padding-right: 18px;
+    padding-top: 96px;
+    padding-bottom: 72px;
+    background-color: rgba(15, 24, 38, 0.42);
+    align-items: center;
+    justify-content: center;
+}
+
+.model-browser-panel {
+    width: 100%;
+    max-width: 620px;
+    height: 100%;
+    max-height: 720px;
+    padding-top: 14px;
+    padding-right: 14px;
+    padding-bottom: 14px;
+    padding-left: 14px;
+    border-radius: 22px;
+    border-width: 1px;
+    border-color: rgba(210, 218, 230, 0.95);
+    background-color: rgba(255, 255, 255, 0.985);
+}
+
+.browser-header {
+    min-height: 58px;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.browser-heading {
+    flex-grow: 1;
+    min-width: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.browser-title {
+    font-size: 19px;
+    color: rgb(20, 35, 58);
+    -unity-font-style: bold;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.browser-subtitle {
+    margin-top: 2px;
+    font-size: 11px;
+    color: rgb(100, 115, 138);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.browser-header-button {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    padding: 0;
+    border-radius: 21px;
+    border-width: 1px;
+    border-color: rgba(80, 95, 120, 0.15);
+    background-color: rgb(245, 248, 252);
+    color: rgb(26, 42, 68);
+    font-size: 26px;
+    -unity-text-align: middle-center;
+}
+
+.browser-list {
+    flex-grow: 1;
+}
+
+.browser-row {
+    width: 100%;
+    min-height: 70px;
+    margin-bottom: 9px;
+    padding-top: 10px;
+    padding-right: 12px;
+    padding-bottom: 10px;
+    padding-left: 12px;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 14px;
+    border-width: 1px;
+    border-color: rgb(222, 228, 237);
+    background-color: rgb(248, 250, 253);
+}
+
+.browser-row-current {
+    border-color: rgb(90, 145, 220);
+    background-color: rgb(240, 247, 255);
+}
+
+.browser-row-info {
+    flex-grow: 1;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.browser-row-eyebrow {
+    margin-bottom: 3px;
+    font-size: 10px;
+    color: rgb(91, 115, 150);
+    -unity-font-style: bold;
+}
+
+.browser-row-title {
+    max-width: 100%;
+    font-size: 14px;
+    color: rgb(24, 40, 66);
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.browser-row-count {
+    margin-left: 8px;
+    padding-top: 5px;
+    padding-right: 8px;
+    padding-bottom: 5px;
+    padding-left: 8px;
+    border-radius: 10px;
+    background-color: rgb(231, 238, 248);
+    color: rgb(69, 92, 126);
+    font-size: 10px;
+}
+
+.model-row {
+    width: 100%;
+    min-height: 68px;
+    margin-bottom: 9px;
+    padding-top: 9px;
+    padding-right: 11px;
+    padding-bottom: 9px;
+    padding-left: 11px;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 14px;
+    border-width: 1px;
+    border-color: rgb(222, 228, 237);
+    background-color: rgb(249, 251, 254);
+}
+
+.model-row-selected {
+    border-color: rgb(74, 137, 224);
+    background-color: rgb(238, 247, 255);
+}
+
+.model-row-icon {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    margin-right: 10px;
+    background-image: url('project://database/Assets/UI/Images/Icons/cube.png');
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.model-row-subtitle {
+    margin-top: 2px;
+    max-width: 100%;
+    font-size: 10px;
+    color: rgb(105, 118, 140);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.model-row-action {
+    margin-left: 8px;
+    font-size: 10px;
+    color: rgb(43, 105, 198);
+    -unity-font-style: bold;
+}
+
+.browser-empty {
+    min-height: 90px;
+    padding: 18px;
+    color: rgb(105, 118, 140);
+    font-size: 13px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+
+
+/* ============================================================
+   AI CHAT - bottom-right button + in-scene chat panel
+   ============================================================ */
+
+.ai-chat-fab {
+    position: absolute;
+
+    right: 20px;
+    bottom: 18px;
+
+    width: 58px;
+    height: 58px;
+
+    min-width: 58px;
+    min-height: 58px;
+    max-width: 58px;
+    max-height: 58px;
+
+    padding: 0;
+
+    justify-content: center;
+    align-items: center;
+
+    border-width: 0;
+    border-radius: 17px;
+
+    background-color: rgb(255, 159, 17);
+}
+
+.ai-chat-fab:hover {
+    background-color: rgb(237, 140, 0);
+}
+
+.ai-chat-fab-icon {
+    width: 26px;
+    height: 26px;
+
+    background-image: url('project://database/Assets/UI/Images/Icons/ai-sparkle.png');
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.ai-chat-overlay {
+    position: absolute;
+
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-top: 120px;
+    padding-bottom: 96px;
+
+    background-color: rgba(10, 18, 32, 0.34);
+
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.ai-chat-panel {
+    width: 100%;
+    max-width: 620px;
+    height: 68%;
+    min-height: 330px;
+
+    padding: 12px;
+
+    border-radius: 20px;
+    border-width: 1px;
+    border-color: rgba(220, 226, 235, 0.92);
+
+    background-color: rgba(255, 255, 255, 0.985);
+}
+
+.ai-chat-header {
+    min-height: 50px;
+
+    flex-direction: row;
+    align-items: center;
+
+    margin-bottom: 8px;
+}
+
+.ai-chat-title-group {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.ai-chat-title {
+    font-size: 16px;
+    color: rgb(26, 42, 68);
+
+    -unity-font-style: bold;
+}
+
+.ai-chat-context {
+    margin-top: 2px;
+
+    font-size: 10px;
+    color: rgb(104, 119, 143);
+
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.ai-chat-close {
+    width: 38px;
+    height: 38px;
+
+    min-width: 38px;
+    min-height: 38px;
+
+    padding: 0;
+
+    border-radius: 19px;
+    border-width: 0;
+
+    background-color: rgb(242, 245, 249);
+
+    color: rgb(42, 57, 80);
+    font-size: 23px;
+
+    -unity-text-align: middle-center;
+}
+
+.ai-chat-messages {
+    flex-grow: 1;
+
+    margin-bottom: 8px;
+
+    border-radius: 12px;
+
+    background-color: rgb(247, 249, 252);
+}
+
+.ai-chat-message-container {
+    padding: 8px;
+}
+
+.ai-chat-row {
+    width: 100%;
+
+    margin-top: 4px;
+    margin-bottom: 4px;
+
+    flex-direction: row;
+}
+
+.ai-chat-row-user {
+    justify-content: flex-end;
+}
+
+.ai-chat-row-assistant {
+    justify-content: flex-start;
+}
+
+.ai-chat-bubble {
+    max-width: 82%;
+
+    padding-top: 8px;
+    padding-right: 10px;
+    padding-bottom: 8px;
+    padding-left: 10px;
+
+    border-radius: 13px;
+
+    white-space: normal;
+
+    font-size: 11px;
+}
+
+.ai-chat-bubble-user {
+    background-color: rgb(32, 105, 210);
+    color: rgb(255, 255, 255);
+}
+
+.ai-chat-bubble-assistant {
+    background-color: rgb(235, 239, 245);
+    color: rgb(32, 45, 65);
+}
+
+.ai-chat-typing {
+    margin-left: 4px;
+    margin-bottom: 5px;
+
+    color: rgb(105, 119, 140);
+    font-size: 10px;
+}
+
+.ai-chat-composer {
+    min-height: 46px;
+
+    flex-direction: row;
+    align-items: center;
+}
+
+.ai-chat-input {
+    flex-grow: 1;
+
+    min-height: 42px;
+
+    margin-right: 8px;
+
+    border-radius: 14px;
+    border-width: 1px;
+    border-color: rgb(216, 223, 234);
+
+    background-color: rgb(248, 250, 253);
+
+    font-size: 12px;
+    color: rgb(28, 42, 62);
+}
+
+.ai-chat-send {
+    width: 42px;
+    height: 42px;
+
+    min-width: 42px;
+    min-height: 42px;
+
+    padding: 0;
+
+    border-radius: 21px;
+    border-width: 0;
+
+    background-color: rgb(249, 158, 18);
+
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-chat-send-icon {
+    width: 19px;
+    height: 19px;
+
+    background-image: url('project://database/Assets/UI/Images/Icons/send-white.png');
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+
+.hidden {
+    display: none;
+}

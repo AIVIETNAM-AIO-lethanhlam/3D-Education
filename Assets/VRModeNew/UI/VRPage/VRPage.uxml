@@ -1,0 +1,174 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd">
+
+    <Style src="VRPage.uss" />
+
+    <ui:VisualElement name="VRRoot"
+                      class="vr-root"
+                      picking-mode="Ignore">
+
+        <!-- Back -->
+        <ui:Button name="BtnBack"
+                   class="vr-circle-button vr-back-button"
+                   picking-mode="Position">
+            <ui:VisualElement class="vr-button-icon back-icon"
+                              picking-mode="Ignore" />
+        </ui:Button>
+
+        <!-- Top-right: one straight vertical column -->
+        <ui:VisualElement name="VerticalMenuRoot"
+                          class="vertical-menu-root"
+                          picking-mode="Ignore">
+
+            <ui:Button name="BtnMenu"
+                       class="vr-circle-button menu-item"
+                       picking-mode="Position">
+                <ui:VisualElement class="vr-button-icon menu-icon"
+                                  picking-mode="Ignore" />
+            </ui:Button>
+
+            <ui:Button name="BtnModels"
+                       class="vr-circle-button menu-item menu-hidden"
+                       picking-mode="Position">
+                <ui:VisualElement class="vr-button-icon models-icon"
+                                  picking-mode="Ignore" />
+            </ui:Button>
+
+            <ui:Button name="BtnVisibility"
+                       class="vr-circle-button menu-item menu-hidden"
+                       picking-mode="Position">
+                <ui:VisualElement name="VisibilityIcon"
+                                  class="vr-button-icon eye-icon"
+                                  picking-mode="Ignore" />
+            </ui:Button>
+
+            <ui:Button name="BtnRotate"
+                       class="vr-circle-button menu-item menu-hidden"
+                       picking-mode="Position">
+                <ui:VisualElement name="RotateIcon"
+                                  class="vr-button-icon no-rotate-icon"
+                                  picking-mode="Ignore" />
+            </ui:Button>
+
+        </ui:VisualElement>
+
+
+        <!-- AI assistant button: bottom-right -->
+        <ui:Button name="BtnAIChat"
+                   class="ai-chat-fab"
+                   picking-mode="Position">
+            <ui:VisualElement class="ai-chat-fab-icon"
+                              picking-mode="Ignore" />
+        </ui:Button>
+
+        <!-- In-scene AI chat box. Hidden until BtnAIChat is pressed. -->
+        <ui:VisualElement name="AIChatOverlay"
+                          class="ai-chat-overlay hidden"
+                          picking-mode="Ignore">
+
+            <ui:VisualElement name="AIChatPanel"
+                              class="ai-chat-panel"
+                              picking-mode="Position">
+
+                <ui:VisualElement class="ai-chat-header">
+                    <ui:VisualElement class="ai-chat-title-group"
+                                      picking-mode="Ignore">
+                        <ui:Label text="AI Learning Assistant"
+                                  class="ai-chat-title"
+                                  picking-mode="Ignore" />
+                        <ui:Label name="AIChatContext"
+                                  text="Ask about this lesson or model"
+                                  class="ai-chat-context"
+                                  picking-mode="Ignore" />
+                    </ui:VisualElement>
+
+                    <ui:Button name="BtnCloseAIChat"
+                               text="×"
+                               class="ai-chat-close"
+                               picking-mode="Position" />
+                </ui:VisualElement>
+
+                <ui:ScrollView name="AIChatMessages"
+                               class="ai-chat-messages"
+                               mode="Vertical"
+                               picking-mode="Position">
+                    <ui:VisualElement name="AIChatMessageContainer"
+                                      class="ai-chat-message-container" />
+                </ui:ScrollView>
+
+                <ui:Label name="AIChatTyping"
+                          text="AI is thinking..."
+                          class="ai-chat-typing hidden"
+                          picking-mode="Ignore" />
+
+                <ui:VisualElement class="ai-chat-composer">
+                    <ui:TextField name="AIChatInput"
+                                  class="ai-chat-input"
+                                  multiline="False"
+                                  picking-mode="Position" />
+
+                    <ui:Button name="BtnSendAIChat"
+                               class="ai-chat-send"
+                               picking-mode="Position">
+                        <ui:VisualElement class="ai-chat-send-icon"
+                                          picking-mode="Ignore" />
+                    </ui:Button>
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:Label name="ModelLoadingLabel"
+                  text="Loading 3D model..."
+                  class="model-loading-label hidden"
+                  picking-mode="Ignore" />
+
+        <ui:VisualElement name="ModelBrowserOverlay"
+                          class="model-browser-overlay hidden"
+                          picking-mode="Ignore">
+
+            <ui:VisualElement name="ModelBrowserPanel"
+                              class="model-browser-panel"
+                              picking-mode="Position">
+
+                <ui:VisualElement class="browser-header">
+                    <ui:Button name="BtnBrowserBack"
+                               text="‹"
+                               class="browser-header-button hidden"
+                               picking-mode="Position" />
+
+                    <ui:VisualElement class="browser-heading"
+                                      picking-mode="Ignore">
+                        <ui:Label name="BrowserTitle"
+                                  text="3D Models"
+                                  class="browser-title"
+                                  picking-mode="Ignore" />
+
+                        <ui:Label name="BrowserSubtitle"
+                                  text="Choose a lesson to see its models"
+                                  class="browser-subtitle"
+                                  picking-mode="Ignore" />
+                    </ui:VisualElement>
+
+                    <ui:Button name="BtnCloseBrowser"
+                               text="×"
+                               class="browser-header-button"
+                               picking-mode="Position" />
+                </ui:VisualElement>
+
+                <ui:ScrollView name="LessonList"
+                               class="browser-list"
+                               mode="Vertical"
+                               picking-mode="Position" />
+
+                <ui:ScrollView name="ModelList"
+                               class="browser-list hidden"
+                               mode="Vertical"
+                               picking-mode="Position" />
+
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

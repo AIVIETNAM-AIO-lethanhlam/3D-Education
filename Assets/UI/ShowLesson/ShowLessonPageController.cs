@@ -19,7 +19,8 @@ public class ShowLessonPageController : MonoBehaviour
     // (for example "DoExerciseScene") cannot override it.
     private const string QuizSceneName = "StartQuizScene";
 
-    [SerializeField] private string interactiveModelSceneName = "InteractiveModelScene";
+    [SerializeField] private string Mode3DSceneName = "Mode3DScene";
+    [SerializeField] private string vrSceneName = "VRClassroomScene";
     [SerializeField] private string arModelsSceneName = "ARScene";
 
     [SerializeField] private string aiSceneName = "ChatAIScene";
@@ -30,6 +31,13 @@ public class ShowLessonPageController : MonoBehaviour
     [Header("PDF / external file storage")]
     [Tooltip("Public/custom-domain base URL for Cloudflare R2, e.g. https://files.example.com or https://pub-xxxx.r2.dev. If lesson_assets.storage_path only stores an R2 object key, this field is required for a public R2 bucket.")]
     [SerializeField] private string r2PublicBaseUrl = string.Empty;
+
+    [Header("Lesson Models Public R2")]
+    [Tooltip("Public Development URL/custom domain of the lesson-models bucket. " +
+             "This is intentionally separate from old serialized R2/CDN fields so newly uploaded models " +
+             "do not keep using a stale r2.dev domain.")]
+    [SerializeField] private string lessonModelsPublicBaseUrl =
+        "https://pub-d18240b07b8944fabf89fcb8663dcf5f.r2.dev";
 
     [Tooltip("Optional Supabase Edge Function that returns a fresh signed R2 download URL for private objects. Leave empty when your R2 bucket is public. Expected JSON response contains url or signed_url.")]
     [SerializeField] private string r2SignedUrlFunctionName = string.Empty;
@@ -105,6 +113,7 @@ public class ShowLessonPageController : MonoBehaviour
     private readonly List<LessonAssetView> documentAssets = new();
     private readonly List<LessonAssetView> quizAssets = new();
     private readonly List<LessonAssetView> modelAssets = new();
+    private readonly List<ClassModelSource> classModelSources = new();
 
     private LessonView currentLesson;
     private string selectedLessonId;
@@ -2038,6 +2047,203 @@ canvas{
         LoadSceneSafely(chatAiSceneName);
     }
 
+    private IEnumerator LoadClassModelSourcesRoutine()
+    {
+        classModelSources.Clear();
+
+        string classId = PlayerPrefs.GetString("selected_class_id", string.Empty);
+
+        // Defensive fallback: if the class id is unavailable, keep the old behavior
+        // and expose only models from the current lesson.
+        if (!Guid.TryParse(classId, out _))
+        {
+            foreach (LessonAssetView asset in modelAssets)
+            {
+                if (asset == null) continue;
+                classModelSources.Add(new ClassModelSource
+                {
+                    asset = asset,
+                    lessonTitle = currentLesson != null && !string.IsNullOrWhiteSpace(currentLesson.title)
+                        ? currentLesson.title
+                        : "Current Lesson",
+                    chapterOrder = PlayerPrefs.GetInt("selected_chapter_order", 0),
+                    isCurrentLesson = true
+                });
+            }
+            yield break;
+        }
+
+        string encodedClassId = UnityWebRequest.EscapeURL(classId);
+        string chapterJson = null;
+        string requestError = null;
+
+        yield return restService.SendJson(
+            UnityWebRequest.kHttpVerbGET,
+            "rest/v1/chapters" +
+            "?select=id,title,chapter_order" +
+            $"&class_id=eq.{encodedClassId}" +
+            "&order=chapter_order.asc,created_at.asc",
+            null,
+            null,
+            value => chapterJson = value,
+            message => requestError = message);
+
+        if (!string.IsNullOrWhiteSpace(requestError))
+        {
+            Debug.LogWarning("[ShowLessonPageController] Cannot load class chapters for 3D catalog: " + requestError);
+            yield return AddCurrentLessonModelsAsFallback();
+            yield break;
+        }
+
+        ClassChapterViewList chapterWrapper = ParseList<ClassChapterViewList>(chapterJson);
+        if (chapterWrapper?.items == null || chapterWrapper.items.Length == 0)
+        {
+            yield return AddCurrentLessonModelsAsFallback();
+            yield break;
+        }
+
+        Dictionary<string, int> chapterOrderById = new Dictionary<string, int>();
+        List<string> chapterIds = new List<string>();
+        foreach (ClassChapterView chapter in chapterWrapper.items)
+        {
+            if (chapter == null || string.IsNullOrWhiteSpace(chapter.id)) continue;
+            chapterIds.Add(chapter.id);
+            chapterOrderById[chapter.id] = chapter.chapter_order;
+        }
+
+        if (chapterIds.Count == 0)
+        {
+            yield return AddCurrentLessonModelsAsFallback();
+            yield break;
+        }
+
+        string lessonJson = null;
+        requestError = null;
+        string chapterFilter = string.Join(",", chapterIds);
+
+        yield return restService.SendJson(
+            UnityWebRequest.kHttpVerbGET,
+            "rest/v1/lessons" +
+            "?select=id,chapter_id,title,created_at" +
+            $"&chapter_id=in.({chapterFilter})" +
+            "&order=created_at.asc",
+            null,
+            null,
+            value => lessonJson = value,
+            message => requestError = message);
+
+        if (!string.IsNullOrWhiteSpace(requestError))
+        {
+            Debug.LogWarning("[ShowLessonPageController] Cannot load class lessons for 3D catalog: " + requestError);
+            yield return AddCurrentLessonModelsAsFallback();
+            yield break;
+        }
+
+        ClassLessonViewList lessonWrapper = ParseList<ClassLessonViewList>(lessonJson);
+        if (lessonWrapper?.items == null || lessonWrapper.items.Length == 0)
+        {
+            yield return AddCurrentLessonModelsAsFallback();
+            yield break;
+        }
+
+        Dictionary<string, ClassLessonView> lessonById = new Dictionary<string, ClassLessonView>();
+        List<string> lessonIds = new List<string>();
+        foreach (ClassLessonView lesson in lessonWrapper.items)
+        {
+            if (lesson == null || string.IsNullOrWhiteSpace(lesson.id)) continue;
+            lessonById[lesson.id] = lesson;
+            lessonIds.Add(lesson.id);
+        }
+
+        if (lessonIds.Count == 0)
+        {
+            yield return AddCurrentLessonModelsAsFallback();
+            yield break;
+        }
+
+        string assetJson = null;
+        requestError = null;
+        string lessonFilter = string.Join(",", lessonIds);
+
+        yield return restService.SendJson(
+            UnityWebRequest.kHttpVerbGET,
+            "rest/v1/lesson_assets" +
+            "?select=*" +
+            "&asset_type=eq.model_3d" +
+            $"&lesson_id=in.({lessonFilter})" +
+            "&order=display_order.asc,created_at.asc",
+            null,
+            null,
+            value => assetJson = value,
+            message => requestError = message);
+
+        if (!string.IsNullOrWhiteSpace(requestError))
+        {
+            Debug.LogWarning("[ShowLessonPageController] Cannot load class 3D assets for 3D catalog: " + requestError);
+            yield return AddCurrentLessonModelsAsFallback();
+            yield break;
+        }
+
+        LessonAssetViewList assetWrapper = ParseList<LessonAssetViewList>(assetJson);
+        if (assetWrapper?.items != null)
+        {
+            foreach (LessonAssetView asset in assetWrapper.items)
+            {
+                if (asset == null || string.IsNullOrWhiteSpace(asset.lesson_id)) continue;
+                if (!lessonById.TryGetValue(asset.lesson_id, out ClassLessonView lesson)) continue;
+
+                int chapterOrder = 0;
+                if (!string.IsNullOrWhiteSpace(lesson.chapter_id))
+                    chapterOrderById.TryGetValue(lesson.chapter_id, out chapterOrder);
+
+                classModelSources.Add(new ClassModelSource
+                {
+                    asset = asset,
+                    lessonTitle = string.IsNullOrWhiteSpace(lesson.title) ? "Lesson" : lesson.title,
+                    chapterOrder = chapterOrder,
+                    isCurrentLesson = string.Equals(asset.lesson_id, selectedLessonId, StringComparison.OrdinalIgnoreCase)
+                });
+            }
+        }
+
+        classModelSources.Sort((a, b) =>
+        {
+            // Current lesson first so its first model remains initially visible.
+            int currentCompare = b.isCurrentLesson.CompareTo(a.isCurrentLesson);
+            if (currentCompare != 0) return currentCompare;
+
+            int chapterCompare = a.chapterOrder.CompareTo(b.chapterOrder);
+            if (chapterCompare != 0) return chapterCompare;
+
+            int lessonCompare = string.Compare(a.lessonTitle, b.lessonTitle, StringComparison.OrdinalIgnoreCase);
+            if (lessonCompare != 0) return lessonCompare;
+
+            return (a.asset?.display_order ?? 0).CompareTo(b.asset?.display_order ?? 0);
+        });
+
+        Debug.Log(
+            $"[ShowLessonPageController] Class 3D catalog loaded {classModelSources.Count} model(s) " +
+            $"for class {classId} across {lessonById.Count} lesson(s).");
+    }
+
+    private IEnumerator AddCurrentLessonModelsAsFallback()
+    {
+        foreach (LessonAssetView asset in modelAssets)
+        {
+            if (asset == null) continue;
+            classModelSources.Add(new ClassModelSource
+            {
+                asset = asset,
+                lessonTitle = currentLesson != null && !string.IsNullOrWhiteSpace(currentLesson.title)
+                    ? currentLesson.title
+                    : "Current Lesson",
+                chapterOrder = PlayerPrefs.GetInt("selected_chapter_order", 0),
+                isCurrentLesson = true
+            });
+        }
+        yield break;
+    }
+
     private void BeginOpenModel(string mode)
     {
         if (isOpeningModelScene)
@@ -2048,9 +2254,14 @@ canvas{
 
     private IEnumerator OpenModelRoutine(string mode)
     {
-        if (modelAssets.Count == 0)
+        // Build one model catalog for 3D / AR / VR from the ENTIRE current class.
+        // Current-lesson models are sorted first, so VR opens with the model
+        // belonging to the lesson the user is currently viewing.
+        yield return LoadClassModelSourcesRoutine();
+
+        if (classModelSources.Count == 0)
         {
-            ShowError("No 3D model is attached to this lesson.");
+            ShowError("This class does not have any 3D model yet.");
             yield break;
         }
 
@@ -2059,10 +2270,23 @@ canvas{
                 ? "3d"
                 : mode.Trim().ToLowerInvariant();
 
-        string destinationScene =
-            normalizedMode == "ar"
-                ? arModelsSceneName
-                : interactiveModelSceneName;
+        string destinationScene;
+
+        switch (normalizedMode)
+        {
+            case "ar":
+                destinationScene = arModelsSceneName;
+                break;
+
+            case "vr":
+                destinationScene = vrSceneName;
+                break;
+
+            case "3d":
+            default:
+                destinationScene = Mode3DSceneName;
+                break;
+        }
 
         if (!CanLoadScene(destinationScene))
         {
@@ -2082,12 +2306,14 @@ canvas{
         {
             lesson_id = selectedLessonId ?? string.Empty,
             mode = normalizedMode,
-            models = new ModelLaunchItem[modelAssets.Count]
+            class_id = PlayerPrefs.GetString("selected_class_id", string.Empty),
+            models = new ModelLaunchItem[classModelSources.Count]
         };
 
-        for (int i = 0; i < modelAssets.Count; i++)
+        for (int i = 0; i < classModelSources.Count; i++)
         {
-            LessonAssetView model = modelAssets[i];
+            ClassModelSource source = classModelSources[i];
+            LessonAssetView model = source?.asset;
             if (model == null)
                 continue;
 
@@ -2105,6 +2331,8 @@ canvas{
             {
                 asset_id = model.id ?? string.Empty,
                 lesson_id = model.lesson_id ?? selectedLessonId ?? string.Empty,
+                lesson_title = source.lessonTitle ?? "Lesson",
+                chapter_order = source.chapterOrder,
                 name = modelName,
                 file_name = model.file_name ?? string.Empty,
                 bucket = model.storage_bucket ?? string.Empty,
@@ -2132,29 +2360,51 @@ canvas{
             yield break;
         }
 
-        // Backward compatibility: old AR/3D loaders read a single selected_model_* set.
-        // Keep the first model there, while the new manifest contains ALL lesson models.
-        ModelLaunchItem first = manifest.models[0];
+        // Find the first model that actually belongs to the lesson currently open
+        // in ShowLessonScene. This guarantees that VRClassroomScene starts with the
+        // CURRENT lesson model even though the manifest also contains the whole class.
+        int initialModelIndex = 0;
+        for (int i = 0; i < manifest.models.Length; i++)
+        {
+            ModelLaunchItem candidate = manifest.models[i];
+            if (candidate != null &&
+                string.Equals(
+                    candidate.lesson_id,
+                    selectedLessonId,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                initialModelIndex = i;
+                break;
+            }
+        }
+
+        ModelLaunchItem first = manifest.models[initialModelIndex];
 
         PlayerPrefs.SetString("interactive_mode", normalizedMode);
         PlayerPrefs.SetString("selected_model_asset_id", first.asset_id ?? string.Empty);
         PlayerPrefs.SetString("selected_model_bucket", first.bucket ?? string.Empty);
         PlayerPrefs.SetString("selected_model_storage_path", first.storage_path ?? string.Empty);
         PlayerPrefs.SetString("selected_model_file_name", first.file_name ?? string.Empty);
-        PlayerPrefs.SetString("selected_model_url", first.url ?? string.Empty);
+        PlayerPrefs.SetString("selected_model_url", first.url ?? first.fallback_url ?? string.Empty);
         PlayerPrefs.SetString("selected_model_name", first.name ?? "3D Model");
-        PlayerPrefs.SetString("selected_model_lesson_id", selectedLessonId ?? string.Empty);
+        PlayerPrefs.SetString("selected_model_lesson_id", first.lesson_id ?? selectedLessonId ?? string.Empty);
+        PlayerPrefs.SetString("selected_model_lesson_title", first.lesson_title ?? "Lesson");
+        PlayerPrefs.SetInt("selected_model_chapter_order", first.chapter_order);
 
-        // New hand-off used by ARScene to know every model attached to this lesson.
-        PlayerPrefs.SetString("selected_lesson_models_json", JsonUtility.ToJson(manifest));
+        // The manifest contains ALL 3D models from ALL lessons of the current class.
+        // Keep the old key for AR compatibility, and also save a clearer class-level key
+        // for VRClassroomScene.
+        string manifestJson = JsonUtility.ToJson(manifest);
+        PlayerPrefs.SetString("selected_lesson_models_json", manifestJson);
+        PlayerPrefs.SetString("selected_class_models_json", manifestJson);
         PlayerPrefs.SetInt("selected_lesson_model_count", manifest.models.Length);
-        PlayerPrefs.SetInt("selected_lesson_model_index", 0);
+        PlayerPrefs.SetInt("selected_lesson_model_index", initialModelIndex);
 
         // Preserve the REAL page that opened ShowLessonScene before temporarily
         // changing previous_scene for the AR/3D child scene.
         PreserveShowLessonParentScene();
 
-        // ARScene / InteractiveModelScene use previous_scene to return here.
+        // ARScene / Mode3DScene use previous_scene to return here.
         PlayerPrefs.SetString(PreviousSceneKey, "ShowLessonScene");
         PlayerPrefs.Save();
 
@@ -2192,7 +2442,29 @@ canvas{
         string rawPath = model.storage_path?.Trim() ?? string.Empty;
         string rawBucket = model.storage_bucket?.Trim() ?? string.Empty;
 
-        // If the database already stores an absolute non-S3 public URL, reuse it.
+        // lesson-models has its own public domain. Always canonicalize old/stale
+        // *.r2.dev URLs to the current lesson-models public domain while preserving
+        // the object key.
+        if (string.Equals(rawBucket, "lesson-models", StringComparison.OrdinalIgnoreCase))
+        {
+            string publicBase = GetLessonModelsPublicBaseUrl();
+
+            if (!string.IsNullOrWhiteSpace(publicBase) &&
+                !string.IsNullOrWhiteSpace(rawPath))
+            {
+                string key = ExtractObjectKey(rawPath);
+
+                // Old data can occasionally contain "lesson-models/<key>".
+                const string bucketPrefix = "lesson-models/";
+                if (key.StartsWith(bucketPrefix, StringComparison.OrdinalIgnoreCase))
+                    key = key.Substring(bucketPrefix.Length);
+
+                if (!string.IsNullOrWhiteSpace(key))
+                    return publicBase.TrimEnd('/') + "/" + key.TrimStart('/');
+            }
+        }
+
+        // Other absolute public/custom-domain URLs remain untouched.
         if (IsHttpUrl(rawPath) && !IsR2S3ApiUrl(rawPath))
             return rawPath;
 
@@ -2213,8 +2485,6 @@ canvas{
 
         string objectKey = ExtractObjectKey(rawPath);
 
-        // If an old row includes the bucket name at the beginning of the object key,
-        // remove it because R2 public/custom-domain URLs normally start at the object key.
         if (!string.IsNullOrWhiteSpace(rawBucket) && !IsHttpUrl(rawBucket))
         {
             string bucketPrefix = rawBucket.Trim('/') + "/";
@@ -2223,6 +2493,17 @@ canvas{
         }
 
         return r2PublicBaseUrl.TrimEnd('/') + "/" + objectKey.TrimStart('/');
+    }
+
+    private string GetLessonModelsPublicBaseUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(lessonModelsPublicBaseUrl))
+            return lessonModelsPublicBaseUrl.Trim().TrimEnd('/');
+
+        if (!string.IsNullOrWhiteSpace(r2PublicBaseUrl))
+            return r2PublicBaseUrl.Trim().TrimEnd('/');
+
+        return string.Empty;
     }
 
     private static bool IsR2S3ApiUrl(string url)
@@ -2251,8 +2532,42 @@ canvas{
         if (model == null)
             yield break;
 
-        // 1) The database already contains a complete public URL.
-        // Use it directly and skip the signer.
+        // 1) lesson-models: always canonicalize through the CURRENT public domain.
+        // This repairs newly uploaded rows that were saved with an old r2.dev host
+        // while keeping the same valid object key.
+        if (string.Equals(
+                model.storage_bucket?.Trim(),
+                "lesson-models",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            string canonicalPublicUrl = BuildPublicR2ModelUrl(model);
+
+            if (!string.IsNullOrWhiteSpace(canonicalPublicUrl))
+            {
+                string original = model.storage_path?.Trim() ?? string.Empty;
+
+                if (!string.Equals(
+                        original,
+                        canonicalPublicUrl,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    Debug.LogWarning(
+                        "[ShowLessonPageController] Repaired lesson-models URL host/path for runtime load." +
+                        "\nOriginal: " + original +
+                        "\nCanonical: " + canonicalPublicUrl);
+                }
+                else
+                {
+                    Debug.Log(
+                        "[ShowLessonPageController] Using canonical lesson-models public URL directly.");
+                }
+
+                onResolved?.Invoke(canonicalPublicUrl);
+                yield break;
+            }
+        }
+
+        // 2) Other absolute public/custom-domain storage paths can be used directly.
         string absoluteStoragePath = model.storage_path?.Trim() ?? string.Empty;
         if (IsHttpUrl(absoluteStoragePath) &&
             !IsR2S3ApiUrl(absoluteStoragePath))
@@ -2265,7 +2580,7 @@ canvas{
             yield break;
         }
 
-        // 2) Private Cloudflare R2: ask the configured Edge Function for a fresh URL.
+        // 3) Private Cloudflare R2: ask the configured Edge Function for a fresh URL.
         // This runs only when storage_path is not already a public URL.
         if (!string.IsNullOrWhiteSpace(r2SignedUrlFunctionName))
         {
@@ -2284,7 +2599,7 @@ canvas{
             }
         }
 
-        // 3) Persisted URL columns / public R2 base URL / other saved candidates.
+        // 4) Persisted URL columns / public R2 base URL / other saved candidates.
         List<AssetUrlCandidate> candidates = BuildAssetUrlCandidates(model);
         foreach (AssetUrlCandidate candidate in candidates)
         {
@@ -2304,7 +2619,7 @@ canvas{
             }
         }
 
-        // 4) Supabase Storage compatibility fallback.
+        // 5) Supabase Storage compatibility fallback.
         // This is important for private buckets because /object/authenticated/... requires
         // an Authorization header, while glTFast normally downloads a URL by itself.
         if (!string.IsNullOrWhiteSpace(model.storage_bucket) &&
@@ -2746,9 +3061,18 @@ canvas{
 
         SceneManager.LoadScene(sceneName);
     }
+    private sealed class ClassModelSource
+    {
+        public LessonAssetView asset;
+        public string lessonTitle;
+        public int chapterOrder;
+        public bool isCurrentLesson;
+    }
+
     [Serializable]
     private class ModelLaunchManifest
     {
+        public string class_id;
         public string lesson_id;
         public string mode;
         public ModelLaunchItem[] models;
@@ -2759,6 +3083,8 @@ canvas{
     {
         public string asset_id;
         public string lesson_id;
+        public string lesson_title;
+        public int chapter_order;
         public string name;
         public string file_name;
         public string bucket;
@@ -2804,6 +3130,35 @@ canvas{
         public string signedURL;
         public string signed_url;
     }
+}
+
+[Serializable]
+public class ClassChapterView
+{
+    public string id;
+    public string title;
+    public int chapter_order;
+}
+
+[Serializable]
+public class ClassChapterViewList
+{
+    public ClassChapterView[] items;
+}
+
+[Serializable]
+public class ClassLessonView
+{
+    public string id;
+    public string chapter_id;
+    public string title;
+    public string created_at;
+}
+
+[Serializable]
+public class ClassLessonViewList
+{
+    public ClassLessonView[] items;
 }
 
 [Serializable]

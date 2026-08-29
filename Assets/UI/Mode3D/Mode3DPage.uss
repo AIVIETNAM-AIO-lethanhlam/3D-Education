@@ -8,7 +8,12 @@
     height: 100%;
     position: relative;
     overflow: hidden;
-    background-color: rgb(5, 18, 45);
+    /*
+       Keep the UI document transparent so the Main Camera and runtime GLB
+       remain visible behind the controls. Mode3DPageController gives the
+       camera the same navy color, so the visual design stays unchanged.
+    */
+    background-color: rgba(5, 18, 45, 0);
     -unity-font-definition: url("project://database/Assets/Resources/Fonts/PlusJakartaSans-Regular.ttf");
 }
 
@@ -115,7 +120,7 @@
     position: absolute;
     left: 18%;
     right: 12%;
-    top: 38%;
+    top: 33%;
     height: 18%;
     rotate: 7deg;
 }
@@ -127,7 +132,7 @@
     top: 8px;
     bottom: -10px;
     border-radius: 24px;
-    background-color: rgba(0, 5, 18, 0.34);
+    background-color: rgba(0, 5, 18, 0.12);
 }
 
 .glass-board {
@@ -137,7 +142,7 @@
     top: 0;
     bottom: 0;
     border-radius: 24px;
-    background-color: rgba(22, 43, 88, 0.34);
+    background-color: rgba(22, 43, 88, 0.035);
 
     border-left-width: 1px;
     border-right-width: 1px;
@@ -155,15 +160,15 @@
     right: 10%;
     top: 50%;
     height: 1px;
-    background-color: rgba(102, 144, 222, 0.10);
+    background-color: rgba(102, 144, 222, 0.05);
 }
 
 .model-interaction-area {
     position: absolute;
     left: -8%;
     right: -8%;
-    top: -24%;
-    bottom: -24%;
+    top: -30%;
+    bottom: -20%;
 }
 
 /* ---------- Number markers ---------- */
