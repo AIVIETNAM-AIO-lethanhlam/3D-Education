@@ -300,6 +300,12 @@
     color: rgb(29, 49, 89);
 }
 
+/* Real placeholder styling for UI Toolkit TextField.
+   Typed text stays dark; only the hint is light gray. */
+.auth-input .unity-base-text-field__input--placeholder {
+    color: rgb(148, 163, 184);
+}
+
 .eye-button {
     width: 34px;
     height: 34px;
@@ -504,4 +510,494 @@
 .auth-message--loading {
     display: flex;
     color: rgb(79, 93, 127);
+}
+/* ================================================================
+   PASSWORD RECOVERY
+   Forgot Password -> OTP -> New Password -> Success
+   ================================================================ */
+
+.recovery-back-button,
+.recovery-status-dots {
+    display: none;
+}
+
+.recovery-active .login-hero {
+    height: 198px;
+    justify-content: flex-start;
+}
+
+.recovery-active .logo-container {
+    margin-top: 48px;
+}
+
+.recovery-active .logo-icon-container {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 8px;
+    border-radius: 14px;
+}
+
+.recovery-active .logo-icon {
+    width: 29px;
+    height: 29px;
+}
+
+.recovery-active .logo-title {
+    margin-bottom: 2px;
+    font-size: 16px;
+}
+
+.recovery-active .logo-subtitle {
+    font-size: 11px;
+}
+
+.recovery-active .auth-card {
+    margin-top: -29px;
+    padding-bottom: 0;
+    border-width: 1px;
+    border-color: rgb(225, 232, 244);
+    border-radius: 22px;
+}
+
+.recovery-active .tab-header,
+.recovery-active .tab-divider {
+    display: none;
+}
+
+.recovery-active .page-bottom-space {
+    height: 36px;
+}
+
+.recovery-back-button {
+    position: absolute;
+    top: 32px;
+    left: 13px;
+    width: 35px;
+    height: 35px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.13);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.35);
+    border-radius: 18px;
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: white;
+}
+
+.recovery-active .recovery-back-button {
+    display: flex;
+}
+
+.recovery-status-dots {
+    position: absolute;
+    top: 35px;
+    right: 16px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.recovery-active .recovery-status-dots {
+    display: flex;
+}
+
+.recovery-status-dot {
+    margin-left: 3px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.recovery-status-dot-main {
+    color: white;
+}
+
+.recovery-form {
+    padding-top: 22px;
+    padding-right: 18px;
+    padding-bottom: 26px;
+    padding-left: 18px;
+    align-items: stretch;
+}
+
+.recovery-form-reset {
+    padding-top: 21px;
+    padding-bottom: 18px;
+}
+
+.recovery-icon-badge {
+    align-self: center;
+    width: 50px;
+    height: 50px;
+    margin-bottom: 15px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(241, 246, 255);
+    border-width: 1px;
+    border-color: rgb(198, 216, 245);
+    border-radius: 14px;
+}
+
+.recovery-main-icon {
+    width: 23px;
+    height: 23px;
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(0, 70, 180);
+}
+
+.recovery-symbol-icon {
+    font-size: 25px;
+    -unity-font-style: bold;
+    color: rgb(0, 70, 180);
+}
+
+.recovery-title {
+    margin-bottom: 8px;
+    font-size: 18px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(13, 30, 66);
+}
+
+.recovery-description {
+    align-self: center;
+    max-width: 290px;
+    margin-bottom: 23px;
+    font-size: 12px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    color: rgb(85, 102, 140);
+}
+
+.recovery-description-tight {
+    margin-bottom: 3px;
+}
+
+.recovery-masked-email {
+    align-self: center;
+    margin-bottom: 22px;
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: rgb(0, 70, 180);
+}
+
+.recovery-field-heading {
+    margin-bottom: 8px;
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(67, 82, 117);
+}
+
+.recovery-input-container {
+    height: 46px;
+    margin-bottom: 8px;
+    background-color: rgb(239, 244, 254);
+    border-color: rgb(194, 211, 241);
+    border-radius: 19px;
+}
+
+.input-error {
+    border-width: 1px;
+    border-color: rgb(239, 68, 68);
+}
+
+.input-success {
+    border-width: 1px;
+    border-color: rgb(34, 197, 94);
+}
+
+.recovery-message {
+    min-height: 0;
+    margin-top: 0;
+    margin-bottom: 8px;
+    padding-right: 4px;
+    padding-left: 4px;
+    font-size: 10px;
+    white-space: normal;
+    -unity-text-align: middle-left;
+    color: rgba(0, 0, 0, 0);
+}
+
+.recovery-message-centered {
+    -unity-text-align: middle-center;
+}
+
+.recovery-message--error {
+    color: rgb(239, 68, 68);
+}
+
+.recovery-message--success {
+    color: rgb(22, 163, 74);
+}
+
+.recovery-message--info {
+    color: rgb(82, 101, 139);
+}
+
+.recovery-primary-button {
+    height: 48px;
+    margin-top: 2px;
+    margin-bottom: 18px;
+    border-radius: 18px;
+}
+
+.primary-action-button:disabled {
+    background-color: rgb(129, 164, 220);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.recovery-inline-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 17px;
+}
+
+.recovery-inline-text {
+    margin-right: 3px;
+    font-size: 10px;
+    color: rgb(101, 115, 147);
+}
+
+.recovery-inline-link {
+    height: 26px;
+    padding: 0;
+    background-color: rgba(255, 255, 255, 0);
+    border-width: 0;
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgb(0, 70, 180);
+}
+
+.recovery-security-note {
+    min-height: 42px;
+    flex-direction: row;
+    align-items: flex-start;
+    padding-top: 7px;
+    border-top-width: 1px;
+    border-top-color: rgb(223, 230, 243);
+}
+
+.recovery-security-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    margin-right: 7px;
+    background-repeat: no-repeat;
+    background-position: center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(112, 130, 167);
+}
+
+.recovery-security-text {
+    flex-grow: 1;
+    font-size: 9px;
+    white-space: normal;
+    color: rgb(112, 126, 157);
+}
+
+/* OTP */
+.otp-row {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 11px;
+}
+
+.otp-input {
+    flex-grow: 1;
+    height: 50px;
+    margin-right: 6px;
+    background-color: rgb(239, 244, 254);
+    border-width: 1px;
+    border-color: rgb(194, 211, 241);
+    border-radius: 16px;
+    font-size: 20px;
+    -unity-text-align: middle-center;
+    color: rgb(15, 37, 81);
+}
+
+.otp-input-last {
+    margin-right: 0;
+}
+
+.otp-input .unity-text-field__input {
+    padding: 0;
+    background-color: rgba(255, 255, 255, 0);
+    border-width: 0;
+    font-size: 20px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(15, 37, 81);
+}
+
+.otp-input:focus,
+.otp-input--filled {
+    border-color: rgb(0, 70, 180);
+}
+
+.recovery-help-text {
+    align-self: center;
+    margin-top: 0;
+    margin-bottom: 2px;
+    font-size: 10px;
+    color: rgb(101, 115, 147);
+}
+
+.recovery-resend-button {
+    align-self: center;
+    height: 25px;
+    padding: 0;
+    margin-bottom: 13px;
+    background-color: rgba(255, 255, 255, 0);
+    border-width: 0;
+    font-size: 10px;
+    -unity-font-style: bold;
+    color: rgb(0, 70, 180);
+}
+
+.recovery-resend-button:disabled {
+    color: rgb(98, 113, 145);
+}
+
+.recovery-secondary-link {
+    align-self: center;
+    height: 31px;
+    padding: 0;
+    background-color: rgba(255, 255, 255, 0);
+    border-width: 0;
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: rgb(0, 70, 180);
+}
+
+/* Password rules */
+.password-rules-card {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 3px;
+    margin-bottom: 16px;
+    padding-top: 9px;
+    padding-right: 8px;
+    padding-bottom: 8px;
+    padding-left: 8px;
+    background-color: rgb(239, 244, 254);
+    border-width: 1px;
+    border-color: rgb(194, 211, 241);
+    border-radius: 17px;
+}
+
+.password-rule {
+    width: 50%;
+    min-height: 23px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.password-rule-icon {
+    width: 17px;
+    margin-right: 4px;
+    font-size: 14px;
+    -unity-text-align: middle-center;
+    color: rgb(176, 191, 218);
+}
+
+.password-rule-text {
+    flex-grow: 1;
+    font-size: 9px;
+    color: rgb(142, 156, 184);
+}
+
+.password-rule--valid .password-rule-icon {
+    color: rgb(34, 197, 94);
+}
+
+.password-rule--valid .password-rule-text {
+    color: rgb(20, 37, 76);
+}
+
+.recovery-confirm-heading {
+    margin-top: 0;
+}
+
+.recovery-confirm-input {
+    margin-bottom: 2px;
+}
+
+.password-match-label {
+    min-height: 16px;
+    margin-bottom: 3px;
+    padding-left: 4px;
+    font-size: 9px;
+    color: rgba(0, 0, 0, 0);
+}
+
+.password-match--success {
+    color: rgb(22, 163, 74);
+}
+
+.password-match--error {
+    color: rgb(239, 68, 68);
+}
+
+.recovery-reset-button {
+    margin-top: 1px;
+    margin-bottom: 0;
+}
+
+/* Success */
+.recovery-success-form {
+    min-height: 365px;
+    justify-content: center;
+    padding-right: 22px;
+    padding-left: 22px;
+}
+
+.success-icon-badge {
+    align-self: center;
+    width: 72px;
+    height: 72px;
+    margin-bottom: 20px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(236, 253, 245);
+    border-width: 2px;
+    border-color: rgb(134, 239, 172);
+    border-radius: 36px;
+}
+
+.success-icon-symbol {
+    font-size: 36px;
+    -unity-font-style: bold;
+    color: rgb(34, 197, 94);
+}
+
+.success-title {
+    font-size: 19px;
+}
+
+.success-description {
+    margin-bottom: 20px;
+}
+
+.success-security-note {
+    flex-direction: row;
+    align-items: flex-start;
+    margin-bottom: 22px;
+    padding-top: 11px;
+    padding-right: 12px;
+    padding-bottom: 11px;
+    padding-left: 12px;
+    background-color: rgb(246, 249, 255);
+    border-width: 1px;
+    border-color: rgb(223, 230, 243);
+    border-radius: 13px;
+}
+
+.success-button {
+    margin-bottom: 0;
 }

@@ -14,26 +14,18 @@ public static class SupabaseAuthService
         Action<SupabaseAuthResponse> onSuccess,
         Action<string> onError)
     {
-        SignUpRequest payload =
-            new SignUpRequest
+        SignUpRequest payload = new SignUpRequest
+        {
+            email = NormalizeEmail(email),
+            password = password,
+            data = new SignUpUserMetadata
             {
-                email = NormalizeEmail(email),
-                password = password,
-                data = new SignUpUserMetadata
-                {
-                    full_name =
-                        NormalizePlainText(fullName),
-
-                    display_name =
-                        NormalizePlainText(fullName),
-
-                    role =
-                        NormalizeRole(role),
-
-                    avatar_url =
-                        string.Empty
-                }
-            };
+                full_name = NormalizePlainText(fullName),
+                display_name = NormalizePlainText(fullName),
+                role = NormalizeRole(role),
+                avatar_url = string.Empty
+            }
+        };
 
         yield return SendAuthRequest(
             UnityWebRequest.kHttpVerbPOST,
@@ -50,18 +42,98 @@ public static class SupabaseAuthService
         Action<SupabaseAuthResponse> onSuccess,
         Action<string> onError)
     {
-        SignInRequest payload =
-            new SignInRequest
-            {
-                email = NormalizeEmail(email),
-                password = password
-            };
+        SignInRequest payload = new SignInRequest
+        {
+            email = NormalizeEmail(email),
+            password = password
+        };
 
         yield return SendAuthRequest(
             UnityWebRequest.kHttpVerbPOST,
             "/token?grant_type=password",
             JsonUtility.ToJson(payload),
             null,
+            onSuccess,
+            onError);
+    }
+
+    /// <summary>
+    /// Requests Supabase's password-recovery email.
+    /// The Recovery email template must include {{ .Token }} so the user receives
+    /// the 6-digit OTP used by VerifyRecoveryCode().
+    /// </summary>
+    public static IEnumerator SendPasswordRecoveryCode(
+        string email,
+        Action onSuccess,
+        Action<string> onError)
+    {
+        RecoverPasswordRequest payload = new RecoverPasswordRequest
+        {
+            email = NormalizeEmail(email)
+        };
+
+        yield return SendAuthCommand(
+            UnityWebRequest.kHttpVerbPOST,
+            "/recover",
+            JsonUtility.ToJson(payload),
+            null,
+            onSuccess,
+            onError);
+    }
+
+    /// <summary>
+    /// Verifies the email recovery OTP. On success Supabase returns a temporary
+    /// authenticated recovery session. Keep the access token in memory only and
+    /// use it immediately with UpdatePasswordWithAccessToken().
+    /// </summary>
+    public static IEnumerator VerifyRecoveryCode(
+        string email,
+        string token,
+        Action<SupabaseAuthResponse> onSuccess,
+        Action<string> onError)
+    {
+        VerifyRecoveryOtpRequest payload = new VerifyRecoveryOtpRequest
+        {
+            email = NormalizeEmail(email),
+            token = NormalizePlainText(token),
+            type = "recovery"
+        };
+
+        yield return SendAuthRequest(
+            UnityWebRequest.kHttpVerbPOST,
+            "/verify",
+            JsonUtility.ToJson(payload),
+            null,
+            onSuccess,
+            onError);
+    }
+
+    /// <summary>
+    /// Updates the password with the temporary access token returned by
+    /// VerifyRecoveryCode(). This intentionally does not save a normal app session.
+    /// </summary>
+    public static IEnumerator UpdatePasswordWithAccessToken(
+        string newPassword,
+        string accessToken,
+        Action onSuccess,
+        Action<string> onError)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            onError?.Invoke("The password recovery session is no longer valid. Please request a new code.");
+            yield break;
+        }
+
+        UpdatePasswordRequest payload = new UpdatePasswordRequest
+        {
+            password = newPassword
+        };
+
+        yield return SendAuthCommand(
+            "PUT",
+            "/user",
+            JsonUtility.ToJson(payload),
+            accessToken,
             onSuccess,
             onError);
     }
@@ -73,31 +145,22 @@ public static class SupabaseAuthService
     {
         if (!SupabaseSession.IsLoggedIn)
         {
-            onError?.Invoke(
-                "Không có phiên đăng nhập hợp lệ.");
+            onError?.Invoke("Không có phiên đăng nhập hợp lệ.");
             yield break;
         }
 
-        UpdatePasswordRequest payload =
-            new UpdatePasswordRequest
-            {
-                password = newPassword
-            };
+        UpdatePasswordRequest payload = new UpdatePasswordRequest
+        {
+            password = newPassword
+        };
 
-        bool succeeded = false;
-
-        yield return SendAuthRequest(
+        yield return SendAuthCommand(
             "PUT",
             "/user",
             JsonUtility.ToJson(payload),
             SupabaseSession.AccessToken,
-            _ => succeeded = true,
+            onSuccess,
             onError);
-
-        if (succeeded)
-        {
-            onSuccess?.Invoke();
-        }
     }
 
     public static void SignOutLocally()
@@ -119,53 +182,21 @@ public static class SupabaseAuthService
             yield break;
         }
 
-        string requestUrl =
-            SupabaseConfig.AuthUrl +
-            endpoint;
+        string requestUrl = SupabaseConfig.AuthUrl + endpoint;
 
-        using UnityWebRequest request =
-            new UnityWebRequest(requestUrl, method);
-
-        request.timeout =
-            SupabaseConfig.RequestTimeoutSeconds;
-
-        request.uploadHandler =
-            new UploadHandlerRaw(
-                Encoding.UTF8.GetBytes(requestJson));
-
-        request.downloadHandler =
-            new DownloadHandlerBuffer();
-
-        request.SetRequestHeader(
-            "Content-Type",
-            "application/json");
-
-        request.SetRequestHeader(
-            "Accept",
-            "application/json");
-
-        request.SetRequestHeader(
-            "apikey",
-            SupabaseConfig.PublishableKey);
-
-        if (!string.IsNullOrWhiteSpace(accessToken))
-        {
-            request.SetRequestHeader(
-                "Authorization",
-                $"Bearer {accessToken}");
-        }
+        using UnityWebRequest request = CreateAuthRequest(
+            requestUrl,
+            method,
+            requestJson,
+            accessToken);
 
         yield return request.SendWebRequest();
 
-        string responseText =
-            request.downloadHandler?.text ?? string.Empty;
+        string responseText = request.downloadHandler?.text ?? string.Empty;
 
         if (request.result != UnityWebRequest.Result.Success)
         {
-            string errorMessage =
-                ExtractAuthError(
-                    responseText,
-                    request.error);
+            string errorMessage = ExtractAuthError(responseText, request.error);
 
             Debug.LogError(
                 "Supabase Auth request failed\n" +
@@ -178,13 +209,17 @@ public static class SupabaseAuthService
             yield break;
         }
 
+        if (string.IsNullOrWhiteSpace(responseText))
+        {
+            onError?.Invoke("Supabase returned an empty authentication response.");
+            yield break;
+        }
+
         SupabaseAuthResponse response;
 
         try
         {
-            response =
-                JsonUtility.FromJson<SupabaseAuthResponse>(
-                    responseText);
+            response = JsonUtility.FromJson<SupabaseAuthResponse>(responseText);
         }
         catch (Exception exception)
         {
@@ -193,19 +228,91 @@ public static class SupabaseAuthService
                 $"Response: {responseText}\n" +
                 exception);
 
-            onError?.Invoke(
-                "Supabase trả về dữ liệu không hợp lệ.");
+            onError?.Invoke("Supabase trả về dữ liệu không hợp lệ.");
             yield break;
         }
 
         if (response == null)
         {
-            onError?.Invoke(
-                "Không nhận được dữ liệu xác thực từ Supabase.");
+            onError?.Invoke("Không nhận được dữ liệu xác thực từ Supabase.");
             yield break;
         }
 
         onSuccess?.Invoke(response);
+    }
+
+    private static IEnumerator SendAuthCommand(
+        string method,
+        string endpoint,
+        string requestJson,
+        string accessToken,
+        Action onSuccess,
+        Action<string> onError)
+    {
+        if (!SupabaseConfig.TryValidate(out string configError))
+        {
+            onError?.Invoke(configError);
+            yield break;
+        }
+
+        string requestUrl = SupabaseConfig.AuthUrl + endpoint;
+
+        using UnityWebRequest request = CreateAuthRequest(
+            requestUrl,
+            method,
+            requestJson,
+            accessToken);
+
+        yield return request.SendWebRequest();
+
+        string responseText = request.downloadHandler?.text ?? string.Empty;
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            string errorMessage = ExtractAuthError(responseText, request.error);
+
+            Debug.LogError(
+                "Supabase Auth command failed\n" +
+                $"URL: {requestUrl}\n" +
+                $"HTTP status: {request.responseCode}\n" +
+                $"Unity error: {request.error}\n" +
+                $"Response: {responseText}");
+
+            onError?.Invoke(errorMessage);
+            yield break;
+        }
+
+        onSuccess?.Invoke();
+    }
+
+    private static UnityWebRequest CreateAuthRequest(
+        string requestUrl,
+        string method,
+        string requestJson,
+        string accessToken)
+    {
+        UnityWebRequest request = new UnityWebRequest(requestUrl, method)
+        {
+            timeout = SupabaseConfig.RequestTimeoutSeconds,
+            downloadHandler = new DownloadHandlerBuffer()
+        };
+
+        if (!string.IsNullOrWhiteSpace(requestJson))
+        {
+            request.uploadHandler = new UploadHandlerRaw(
+                Encoding.UTF8.GetBytes(requestJson));
+        }
+
+        request.SetRequestHeader("Content-Type", "application/json");
+        request.SetRequestHeader("Accept", "application/json");
+        request.SetRequestHeader("apikey", SupabaseConfig.PublishableKey);
+
+        if (!string.IsNullOrWhiteSpace(accessToken))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {accessToken}");
+        }
+
+        return request;
     }
 
     private static string ExtractAuthError(
@@ -217,8 +324,7 @@ public static class SupabaseAuthService
             try
             {
                 SupabaseErrorResponse error =
-                    JsonUtility.FromJson<SupabaseErrorResponse>(
-                        responseText);
+                    JsonUtility.FromJson<SupabaseErrorResponse>(responseText);
 
                 if (error != null)
                 {
@@ -228,19 +334,22 @@ public static class SupabaseAuthService
                     if (!string.IsNullOrWhiteSpace(error.message))
                         return error.message;
 
-                    if (!string.IsNullOrWhiteSpace(
-                            error.error_description))
-                    {
+                    if (!string.IsNullOrWhiteSpace(error.error_description))
                         return error.error_description;
-                    }
 
                     if (!string.IsNullOrWhiteSpace(error.error))
                         return error.error;
+
+                    if (!string.IsNullOrWhiteSpace(error.error_code))
+                        return error.error_code;
+
+                    if (!string.IsNullOrWhiteSpace(error.code))
+                        return error.code;
                 }
             }
             catch
             {
-                // Trả nguyên response nếu parse thất bại.
+                // Fall through and return the raw response.
             }
 
             return responseText;
@@ -254,9 +363,7 @@ public static class SupabaseAuthService
     private static string NormalizeEmail(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
-        {
             return string.Empty;
-        }
 
         return value
             .Trim()
@@ -277,8 +384,7 @@ public static class SupabaseAuthService
 
     private static string NormalizeRole(string role)
     {
-        return NormalizePlainText(role)
-                   .ToLowerInvariant() == "teacher"
+        return NormalizePlainText(role).ToLowerInvariant() == "teacher"
             ? "teacher"
             : "student";
     }

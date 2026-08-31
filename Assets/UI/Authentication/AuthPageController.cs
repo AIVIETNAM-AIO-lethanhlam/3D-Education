@@ -63,6 +63,8 @@ public class AuthPageController : MonoBehaviour
     private bool isSigningIn;
     private bool isRegistering;
 
+    private PasswordRecoveryFlow passwordRecoveryFlow;
+
     private void OnEnable()
     {
         UIDocument document = GetComponent<UIDocument>();
@@ -119,6 +121,11 @@ public class AuthPageController : MonoBehaviour
         loginMessageLabel = root.Q<Label>("login-message-label");
         registerMessageLabel = root.Q<Label>("register-message-label");
 
+        passwordRecoveryFlow = new PasswordRecoveryFlow(
+            this,
+            root,
+            ReturnFromPasswordRecovery);
+
         RegisterEvents();
 
         SelectLoginStudent();
@@ -137,6 +144,8 @@ public class AuthPageController : MonoBehaviour
 
     private void OnDisable()
     {
+        passwordRecoveryFlow?.Dispose();
+        passwordRecoveryFlow = null;
         UnregisterEvents();
     }
 
@@ -829,8 +838,23 @@ public class AuthPageController : MonoBehaviour
         return error;
     }
 
-    private void OpenForgotPassword() =>
-        Debug.Log("Mở trang quên mật khẩu.");
+    private void OpenForgotPassword()
+    {
+        passwordRecoveryFlow?.Open(loginEmailField?.value ?? string.Empty);
+    }
+
+    private void ReturnFromPasswordRecovery(string recoveredEmail)
+    {
+        if (loginEmailField != null && !string.IsNullOrWhiteSpace(recoveredEmail))
+            loginEmailField.value = recoveredEmail;
+
+        if (loginPasswordField != null)
+            loginPasswordField.value = string.Empty;
+
+        ShowLoginTab();
+        ClearLoginMessage();
+        loginPasswordField?.Focus();
+    }
 
     private void LoginWithGoogle() =>
         Debug.Log("Đăng nhập bằng Google.");

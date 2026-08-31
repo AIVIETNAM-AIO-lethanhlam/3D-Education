@@ -25,6 +25,20 @@ public class SignInRequest
 }
 
 [Serializable]
+public class RecoverPasswordRequest
+{
+    public string email;
+}
+
+[Serializable]
+public class VerifyRecoveryOtpRequest
+{
+    public string email;
+    public string token;
+    public string type;
+}
+
+[Serializable]
 public class UpdatePasswordRequest
 {
     public string password;

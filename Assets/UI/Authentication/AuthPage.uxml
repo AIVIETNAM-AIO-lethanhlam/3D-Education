@@ -13,6 +13,16 @@
 
             <!-- HERO -->
             <ui:VisualElement class="login-hero">
+                <ui:Button
+                    name="recovery-back-button"
+                    text="←"
+                    class="recovery-back-button"/>
+
+                <ui:VisualElement class="recovery-status-dots">
+                    <ui:Label text="•" class="recovery-status-dot"/>
+                    <ui:Label text="●" class="recovery-status-dot recovery-status-dot-main"/>
+                    <ui:Label text="•" class="recovery-status-dot"/>
+                </ui:VisualElement>
                 <ui:VisualElement class="hero-circle hero-circle-large"/>
                 <ui:VisualElement class="hero-circle hero-circle-medium"/>
                 <ui:VisualElement class="hero-circle hero-circle-small"/>
@@ -275,6 +285,240 @@
                         name="register-privacy-button"
                         text="Privacy Policy &amp; Terms"
                         class="privacy-button"/>
+                </ui:VisualElement>
+
+                <!-- ================= FORGOT PASSWORD ================= -->
+                <ui:VisualElement
+                    name="forgot-password-form"
+                    class="form-content recovery-form form-hidden">
+
+                    <ui:VisualElement class="recovery-icon-badge">
+                        <ui:VisualElement class="recovery-main-icon icon-lock"/>
+                    </ui:VisualElement>
+
+                    <ui:Label
+                        text="Forgot your password?"
+                        class="recovery-title"/>
+
+                    <ui:Label
+                        text="Enter the email associated with your account and we'll send you a verification code to reset your password."
+                        class="recovery-description"/>
+
+                    <ui:Label text="EMAIL ADDRESS" class="recovery-field-heading"/>
+
+                    <ui:VisualElement
+                        name="forgot-email-container"
+                        class="input-container recovery-input-container">
+                        <ui:VisualElement class="input-icon icon-globe"/>
+                        <ui:TextField
+                            name="forgot-email-field"
+                            class="auth-input"
+                            placeholder-text="name@hcmut.edu.vn"/>
+                    </ui:VisualElement>
+
+                    <ui:Label
+                        name="forgot-message-label"
+                        text=""
+                        class="recovery-message"/>
+
+                    <ui:Button
+                        name="send-code-button"
+                        text="Send verification code"
+                        class="primary-action-button recovery-primary-button"/>
+
+                    <ui:VisualElement class="recovery-inline-row">
+                        <ui:Label text="Remember your password?" class="recovery-inline-text"/>
+                        <ui:Button
+                            name="forgot-sign-in-button"
+                            text="Sign In"
+                            class="recovery-inline-link"/>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="recovery-security-note">
+                        <ui:VisualElement class="recovery-security-icon icon-lock"/>
+                        <ui:Label
+                            text="Your account information is protected and will never be shared."
+                            class="recovery-security-text"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- ================= VERIFY OTP ================= -->
+                <ui:VisualElement
+                    name="verify-code-form"
+                    class="form-content recovery-form form-hidden">
+
+                    <ui:VisualElement class="recovery-icon-badge">
+                        <ui:Label text="✉" class="recovery-symbol-icon"/>
+                    </ui:VisualElement>
+
+                    <ui:Label text="Check your email" class="recovery-title"/>
+                    <ui:Label
+                        text="We sent a 6-digit verification code to"
+                        class="recovery-description recovery-description-tight"/>
+                    <ui:Label
+                        name="masked-email-label"
+                        text="ng***@hcmut.edu.vn"
+                        class="recovery-masked-email"/>
+
+                    <ui:VisualElement class="otp-row">
+                        <ui:TextField name="otp-field-0" class="otp-input"/>
+                        <ui:TextField name="otp-field-1" class="otp-input"/>
+                        <ui:TextField name="otp-field-2" class="otp-input"/>
+                        <ui:TextField name="otp-field-3" class="otp-input"/>
+                        <ui:TextField name="otp-field-4" class="otp-input"/>
+                        <ui:TextField name="otp-field-5" class="otp-input otp-input-last"/>
+                    </ui:VisualElement>
+
+                    <ui:Label
+                        name="verify-message-label"
+                        text=""
+                        class="recovery-message recovery-message-centered"/>
+
+                    <ui:Button
+                        name="verify-code-button"
+                        text="Verify code"
+                        class="primary-action-button recovery-primary-button"/>
+
+                    <ui:Label
+                        text="Didn't receive the code?"
+                        class="recovery-help-text"/>
+
+                    <ui:Button
+                        name="resend-code-button"
+                        text="Resend in 00:60"
+                        class="recovery-resend-button"/>
+
+                    <ui:Button
+                        name="different-email-button"
+                        text="Use a different email"
+                        class="recovery-secondary-link"/>
+                </ui:VisualElement>
+
+                <!-- ================= RESET PASSWORD ================= -->
+                <ui:VisualElement
+                    name="reset-password-form"
+                    class="form-content recovery-form recovery-form-reset form-hidden">
+
+                    <ui:VisualElement class="recovery-icon-badge">
+                        <ui:VisualElement class="recovery-main-icon icon-lock"/>
+                    </ui:VisualElement>
+
+                    <ui:Label text="Create a new password" class="recovery-title"/>
+                    <ui:Label
+                        text="Choose a strong password that you haven't used before."
+                        class="recovery-description"/>
+
+                    <ui:Label text="NEW PASSWORD" class="recovery-field-heading"/>
+                    <ui:VisualElement
+                        name="new-password-container"
+                        class="input-container recovery-input-container">
+                        <ui:VisualElement class="input-icon icon-lock"/>
+                        <ui:TextField
+                            name="new-password-field"
+                            class="auth-input"
+                            password="true"
+                            mask-character="•"
+                            placeholder-text="Enter new password"/>
+                        <ui:Button
+                            name="toggle-new-password-button"
+                            class="eye-button">
+                            <ui:VisualElement class="eye-wrapper">
+                                <ui:VisualElement
+                                    name="new-password-eye-icon"
+                                    class="eye-icon icon-eye"/>
+                            </ui:VisualElement>
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="password-rules-card">
+                        <ui:VisualElement name="password-rule-length" class="password-rule">
+                            <ui:Label text="○" class="password-rule-icon"/>
+                            <ui:Label text="8+ characters" class="password-rule-text"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="password-rule-uppercase" class="password-rule password-rule-right">
+                            <ui:Label text="○" class="password-rule-icon"/>
+                            <ui:Label text="Uppercase letter" class="password-rule-text"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="password-rule-lowercase" class="password-rule">
+                            <ui:Label text="○" class="password-rule-icon"/>
+                            <ui:Label text="Lowercase letter" class="password-rule-text"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="password-rule-number" class="password-rule password-rule-right">
+                            <ui:Label text="○" class="password-rule-icon"/>
+                            <ui:Label text="Number" class="password-rule-text"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="password-rule-special" class="password-rule">
+                            <ui:Label text="○" class="password-rule-icon"/>
+                            <ui:Label text="Special character" class="password-rule-text"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:Label text="CONFIRM NEW PASSWORD" class="recovery-field-heading recovery-confirm-heading"/>
+                    <ui:VisualElement
+                        name="confirm-password-container"
+                        class="input-container recovery-input-container recovery-confirm-input">
+                        <ui:VisualElement class="input-icon icon-lock"/>
+                        <ui:TextField
+                            name="confirm-password-field"
+                            class="auth-input"
+                            password="true"
+                            mask-character="•"
+                            placeholder-text="Re-enter new password"/>
+                        <ui:Button
+                            name="toggle-confirm-password-button"
+                            class="eye-button">
+                            <ui:VisualElement class="eye-wrapper">
+                                <ui:VisualElement
+                                    name="confirm-password-eye-icon"
+                                    class="eye-icon icon-eye"/>
+                            </ui:VisualElement>
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:Label
+                        name="password-match-label"
+                        text=""
+                        class="password-match-label"/>
+
+                    <ui:Label
+                        name="reset-message-label"
+                        text=""
+                        class="recovery-message"/>
+
+                    <ui:Button
+                        name="reset-password-button"
+                        text="Reset password"
+                        class="primary-action-button recovery-primary-button recovery-reset-button"/>
+                </ui:VisualElement>
+
+                <!-- ================= SUCCESS ================= -->
+                <ui:VisualElement
+                    name="reset-success-form"
+                    class="form-content recovery-form recovery-success-form form-hidden">
+
+                    <ui:VisualElement class="success-icon-badge">
+                        <ui:Label text="✓" class="success-icon-symbol"/>
+                    </ui:VisualElement>
+
+                    <ui:Label
+                        text="Password reset successfully"
+                        class="recovery-title success-title"/>
+
+                    <ui:Label
+                        text="Your password has been updated. You can now sign in using your new password."
+                        class="recovery-description success-description"/>
+
+                    <ui:VisualElement class="success-security-note">
+                        <ui:VisualElement class="recovery-security-icon icon-lock"/>
+                        <ui:Label
+                            text="For your security, other active sessions may need to sign in again."
+                            class="recovery-security-text"/>
+                    </ui:VisualElement>
+
+                    <ui:Button
+                        name="success-back-to-login-button"
+                        text="Back to Sign In"
+                        class="primary-action-button recovery-primary-button success-button"/>
                 </ui:VisualElement>
             </ui:VisualElement>
 
