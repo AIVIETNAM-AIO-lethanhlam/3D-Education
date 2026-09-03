@@ -22,6 +22,22 @@ public class VRPageController : MonoBehaviour
     [Header("Runtime model catalog")]
     [SerializeField] private VRRuntimeModelCatalog modelCatalog;
 
+    [Header("AI model detail mode")]
+    [SerializeField] private VRModelDetailService detailService;
+    [SerializeField] private VRModelDetailAnchorController detailAnchorController;
+
+    [Tooltip("Horizontal UI distance between the projected 3D anchor and its label.")]
+    [SerializeField, Range(45f, 180f)]
+    private float detailLabelHorizontalOffset = 92f;
+
+    [Tooltip("Minimum vertical separation between labels placed on the same side.")]
+    [SerializeField, Range(22f, 80f)]
+    private float detailLabelVerticalSpacing = 38f;
+
+    [Tooltip("Screen padding used when clamping labels.")]
+    [SerializeField, Range(4f, 40f)]
+    private float detailLabelScreenPadding = 14f;
+
     [Header("Player start pose")]
     [SerializeField]
     private bool spawnAtBackFacingFront = true;
@@ -73,6 +89,7 @@ public class VRPageController : MonoBehaviour
     private UIToolkitButton modelsButton;
     private UIToolkitButton visibilityButton;
     private UIToolkitButton rotateButton;
+    private UIToolkitButton detailsButton;
 
     private VisualElement visibilityIcon;
     private VisualElement rotateIcon;
@@ -102,6 +119,45 @@ public class VRPageController : MonoBehaviour
     private TextField aiChatInput;
     private Label aiChatTyping;
     private Label aiChatContext;
+
+    // AI model detail UI
+    private VisualElement detailConnectorLayer;
+    private VisualElement detailLabelsLayer;
+    private VisualElement detailPopupOverlay;
+    private VisualElement detailPopupPanel;
+    private UIToolkitButton closeDetailPopupButton;
+    private ScrollView detailPopupScroll;
+    private Label detailPopupTitle;
+    private Label detailPopupConfidence;
+    private Label detailPopupDescription;
+    private Label detailPopupStructure;
+    private Label detailPopupFunction;
+    private Label detailStructureHeading;
+    private Label detailFunctionHeading;
+
+    private bool detailModeEnabled;
+
+    // True while a modal UI surface should own pointer/drag input.
+    // Runtime 3D interaction scripts can read this to avoid reacting
+    // to mouse/touch input that belongs to the popup.
+    public static bool IsWorldInputBlocked { get; private set; }
+
+    private bool detailInputStateCaptured;
+    private bool detailPlayerMovementWasEnabled;
+    private bool detailCameraLookWasEnabled;
+    private bool detailJoystickWasActive;
+
+    private readonly Dictionary<string, UIToolkitButton>
+        detailPartLabels =
+            new Dictionary<string, UIToolkitButton>();
+
+    private readonly Dictionary<string, Vector2>
+        detailLabelCenters =
+            new Dictionary<string, Vector2>();
+
+    private readonly Dictionary<string, Vector2>
+        detailAnchorPanelPositions =
+            new Dictionary<string, Vector2>();
 
     // Legacy uGUI joystick
     private GameObject fixedJoystickObject;
@@ -162,15 +218,19 @@ public class VRPageController : MonoBehaviour
         uiManager?.HideAllLegacyToolbarButtons();
 
         ResolveCatalog();
+        ResolveDetailControllers();
         QueryUI();
         ShowStartupLoading("Loading VR classroom...");
         ConfigurePickingModes();
         RegisterEvents();
         RegisterCatalogEvents();
+        RegisterDetailEvents();
 
         SetMenuOpen(false);
         CloseBrowser();
         CloseAIChat();
+        CloseDetailPopup();
+        SetDetailMode(false);
         StartCoroutine(AlignJoystickToAIButtonWhenReady());
 
         RefreshVisibilityIcon(
@@ -204,6 +264,11 @@ public class VRPageController : MonoBehaviour
                     0f,
                     spinnerAngle);
         }
+
+        // Keep the detail popup ScrollView inside its real scroll range.
+        // In Device Simulator, dragging short content can otherwise pull
+        // the content downward even when there is nothing to scroll.
+        ClampDetailPopupScrollOffset();
     }
 
     private void LateUpdate()
@@ -215,6 +280,9 @@ public class VRPageController : MonoBehaviour
         // ("Cylinder"). Suppress it every frame so the grey platform/cylinder
         // never appears below the pink crosshair.
         HideLegacyPlacementIndicator();
+
+        if (detailModeEnabled)
+            UpdateDetailLabelPositions();
 
         // During startup, movement stays frozen even if another script
         // tries to re-enable the Player controller.
@@ -230,11 +298,23 @@ public class VRPageController : MonoBehaviour
 
     private void OnDisable()
     {
+        IsWorldInputBlocked = false;
+        detailInputStateCaptured = false;
+
         startupStabilizing = false;
         UnfreezePlayerAfterStartup();
 
         UnregisterEvents();
         UnregisterCatalogEvents();
+        UnregisterDetailEvents();
+
+        if (detailConnectorLayer != null)
+        {
+            detailConnectorLayer.generateVisualContent -=
+                DrawDetailConnectors;
+        }
+
+        ClearDetailLabels();
     }
 
     private void ResolveCatalog()
@@ -275,6 +355,9 @@ public class VRPageController : MonoBehaviour
 
         rotateButton =
             root.Q<UIToolkitButton>("BtnRotate");
+
+        detailsButton =
+            root.Q<UIToolkitButton>("BtnDetails");
 
         visibilityIcon =
             root.Q<VisualElement>("VisibilityIcon");
@@ -348,6 +431,70 @@ public class VRPageController : MonoBehaviour
         aiChatContext =
             root.Q<Label>("AIChatContext");
 
+        detailConnectorLayer =
+            root.Q<VisualElement>("DetailConnectorLayer");
+
+        detailLabelsLayer =
+            root.Q<VisualElement>("DetailLabelsLayer");
+
+        detailPopupOverlay =
+            root.Q<VisualElement>("DetailPopupOverlay");
+
+        detailPopupPanel =
+            root.Q<VisualElement>("DetailPopupPanel");
+
+        closeDetailPopupButton =
+            root.Q<UIToolkitButton>("BtnCloseDetailPopup");
+
+        detailPopupScroll =
+            root.Q<ScrollView>("DetailPopupScroll");
+
+        if (detailPopupScroll != null)
+        {
+            // Prevent elastic overscroll, which was causing the content
+            // to be dragged far down and leave a large blank area.
+            detailPopupScroll.touchScrollBehavior =
+                ScrollView.TouchScrollBehavior.Clamped;
+
+            detailPopupScroll.verticalScrollerVisibility =
+                ScrollerVisibility.Auto;
+
+            detailPopupScroll.horizontalScrollerVisibility =
+                ScrollerVisibility.Hidden;
+
+            detailPopupScroll.mouseWheelScrollSize = 38f;
+        }
+
+        detailPopupTitle =
+            root.Q<Label>("DetailPopupTitle");
+
+        detailPopupConfidence =
+            root.Q<Label>("DetailPopupConfidence");
+
+        detailPopupDescription =
+            root.Q<Label>("DetailPopupDescription");
+
+        detailPopupStructure =
+            root.Q<Label>("DetailPopupStructure");
+
+        detailPopupFunction =
+            root.Q<Label>("DetailPopupFunction");
+
+        detailStructureHeading =
+            root.Q<Label>("DetailStructureHeading");
+
+        detailFunctionHeading =
+            root.Q<Label>("DetailFunctionHeading");
+
+        if (detailConnectorLayer != null)
+        {
+            detailConnectorLayer.generateVisualContent -=
+                DrawDetailConnectors;
+
+            detailConnectorLayer.generateVisualContent +=
+                DrawDetailConnectors;
+        }
+
         if (lessonList != null)
             lessonList.verticalScrollerVisibility =
                 ScrollerVisibility.Hidden;
@@ -398,10 +545,18 @@ public class VRPageController : MonoBehaviour
         SetPickable(modelsButton, true);
         SetPickable(visibilityButton, true);
         SetPickable(rotateButton, true);
+        SetPickable(detailsButton, true);
         SetPickable(aiChatButton, true);
+
+        if (detailConnectorLayer != null)
+            detailConnectorLayer.pickingMode = PickingMode.Ignore;
+
+        if (detailLabelsLayer != null)
+            detailLabelsLayer.pickingMode = PickingMode.Ignore;
 
         SetBrowserPicking(false);
         SetAIChatPicking(false);
+        SetDetailPopupPicking(false);
     }
 
     private static void SetPickable(
@@ -437,6 +592,15 @@ public class VRPageController : MonoBehaviour
         SetPickable(aiChatInput, open);
     }
 
+    private void SetDetailPopupPicking(bool open)
+    {
+        SetPickable(detailPopupOverlay, open);
+        SetPickable(detailPopupPanel, open);
+        SetPickable(closeDetailPopupButton, open);
+        SetPickable(detailPopupScroll, open);
+    }
+
+
     private void RegisterEvents()
     {
         if (backButton != null)
@@ -453,6 +617,48 @@ public class VRPageController : MonoBehaviour
 
         if (rotateButton != null)
             rotateButton.clicked += ToggleAutoRotate;
+
+        if (detailsButton != null)
+            detailsButton.clicked += ToggleDetailMode;
+
+        if (closeDetailPopupButton != null)
+            closeDetailPopupButton.clicked += CloseDetailPopup;
+
+        if (detailPopupOverlay != null)
+        {
+            detailPopupOverlay.RegisterCallback<PointerDownEvent>(
+                StopDetailPopupPointerEvent);
+            detailPopupOverlay.RegisterCallback<PointerMoveEvent>(
+                StopDetailPopupPointerEvent);
+            detailPopupOverlay.RegisterCallback<PointerUpEvent>(
+                StopDetailPopupPointerEvent);
+            detailPopupOverlay.RegisterCallback<WheelEvent>(
+                StopDetailPopupWheelEvent);
+        }
+
+        // Intercept drag/wheel input BEFORE ScrollView's default drag handling.
+        // If the popup content fits completely inside the viewport, there is
+        // nothing to scroll, so the gesture must be consumed immediately.
+        // This removes the one-frame "bounce/jump" that happened when Update()
+        // corrected the offset only after ScrollView had already moved it.
+        if (detailPopupScroll != null)
+        {
+            detailPopupScroll.RegisterCallback<PointerDownEvent>(
+                GuardDetailPopupScrollPointerDown,
+                TrickleDown.TrickleDown);
+
+            detailPopupScroll.RegisterCallback<PointerMoveEvent>(
+                GuardDetailPopupScrollPointerMove,
+                TrickleDown.TrickleDown);
+
+            detailPopupScroll.RegisterCallback<PointerUpEvent>(
+                GuardDetailPopupScrollPointerUp,
+                TrickleDown.TrickleDown);
+
+            detailPopupScroll.RegisterCallback<WheelEvent>(
+                GuardDetailPopupScrollWheel,
+                TrickleDown.TrickleDown);
+        }
 
         if (browserBackButton != null)
             browserBackButton.clicked += ShowLessonBrowser;
@@ -489,6 +695,43 @@ public class VRPageController : MonoBehaviour
 
         if (rotateButton != null)
             rotateButton.clicked -= ToggleAutoRotate;
+
+        if (detailsButton != null)
+            detailsButton.clicked -= ToggleDetailMode;
+
+        if (closeDetailPopupButton != null)
+            closeDetailPopupButton.clicked -= CloseDetailPopup;
+
+        if (detailPopupOverlay != null)
+        {
+            detailPopupOverlay.UnregisterCallback<PointerDownEvent>(
+                StopDetailPopupPointerEvent);
+            detailPopupOverlay.UnregisterCallback<PointerMoveEvent>(
+                StopDetailPopupPointerEvent);
+            detailPopupOverlay.UnregisterCallback<PointerUpEvent>(
+                StopDetailPopupPointerEvent);
+            detailPopupOverlay.UnregisterCallback<WheelEvent>(
+                StopDetailPopupWheelEvent);
+        }
+
+        if (detailPopupScroll != null)
+        {
+            detailPopupScroll.UnregisterCallback<PointerDownEvent>(
+                GuardDetailPopupScrollPointerDown,
+                TrickleDown.TrickleDown);
+
+            detailPopupScroll.UnregisterCallback<PointerMoveEvent>(
+                GuardDetailPopupScrollPointerMove,
+                TrickleDown.TrickleDown);
+
+            detailPopupScroll.UnregisterCallback<PointerUpEvent>(
+                GuardDetailPopupScrollPointerUp,
+                TrickleDown.TrickleDown);
+
+            detailPopupScroll.UnregisterCallback<WheelEvent>(
+                GuardDetailPopupScrollWheel,
+                TrickleDown.TrickleDown);
+        }
 
         if (browserBackButton != null)
             browserBackButton.clicked -= ShowLessonBrowser;
@@ -549,6 +792,7 @@ public class VRPageController : MonoBehaviour
         SetActionVisible(modelsButton, open);
         SetActionVisible(visibilityButton, open);
         SetActionVisible(rotateButton, open);
+        SetActionVisible(detailsButton, open);
     }
 
     private static void SetActionVisible(
@@ -1040,6 +1284,14 @@ public class VRPageController : MonoBehaviour
         Debug.Log(
             "[VRPageController] Showing lesson model in VR: " +
             VRRuntimeModelCatalog.GetDisplayName(record));
+
+        ClearDetailLabels();
+
+        if (detailModeEnabled)
+        {
+            StartCoroutine(
+                RefreshDetailLabelsWhenAnchorsReady());
+        }
     }
 
     private void RefreshLoadingLabel(
@@ -1645,6 +1897,997 @@ public class VRPageController : MonoBehaviour
 
     // =========================================================
     // In-scene AI learning chat
+
+    // =========================================================
+    // AI MODEL DETAIL MODE
+    // =========================================================
+
+    private void ResolveDetailControllers()
+    {
+#if UNITY_2023_1_OR_NEWER
+        if (detailService == null)
+        {
+            detailService =
+                FindFirstObjectByType<VRModelDetailService>(
+                    FindObjectsInactive.Include);
+        }
+
+        if (detailAnchorController == null)
+        {
+            detailAnchorController =
+                FindFirstObjectByType<VRModelDetailAnchorController>(
+                    FindObjectsInactive.Include);
+        }
+#else
+        if (detailService == null)
+            detailService = FindObjectOfType<VRModelDetailService>(true);
+
+        if (detailAnchorController == null)
+            detailAnchorController = FindObjectOfType<VRModelDetailAnchorController>(true);
+#endif
+    }
+
+
+    private void RegisterDetailEvents()
+    {
+        if (detailService == null)
+            return;
+
+        detailService.OnModelPartsLoaded -=
+            HandleDetailPartsLoaded;
+
+        detailService.OnModelPartsLoaded +=
+            HandleDetailPartsLoaded;
+    }
+
+
+    private void UnregisterDetailEvents()
+    {
+        if (detailService == null)
+            return;
+
+        detailService.OnModelPartsLoaded -=
+            HandleDetailPartsLoaded;
+    }
+
+
+    private void HandleDetailPartsLoaded(
+        List<VRModelDetailService.ModelPartData> parts)
+    {
+        if (!detailModeEnabled)
+            return;
+
+        StartCoroutine(
+            RefreshDetailLabelsWhenAnchorsReady());
+    }
+
+
+    private void ToggleDetailMode()
+    {
+        SetDetailMode(
+            !detailModeEnabled);
+    }
+
+
+    private void SetDetailMode(bool enabled)
+    {
+        detailModeEnabled = enabled;
+
+        if (detailsButton != null)
+        {
+            if (enabled)
+            {
+                if (!detailsButton.ClassListContains("detail-menu-active"))
+                    detailsButton.AddToClassList("detail-menu-active");
+            }
+            else
+            {
+                detailsButton.RemoveFromClassList("detail-menu-active");
+            }
+        }
+
+        if (detailConnectorLayer != null)
+        {
+            SetVisible(
+                detailConnectorLayer,
+                enabled);
+        }
+
+        if (detailLabelsLayer != null)
+        {
+            SetVisible(
+                detailLabelsLayer,
+                enabled);
+        }
+
+        if (!enabled)
+        {
+            CloseDetailPopup();
+            ClearDetailLabels();
+            return;
+        }
+
+        ResolveDetailControllers();
+
+        if (detailService == null ||
+            detailAnchorController == null)
+        {
+            Debug.LogWarning(
+                "[VRPageController] Detail Mode cannot start because " +
+                "VRModelDetailService or VRModelDetailAnchorController is missing.");
+            return;
+        }
+
+        if (detailService.CurrentParts == null ||
+            detailService.CurrentParts.Count == 0)
+        {
+            if (!string.IsNullOrWhiteSpace(
+                    detailService.CurrentAssetId))
+            {
+                detailService.LoadCurrentModelParts();
+            }
+            else
+            {
+                detailService.ResolveCurrentModelAsset();
+            }
+
+            return;
+        }
+
+        StartCoroutine(
+            RefreshDetailLabelsWhenAnchorsReady());
+    }
+
+
+    private IEnumerator RefreshDetailLabelsWhenAnchorsReady()
+    {
+        const float timeout = 4f;
+        float elapsed = 0f;
+
+        while (elapsed < timeout)
+        {
+            if (!detailModeEnabled)
+                yield break;
+
+            int availableAnchors =
+                CountAvailableDetailAnchors();
+
+            if (availableAnchors > 0)
+            {
+                BuildDetailLabels();
+                yield break;
+            }
+
+            elapsed += 0.08f;
+            yield return new WaitForSecondsRealtime(0.08f);
+        }
+
+        Debug.LogWarning(
+            "[VRPageController] Detail labels timed out waiting for automatic AI anchors.");
+    }
+
+
+    private int CountAvailableDetailAnchors()
+    {
+        if (detailService == null ||
+            detailAnchorController == null ||
+            detailService.CurrentParts == null)
+        {
+            return 0;
+        }
+
+        int count = 0;
+
+        foreach (VRModelDetailService.ModelPartData part
+                 in detailService.CurrentParts)
+        {
+            if (part == null ||
+                !part.is_active ||
+                string.IsNullOrWhiteSpace(part.part_key))
+            {
+                continue;
+            }
+
+            if (detailAnchorController.TryGetAutomaticAnchor(
+                    part.part_key,
+                    out Transform anchor) &&
+                anchor != null)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+
+    private void BuildDetailLabels()
+    {
+        ClearDetailLabels();
+
+        if (!detailModeEnabled ||
+            detailLabelsLayer == null ||
+            detailService == null ||
+            detailAnchorController == null ||
+            detailService.CurrentParts == null)
+        {
+            return;
+        }
+
+        foreach (VRModelDetailService.ModelPartData part
+                 in detailService.CurrentParts)
+        {
+            if (part == null ||
+                !part.is_active ||
+                string.IsNullOrWhiteSpace(part.part_key))
+            {
+                continue;
+            }
+
+            if (!detailAnchorController.TryGetAutomaticAnchor(
+                    part.part_key,
+                    out Transform anchor) ||
+                anchor == null)
+            {
+                continue;
+            }
+
+            string key =
+                part.part_key.Trim();
+
+            UIToolkitButton label =
+                new UIToolkitButton();
+
+            label.text =
+                string.IsNullOrWhiteSpace(part.part_name)
+                    ? key
+                    : part.part_name.Trim();
+
+            label.name =
+                "DetailLabel_" + key;
+
+            label.AddToClassList(
+                "detail-part-label");
+
+            label.pickingMode =
+                PickingMode.Position;
+
+            VRModelDetailService.ModelPartData capturedPart =
+                part;
+
+            label.clicked += () =>
+                OpenDetailPopup(
+                    capturedPart);
+
+            detailLabelsLayer.Add(label);
+
+            detailPartLabels[key] =
+                label;
+        }
+
+        detailLabelsLayer.BringToFront();
+
+        UpdateDetailLabelPositions();
+
+        Debug.Log(
+            "[VRPageController] Detail Mode labels ready. Count = " +
+            detailPartLabels.Count);
+    }
+
+
+    private void ClearDetailLabels()
+    {
+        detailPartLabels.Clear();
+        detailLabelCenters.Clear();
+        detailAnchorPanelPositions.Clear();
+
+        if (detailLabelsLayer != null)
+            detailLabelsLayer.Clear();
+
+        detailConnectorLayer?.MarkDirtyRepaint();
+    }
+
+
+    private void UpdateDetailLabelPositions()
+    {
+        if (!detailModeEnabled ||
+            detailLabelsLayer == null ||
+            detailService == null ||
+            detailAnchorController == null ||
+            root == null)
+        {
+            return;
+        }
+
+        Camera cam =
+            Camera.main;
+
+        if (cam == null)
+            return;
+
+        float rootWidth =
+            root.resolvedStyle.width;
+
+        float rootHeight =
+            root.resolvedStyle.height;
+
+        if (rootWidth <= 1f ||
+            rootHeight <= 1f ||
+            Screen.width <= 1 ||
+            Screen.height <= 1)
+        {
+            return;
+        }
+
+        detailLabelCenters.Clear();
+        detailAnchorPanelPositions.Clear();
+
+        List<DetailPlacementEntry> left =
+            new List<DetailPlacementEntry>();
+
+        List<DetailPlacementEntry> right =
+            new List<DetailPlacementEntry>();
+
+        foreach (VRModelDetailService.ModelPartData part
+                 in detailService.CurrentParts)
+        {
+            if (part == null ||
+                string.IsNullOrWhiteSpace(part.part_key))
+            {
+                continue;
+            }
+
+            string key =
+                part.part_key.Trim();
+
+            if (!detailPartLabels.TryGetValue(
+                    key,
+                    out UIToolkitButton label) ||
+                label == null)
+            {
+                continue;
+            }
+
+            if (!detailAnchorController.TryGetAutomaticAnchor(
+                    key,
+                    out Transform anchor) ||
+                anchor == null)
+            {
+                label.style.display =
+                    DisplayStyle.None;
+                continue;
+            }
+
+            Vector3 screen =
+                cam.WorldToScreenPoint(
+                    anchor.position);
+
+            if (screen.z <= 0f)
+            {
+                label.style.display =
+                    DisplayStyle.None;
+                continue;
+            }
+
+            float panelX =
+                screen.x /
+                Screen.width *
+                rootWidth;
+
+            float panelY =
+                (1f -
+                 screen.y /
+                 Screen.height) *
+                rootHeight;
+
+            Vector2 anchorPanel =
+                new Vector2(
+                    panelX,
+                    panelY);
+
+            detailAnchorPanelPositions[key] =
+                anchorPanel;
+
+            DetailPlacementEntry entry =
+                new DetailPlacementEntry
+                {
+                    key = key,
+                    label = label,
+                    anchorPanel = anchorPanel
+                };
+
+            if (panelX < rootWidth * 0.5f)
+                left.Add(entry);
+            else
+                right.Add(entry);
+        }
+
+        left.Sort(
+            (a, b) =>
+                a.anchorPanel.y.CompareTo(
+                    b.anchorPanel.y));
+
+        right.Sort(
+            (a, b) =>
+                a.anchorPanel.y.CompareTo(
+                    b.anchorPanel.y));
+
+        LayoutDetailSide(
+            left,
+            false,
+            rootWidth,
+            rootHeight);
+
+        LayoutDetailSide(
+            right,
+            true,
+            rootWidth,
+            rootHeight);
+
+        detailConnectorLayer?.MarkDirtyRepaint();
+    }
+
+
+    private void DrawDetailConnectors(
+        MeshGenerationContext context)
+    {
+        if (!detailModeEnabled ||
+            detailConnectorLayer == null ||
+            detailAnchorPanelPositions.Count == 0 ||
+            detailLabelCenters.Count == 0)
+        {
+            return;
+        }
+
+        Painter2D painter =
+            context.painter2D;
+
+        painter.lineWidth =
+            1.6f;
+
+        painter.strokeColor =
+            new Color(
+                0.23f,
+                0.48f,
+                0.78f,
+                0.90f);
+
+        foreach (
+            KeyValuePair<string, Vector2> pair
+            in detailAnchorPanelPositions)
+        {
+            if (!detailLabelCenters.TryGetValue(
+                    pair.Key,
+                    out Vector2 labelCenter))
+            {
+                continue;
+            }
+
+            Vector2 anchorPoint =
+                pair.Value;
+
+            // Stop the connector slightly before the label center
+            // so the line does not visually cross the label text.
+            Vector2 direction =
+                labelCenter -
+                anchorPoint;
+
+            float distance =
+                direction.magnitude;
+
+            if (distance < 2f)
+                continue;
+
+            direction /=
+                distance;
+
+            Vector2 lineEnd =
+                labelCenter -
+                direction * 28f;
+
+            painter.BeginPath();
+            painter.MoveTo(anchorPoint);
+            painter.LineTo(lineEnd);
+            painter.Stroke();
+        }
+    }
+
+
+    private void LayoutDetailSide(
+        List<DetailPlacementEntry> entries,
+        bool rightSide,
+        float rootWidth,
+        float rootHeight)
+    {
+        if (entries == null ||
+            entries.Count == 0)
+        {
+            return;
+        }
+
+        float lastY =
+            float.NegativeInfinity;
+
+        for (int i = 0;
+             i < entries.Count;
+             i++)
+        {
+            DetailPlacementEntry entry =
+                entries[i];
+
+            UIToolkitButton label =
+                entry.label;
+
+            if (label == null)
+                continue;
+
+            label.style.display =
+                DisplayStyle.Flex;
+
+            float width =
+                label.resolvedStyle.width;
+
+            if (width <= 1f)
+                width = 128f;
+
+            float height =
+                label.resolvedStyle.height;
+
+            if (height <= 1f)
+                height = 36f;
+
+            float centerX =
+                rightSide
+                    ? entry.anchorPanel.x +
+                      detailLabelHorizontalOffset
+                    : entry.anchorPanel.x -
+                      detailLabelHorizontalOffset;
+
+            centerX =
+                Mathf.Clamp(
+                    centerX,
+                    detailLabelScreenPadding +
+                    width * 0.5f,
+                    rootWidth -
+                    detailLabelScreenPadding -
+                    width * 0.5f);
+
+            float centerY =
+                Mathf.Clamp(
+                    entry.anchorPanel.y,
+                    detailLabelScreenPadding +
+                    height * 0.5f,
+                    rootHeight -
+                    detailLabelScreenPadding -
+                    height * 0.5f);
+
+            if (!float.IsNegativeInfinity(lastY))
+            {
+                centerY =
+                    Mathf.Max(
+                        centerY,
+                        lastY +
+                        detailLabelVerticalSpacing);
+            }
+
+            float maxCenterY =
+                rootHeight -
+                detailLabelScreenPadding -
+                height * 0.5f;
+
+            centerY =
+                Mathf.Min(
+                    centerY,
+                    maxCenterY);
+
+            label.style.left =
+                centerX -
+                width * 0.5f;
+
+            label.style.top =
+                centerY -
+                height * 0.5f;
+
+            detailLabelCenters[entry.key] =
+                new Vector2(
+                    centerX,
+                    centerY);
+
+            lastY = centerY;
+        }
+    }
+
+
+    private void OpenDetailPopup(
+        VRModelDetailService.ModelPartData part)
+    {
+        if (part == null ||
+            detailPopupOverlay == null)
+        {
+            return;
+        }
+
+        if (detailPopupTitle != null)
+        {
+            detailPopupTitle.text =
+                string.IsNullOrWhiteSpace(part.part_name)
+                    ? "Model part"
+                    : part.part_name.Trim();
+        }
+
+        if (detailPopupConfidence != null)
+        {
+            if (part.ai_confidence.HasValue)
+            {
+                detailPopupConfidence.text =
+                    "AI confidence: " +
+                    Mathf.RoundToInt(
+                        Mathf.Clamp01(
+                            part.ai_confidence.Value) *
+                        100f) +
+                    "%";
+            }
+            else
+            {
+                detailPopupConfidence.text =
+                    string.Empty;
+            }
+        }
+
+        SetDetailText(
+            detailPopupDescription,
+            part.description,
+            "No description is available yet.");
+
+        bool hasStructure =
+            !string.IsNullOrWhiteSpace(
+                part.structure_description);
+
+        SetVisible(
+            detailStructureHeading,
+            hasStructure);
+
+        SetVisible(
+            detailPopupStructure,
+            hasStructure);
+
+        if (hasStructure)
+        {
+            detailPopupStructure.text =
+                part.structure_description.Trim();
+        }
+
+        bool hasFunction =
+            !string.IsNullOrWhiteSpace(
+                part.function_description);
+
+        SetVisible(
+            detailFunctionHeading,
+            hasFunction);
+
+        SetVisible(
+            detailPopupFunction,
+            hasFunction);
+
+        if (hasFunction)
+        {
+            detailPopupFunction.text =
+                part.function_description.Trim();
+        }
+
+        detailPopupOverlay.RemoveFromClassList(
+            HiddenClass);
+
+        detailPopupOverlay.BringToFront();
+
+        SetDetailPopupPicking(true);
+        PauseWorldInputForDetailPopup();
+
+        if (detailPopupScroll != null)
+        {
+            detailPopupScroll.scrollOffset = Vector2.zero;
+
+            // Wait until UI Toolkit has completed layout before resetting
+            // one more time. This avoids the content appearing halfway down
+            // after reopening the popup.
+            detailPopupScroll.schedule.Execute(
+                () =>
+                {
+                    if (detailPopupScroll != null)
+                        detailPopupScroll.scrollOffset = Vector2.zero;
+                }
+            ).ExecuteLater(1);
+        }
+    }
+
+
+    private static void SetDetailText(
+        Label label,
+        string value,
+        string fallback)
+    {
+        if (label == null)
+            return;
+
+        label.text =
+            string.IsNullOrWhiteSpace(value)
+                ? fallback
+                : value.Trim();
+    }
+
+
+    private void CloseDetailPopup()
+    {
+        if (detailPopupOverlay != null &&
+            !detailPopupOverlay.ClassListContains(
+                HiddenClass))
+        {
+            detailPopupOverlay.AddToClassList(
+                HiddenClass);
+        }
+
+        SetDetailPopupPicking(false);
+        ResumeWorldInputAfterDetailPopup();
+    }
+
+
+    private void PauseWorldInputForDetailPopup()
+    {
+        IsWorldInputBlocked = true;
+
+        if (!detailInputStateCaptured)
+        {
+            detailPlayerMovementWasEnabled =
+                playerMovementBehaviour != null &&
+                playerMovementBehaviour.enabled;
+
+            detailCameraLookWasEnabled =
+                cameraLookBehaviour != null &&
+                cameraLookBehaviour.enabled;
+
+            detailJoystickWasActive =
+                fixedJoystickObject != null &&
+                fixedJoystickObject.activeSelf;
+
+            detailInputStateCaptured = true;
+        }
+
+        if (playerMovementBehaviour != null)
+            playerMovementBehaviour.enabled = false;
+
+        if (cameraLookBehaviour != null)
+            cameraLookBehaviour.enabled = false;
+
+        if (fixedJoystickObject != null)
+            fixedJoystickObject.SetActive(false);
+    }
+
+
+    private void ResumeWorldInputAfterDetailPopup()
+    {
+        IsWorldInputBlocked = false;
+
+        if (!detailInputStateCaptured)
+            return;
+
+        if (!startupStabilizing)
+        {
+            if (playerMovementBehaviour != null)
+                playerMovementBehaviour.enabled =
+                    detailPlayerMovementWasEnabled;
+
+            if (cameraLookBehaviour != null)
+                cameraLookBehaviour.enabled =
+                    detailCameraLookWasEnabled;
+        }
+
+        if (fixedJoystickObject != null)
+            fixedJoystickObject.SetActive(
+                detailJoystickWasActive);
+
+        detailInputStateCaptured = false;
+    }
+
+
+    private void StopDetailPopupPointerEvent(
+        PointerDownEvent evt)
+    {
+        evt?.StopPropagation();
+    }
+
+
+    private void StopDetailPopupPointerEvent(
+        PointerMoveEvent evt)
+    {
+        evt?.StopPropagation();
+    }
+
+
+    private void StopDetailPopupPointerEvent(
+        PointerUpEvent evt)
+    {
+        evt?.StopPropagation();
+    }
+
+
+    private void StopDetailPopupWheelEvent(
+        WheelEvent evt)
+    {
+        evt?.StopPropagation();
+    }
+
+
+    private bool DetailPopupHasScrollableOverflow()
+    {
+        if (detailPopupScroll == null)
+            return false;
+
+        VisualElement viewport =
+            detailPopupScroll.contentViewport;
+
+        VisualElement content =
+            detailPopupScroll.contentContainer;
+
+        if (viewport == null ||
+            content == null)
+        {
+            return false;
+        }
+
+        float viewportHeight =
+            viewport.resolvedStyle.height;
+
+        float contentHeight =
+            content.resolvedStyle.height;
+
+        if (float.IsNaN(viewportHeight) ||
+            float.IsNaN(contentHeight) ||
+            viewportHeight <= 0f ||
+            contentHeight <= 0f)
+        {
+            return false;
+        }
+
+        // A small tolerance prevents tiny fractional layout differences
+        // from turning scrolling on/off between frames.
+        return contentHeight > viewportHeight + 1f;
+    }
+
+
+    private void ConsumeNonScrollableDetailGesture(
+        EventBase evt)
+    {
+        if (evt == null ||
+            DetailPopupHasScrollableOverflow())
+        {
+            return;
+        }
+
+        // Lock first, before UI Toolkit gets a chance to visually move
+        // the ScrollView content.
+        if (detailPopupScroll != null)
+        {
+            detailPopupScroll.scrollOffset =
+                Vector2.zero;
+        }
+
+        // Stop ScrollView's built-in drag/wheel default action in the same
+        // input event. This is the key difference from only clamping in Update().
+        evt.PreventDefault();
+        evt.StopImmediatePropagation();
+    }
+
+
+    private void GuardDetailPopupScrollPointerDown(
+        PointerDownEvent evt)
+    {
+        ConsumeNonScrollableDetailGesture(evt);
+    }
+
+
+    private void GuardDetailPopupScrollPointerMove(
+        PointerMoveEvent evt)
+    {
+        ConsumeNonScrollableDetailGesture(evt);
+    }
+
+
+    private void GuardDetailPopupScrollPointerUp(
+        PointerUpEvent evt)
+    {
+        ConsumeNonScrollableDetailGesture(evt);
+    }
+
+
+    private void GuardDetailPopupScrollWheel(
+        WheelEvent evt)
+    {
+        ConsumeNonScrollableDetailGesture(evt);
+    }
+
+
+    private void ClampDetailPopupScrollOffset()
+    {
+        if (detailPopupScroll == null ||
+            detailPopupOverlay == null ||
+            detailPopupOverlay.ClassListContains(HiddenClass))
+        {
+            return;
+        }
+
+        VisualElement viewport =
+            detailPopupScroll.contentViewport;
+
+        VisualElement content =
+            detailPopupScroll.contentContainer;
+
+        if (viewport == null ||
+            content == null)
+        {
+            return;
+        }
+
+        float viewportHeight =
+            viewport.resolvedStyle.height;
+
+        float contentHeight =
+            content.resolvedStyle.height;
+
+        if (float.IsNaN(viewportHeight) ||
+            float.IsNaN(contentHeight) ||
+            viewportHeight <= 0f ||
+            contentHeight <= 0f)
+        {
+            return;
+        }
+
+        float maxScrollY =
+            Mathf.Max(
+                0f,
+                contentHeight - viewportHeight);
+
+        Vector2 current =
+            detailPopupScroll.scrollOffset;
+
+        float clampedY =
+            Mathf.Clamp(
+                current.y,
+                0f,
+                maxScrollY);
+
+        // Short content: lock it to the top and hide the scrollbar.
+        if (maxScrollY <= 0.5f)
+        {
+            clampedY = 0f;
+
+            detailPopupScroll.verticalScrollerVisibility =
+                ScrollerVisibility.Hidden;
+        }
+        else
+        {
+            detailPopupScroll.verticalScrollerVisibility =
+                ScrollerVisibility.Auto;
+        }
+
+        if (Mathf.Abs(current.y - clampedY) > 0.01f)
+        {
+            detailPopupScroll.scrollOffset =
+                new Vector2(
+                    0f,
+                    clampedY);
+        }
+    }
+
+
+    [Serializable]
+    private class DetailPlacementEntry
+    {
+        public string key;
+        public UIToolkitButton label;
+        public Vector2 anchorPanel;
+    }
+
+
     // =========================================================
 
     private void OpenAIChat()

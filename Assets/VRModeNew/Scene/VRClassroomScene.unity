@@ -4421,8 +4421,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CrosshairUI
   image: {fileID: 0}
-  normalColor: {r: 1, g: 1, b: 1, a: 1}
-  targetColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  normalColor:
+    r: 1
+    g: 1
+    b: 1
+    a: 1
+  targetColor:
+    r: 1
+    g: 0.92156863
+    b: 0.015686275
+    a: 1
 --- !u!114 &1487412609
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4795,6 +4803,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VRPageController
   fallbackPreviousScene: ShowLessonScene
   modelCatalog: {fileID: 0}
+  detailService: {fileID: 0}
+  detailAnchorController: {fileID: 0}
+  detailLabelHorizontalOffset: 92
+  detailLabelVerticalSpacing: 38
+  detailLabelScreenPadding: 14
   spawnAtBackFacingFront: 1
   backWallInset: 1.1
   fallbackFrontDirection: {x: 0, y: 0, z: 1}
@@ -4988,17 +5001,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VRModelDetailAnchorController
   detailService: {fileID: 306113600}
+  targetCamera: {fileID: 1667655314}
+  modelRoot: {fileID: 0}
   autoFindRuntimeModel: 1
   runtimeAnchorName: VRRuntimeModelAnchor
   findModelTimeout: 20
-  targetCamera: {fileID: 1667655314}
-  modelRoot: {fileID: 0}
-  supabaseUrl: https://nfribubvehdzjyguxejq.supabase.co
-  supabaseAnonKey: sb_publishable_1QTg4NVH-lYBBAt1qOQHYw_th1pWtIf
+  buildAutomaticAnchors: 1
+  flipAnchorX: 0
+  flipAnchorY: 0
+  flipAnchorZ: 0
+  anchorCoordinateScale: 1
+  anchorCoordinateOffset: {x: 0, y: 0, z: 0}
+  snapAutomaticAnchorsToMesh: 1
+  maxSnapDistance: 0.05
+  printSnapDebug: 1
+  waitForMeshTimeout: 8
+  waitForMeshPollInterval: 0.1
+  showAutomaticAnchorMarkers: 1
+  automaticAnchorMarkerSize: 0.002
+  adaptAutomaticMarkerSizeToCamera: 1
+  automaticMarkerReferenceDistance: 2
+  automaticMarkerMinScaleMultiplier: 0.3
+  automaticMarkerMaxScaleMultiplier: 1
+  automaticAnchorMarkerColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  showOriginalAnchorMarkers: 0
+  originalAnchorMarkerSize: 0.004
+  originalAnchorMarkerColor: {r: 1, g: 0, b: 1, a: 1}
   placementMode: 0
   selectedPartId: 
   selectedPartName: 
   printDebug: 1
+  allowAnyLoggedInUserForTesting: 0
 --- !u!4 &1790525897
 Transform:
   m_ObjectHideFlags: 0

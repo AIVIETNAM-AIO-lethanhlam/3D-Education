@@ -51,6 +51,15 @@
                                   picking-mode="Ignore" />
             </ui:Button>
 
+            <!-- AI semantic Detail Mode -->
+            <ui:Button name="BtnDetails"
+                       class="vr-circle-button menu-item menu-hidden"
+                       picking-mode="Position">
+                <ui:VisualElement name="DetailsIcon"
+                                  class="vr-button-icon details-icon"
+                                  picking-mode="Ignore" />
+            </ui:Button>
+
         </ui:VisualElement>
 
 
@@ -115,6 +124,82 @@
                                           picking-mode="Ignore" />
                     </ui:Button>
                 </ui:VisualElement>
+
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+
+        <!-- =====================================================
+             AI MODEL DETAIL MODE
+             Labels are created dynamically by VRPageController.
+             ===================================================== -->
+        <ui:VisualElement name="DetailConnectorLayer"
+                          class="detail-connector-layer hidden"
+                          picking-mode="Ignore" />
+
+        <ui:VisualElement name="DetailLabelsLayer"
+                          class="detail-labels-layer hidden"
+                          picking-mode="Ignore" />
+
+        <ui:VisualElement name="DetailPopupOverlay"
+                          class="detail-popup-overlay hidden"
+                          picking-mode="Ignore">
+
+            <ui:VisualElement name="DetailPopupPanel"
+                              class="detail-popup-panel"
+                              picking-mode="Position">
+
+                <ui:VisualElement class="detail-popup-header">
+                    <ui:VisualElement class="detail-popup-heading"
+                                      picking-mode="Ignore">
+                        <ui:Label name="DetailPopupTitle"
+                                  text="Model part"
+                                  class="detail-popup-title"
+                                  picking-mode="Ignore" />
+                        <ui:Label name="DetailPopupConfidence"
+                                  text=""
+                                  class="detail-popup-confidence"
+                                  picking-mode="Ignore" />
+                    </ui:VisualElement>
+
+                    <ui:Button name="BtnCloseDetailPopup"
+                               text="×"
+                               class="detail-popup-close"
+                               picking-mode="Position" />
+                </ui:VisualElement>
+
+                <ui:ScrollView name="DetailPopupScroll"
+                               class="detail-popup-scroll"
+                               mode="Vertical"
+                               picking-mode="Position">
+
+                    <ui:Label text="Description"
+                              class="detail-section-title"
+                              picking-mode="Ignore" />
+                    <ui:Label name="DetailPopupDescription"
+                              text=""
+                              class="detail-section-body"
+                              picking-mode="Ignore" />
+
+                    <ui:Label name="DetailStructureHeading"
+                              text="Structure"
+                              class="detail-section-title"
+                              picking-mode="Ignore" />
+                    <ui:Label name="DetailPopupStructure"
+                              text=""
+                              class="detail-section-body"
+                              picking-mode="Ignore" />
+
+                    <ui:Label name="DetailFunctionHeading"
+                              text="Function"
+                              class="detail-section-title"
+                              picking-mode="Ignore" />
+                    <ui:Label name="DetailPopupFunction"
+                              text=""
+                              class="detail-section-body"
+                              picking-mode="Ignore" />
+
+                </ui:ScrollView>
 
             </ui:VisualElement>
         </ui:VisualElement>

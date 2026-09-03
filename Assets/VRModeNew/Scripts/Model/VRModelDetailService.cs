@@ -137,22 +137,32 @@ public class VRModelDetailService : MonoBehaviour
         // Anchor
         // -----------------------------------------------------
 
-        public float? anchor_x;
+        // The query only returns rows whose anchor coordinates are non-null,
+        // so plain floats are safer with Unity JsonUtility than Nullable<float>.
+        public float anchor_x;
 
-        public float? anchor_y;
+        public float anchor_y;
 
-        public float? anchor_z;
+        public float anchor_z;
+
+        public string anchor_source;
+
+        public float anchor_confidence;
+
+        public string anchor_view;
+
+        public string anchor_metadata;
 
 
         // -----------------------------------------------------
         // Label offset
         // -----------------------------------------------------
 
-        public float? label_offset_x;
+        public float label_offset_x = 0f;
 
-        public float? label_offset_y;
+        public float label_offset_y = 0.15f;
 
-        public float? label_offset_z;
+        public float label_offset_z = 0f;
 
 
         public int display_order;
@@ -188,6 +198,26 @@ public class VRModelDetailService : MonoBehaviour
     private class JsonArrayWrapper<T>
     {
         public T[] items;
+    }
+
+
+    [Serializable]
+    private class RefreshTokenPayload
+    {
+        public string refresh_token;
+    }
+
+
+    [Serializable]
+    private class RefreshTokenResponse
+    {
+        public string access_token;
+
+        public string refresh_token;
+
+        public int expires_in;
+
+        public string token_type;
     }
 
 
@@ -345,25 +375,28 @@ public class VRModelDetailService : MonoBehaviour
         );
 
 
-        using UnityWebRequest request =
-            UnityWebRequest.Get(
-                requestUrl
-            );
+        bool requestSucceeded = false;
+
+        long responseCode = 0;
+
+        string responseText = "";
+
+        string requestError = "";
 
 
-        AddSupabaseHeaders(
-            request
+        yield return SendGetWithSessionRefresh(
+            requestUrl,
+            (success, code, body, error) =>
+            {
+                requestSucceeded = success;
+                responseCode = code;
+                responseText = body;
+                requestError = error;
+            }
         );
 
 
-        yield return
-            request.SendWebRequest();
-
-
-        if (
-            request.result !=
-            UnityWebRequest.Result.Success
-        )
+        if (!requestSucceeded)
         {
             IsLoading = false;
 
@@ -372,11 +405,11 @@ public class VRModelDetailService : MonoBehaviour
                 "[VRModelDetailService] "
                 + "Could not resolve model asset."
                 + "\nHTTP: "
-                + request.responseCode
+                + responseCode
                 + "\nError: "
-                + request.error
+                + requestError
                 + "\nResponse: "
-                + request.downloadHandler.text;
+                + responseText;
 
 
             Debug.LogError(
@@ -395,7 +428,7 @@ public class VRModelDetailService : MonoBehaviour
 
 
         string json =
-            request.downloadHandler.text;
+            responseText;
 
 
         Debug.Log(
@@ -612,42 +645,72 @@ public class VRModelDetailService : MonoBehaviour
                 targetAssetId
             )
             + "&is_active=eq.true"
+            + "&anchor_x=not.is.null"
+            + "&anchor_y=not.is.null"
+            + "&anchor_z=not.is.null"
+            + "&select="
+            + "id,"
+            + "asset_id,"
+            + "part_key,"
+            + "part_name,"
+            + "node_name,"
+            + "description,"
+            + "structure_description,"
+            + "function_description,"
+            + "anchor_x,"
+            + "anchor_y,"
+            + "anchor_z,"
+            + "label_offset_x,"
+            + "label_offset_y,"
+            + "label_offset_z,"
+            + "display_order,"
+            + "source,"
+            + "is_verified,"
+            + "is_active,"
+            + "ai_confidence,"
+            + "anchor_source,"
+            + "anchor_confidence,"
+            + "anchor_view,"
+            + "anchor_metadata"
             + "&order=display_order.asc";
 
 
-        using UnityWebRequest request =
-            UnityWebRequest.Get(
-                requestUrl
-            );
+        bool requestSucceeded = false;
+
+        long responseCode = 0;
+
+        string responseText = "";
+
+        string requestError = "";
 
 
-        AddSupabaseHeaders(
-            request
+        yield return SendGetWithSessionRefresh(
+            requestUrl,
+            (success, code, body, error) =>
+            {
+                requestSucceeded = success;
+                responseCode = code;
+                responseText = body;
+                requestError = error;
+            }
         );
-
-
-        yield return
-            request.SendWebRequest();
 
 
         IsLoading =
             false;
 
 
-        if (
-            request.result !=
-            UnityWebRequest.Result.Success
-        )
+        if (!requestSucceeded)
         {
             string message =
                 "[VRModelDetailService] "
                 + "Could not load model parts."
                 + "\nHTTP: "
-                + request.responseCode
+                + responseCode
                 + "\nError: "
-                + request.error
+                + requestError
                 + "\nResponse: "
-                + request.downloadHandler.text;
+                + responseText;
 
 
             Debug.LogError(
@@ -666,7 +729,7 @@ public class VRModelDetailService : MonoBehaviour
 
 
         string json =
-            request.downloadHandler.text;
+            responseText;
 
 
         Debug.Log(
@@ -777,9 +840,10 @@ public class VRModelDetailService : MonoBehaviour
 
 
         return
-            part.anchor_x.HasValue &&
-            part.anchor_y.HasValue &&
-            part.anchor_z.HasValue;
+            part.is_active &&
+            IsFinite(part.anchor_x) &&
+            IsFinite(part.anchor_y) &&
+            IsFinite(part.anchor_z);
     }
 
 
@@ -799,9 +863,9 @@ public class VRModelDetailService : MonoBehaviour
 
 
         return new Vector3(
-            part.anchor_x.Value,
-            part.anchor_y.Value,
-            part.anchor_z.Value
+            part.anchor_x,
+            part.anchor_y,
+            part.anchor_z
         );
     }
 
@@ -816,26 +880,21 @@ public class VRModelDetailService : MonoBehaviour
         }
 
 
-        float x =
-            part.label_offset_x
-                ?? 0f;
-
-
-        float y =
-            part.label_offset_y
-                ?? 0.15f;
-
-
-        float z =
-            part.label_offset_z
-                ?? 0f;
-
-
         return new Vector3(
-            x,
-            y,
-            z
+            part.label_offset_x,
+            part.label_offset_y,
+            part.label_offset_z
         );
+    }
+
+
+    private static bool IsFinite(
+        float value
+    )
+    {
+        return
+            !float.IsNaN(value) &&
+            !float.IsInfinity(value);
     }
 
 
@@ -896,15 +955,15 @@ public class VRModelDetailService : MonoBehaviour
 
         return
             "("
-            + part.anchor_x.Value.ToString(
+            + part.anchor_x.ToString(
                 "F3"
             )
             + ", "
-            + part.anchor_y.Value.ToString(
+            + part.anchor_y.ToString(
                 "F3"
             )
             + ", "
-            + part.anchor_z.Value.ToString(
+            + part.anchor_z.ToString(
                 "F3"
             )
             + ")";
@@ -912,8 +971,295 @@ public class VRModelDetailService : MonoBehaviour
 
 
     // =========================================================
-    // SUPABASE HEADERS
+    // SUPABASE SESSION / HEADERS
     // =========================================================
+
+    private IEnumerator SendGetWithSessionRefresh(
+        string requestUrl,
+        Action<bool, long, string, string> onCompleted
+    )
+    {
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
+            using UnityWebRequest request =
+                UnityWebRequest.Get(
+                    requestUrl
+                );
+
+
+            AddSupabaseHeaders(
+                request
+            );
+
+
+            yield return
+                request.SendWebRequest();
+
+
+            string responseText =
+                request.downloadHandler != null
+                    ? request.downloadHandler.text
+                    : "";
+
+
+            if (
+                request.result ==
+                UnityWebRequest.Result.Success
+            )
+            {
+                onCompleted?.Invoke(
+                    true,
+                    request.responseCode,
+                    responseText,
+                    ""
+                );
+
+                yield break;
+            }
+
+
+            bool canRefresh =
+                attempt == 0 &&
+                IsJwtExpiredResponse(
+                    request.responseCode,
+                    responseText
+                ) &&
+                !string.IsNullOrWhiteSpace(
+                    SupabaseSession.RefreshToken
+                );
+
+
+            if (!canRefresh)
+            {
+                onCompleted?.Invoke(
+                    false,
+                    request.responseCode,
+                    responseText,
+                    request.error
+                );
+
+                yield break;
+            }
+
+
+            Debug.LogWarning(
+                "[VRModelDetailService] "
+                + "Supabase access token expired. Refreshing session..."
+            );
+
+
+            bool refreshSucceeded = false;
+
+            string refreshError = "";
+
+
+            yield return RefreshSupabaseSessionCoroutine(
+                success =>
+                    refreshSucceeded = success,
+                error =>
+                    refreshError = error
+            );
+
+
+            if (!refreshSucceeded)
+            {
+                onCompleted?.Invoke(
+                    false,
+                    request.responseCode,
+                    responseText,
+                    "Session refresh failed: "
+                    + refreshError
+                );
+
+                yield break;
+            }
+
+
+            Debug.Log(
+                "[VRModelDetailService] "
+                + "Supabase session refreshed. Retrying request..."
+            );
+        }
+    }
+
+
+    private IEnumerator RefreshSupabaseSessionCoroutine(
+        Action<bool> onCompleted,
+        Action<string> onError
+    )
+    {
+        string refreshToken =
+            SupabaseSession.RefreshToken;
+
+
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            onError?.Invoke(
+                "refresh_token is missing."
+            );
+
+            onCompleted?.Invoke(false);
+            yield break;
+        }
+
+
+        string requestUrl =
+            NormalizeSupabaseUrl(
+                supabaseUrl
+            )
+            + "/auth/v1/token?grant_type=refresh_token";
+
+
+        RefreshTokenPayload payload =
+            new RefreshTokenPayload
+            {
+                refresh_token = refreshToken
+            };
+
+
+        string json =
+            JsonUtility.ToJson(
+                payload
+            );
+
+
+        using UnityWebRequest request =
+            new UnityWebRequest(
+                requestUrl,
+                UnityWebRequest.kHttpVerbPOST
+            );
+
+
+        request.uploadHandler =
+            new UploadHandlerRaw(
+                System.Text.Encoding.UTF8.GetBytes(
+                    json
+                )
+            );
+
+
+        request.downloadHandler =
+            new DownloadHandlerBuffer();
+
+
+        request.SetRequestHeader(
+            "apikey",
+            supabaseAnonKey
+        );
+
+
+        request.SetRequestHeader(
+            "Content-Type",
+            "application/json"
+        );
+
+
+        request.SetRequestHeader(
+            "Accept",
+            "application/json"
+        );
+
+
+        yield return
+            request.SendWebRequest();
+
+
+        string responseText =
+            request.downloadHandler != null
+                ? request.downloadHandler.text
+                : "";
+
+
+        if (
+            request.result !=
+            UnityWebRequest.Result.Success
+        )
+        {
+            onError?.Invoke(
+                "HTTP "
+                + request.responseCode
+                + ": "
+                + responseText
+            );
+
+            onCompleted?.Invoke(false);
+            yield break;
+        }
+
+
+        RefreshTokenResponse response =
+            JsonUtility.FromJson<RefreshTokenResponse>(
+                responseText
+            );
+
+
+        if (
+            response == null ||
+            string.IsNullOrWhiteSpace(
+                response.access_token
+            )
+        )
+        {
+            onError?.Invoke(
+                "Supabase refresh response did not contain access_token."
+            );
+
+            onCompleted?.Invoke(false);
+            yield break;
+        }
+
+
+        PlayerPrefs.SetString(
+            "access_token",
+            response.access_token
+        );
+
+
+        if (
+            !string.IsNullOrWhiteSpace(
+                response.refresh_token
+            )
+        )
+        {
+            PlayerPrefs.SetString(
+                "refresh_token",
+                response.refresh_token
+            );
+        }
+
+
+        PlayerPrefs.Save();
+
+        onCompleted?.Invoke(true);
+    }
+
+
+    private static bool IsJwtExpiredResponse(
+        long responseCode,
+        string responseText
+    )
+    {
+        if (responseCode != 401)
+        {
+            return false;
+        }
+
+
+        string normalized =
+            responseText == null
+                ? ""
+                : responseText.ToLowerInvariant();
+
+
+        return
+            normalized.Contains(
+                "jwt expired"
+            ) ||
+            normalized.Contains(
+                "pgrst303"
+            );
+    }
+
 
     private void AddSupabaseHeaders(
         UnityWebRequest request
@@ -931,11 +1277,20 @@ public class VRModelDetailService : MonoBehaviour
         );
 
 
-        request.SetRequestHeader(
-            "Authorization",
-            "Bearer "
-            + supabaseAnonKey
-        );
+        // Only send Authorization when a real user access token exists.
+        // Do not put the sb_publishable key in the Bearer header.
+        if (
+            !string.IsNullOrWhiteSpace(
+                SupabaseSession.AccessToken
+            )
+        )
+        {
+            request.SetRequestHeader(
+                "Authorization",
+                "Bearer "
+                + SupabaseSession.AccessToken
+            );
+        }
 
 
         request.SetRequestHeader(

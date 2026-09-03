@@ -140,6 +140,14 @@ public class VRModelInteractionController : MonoBehaviour
         if (modelRoot == null)
             return;
 
+        // UI Toolkit modal surfaces (Detail popup, etc.) own the pointer.
+        // Do not grab/rotate/scale the model behind the UI.
+        if (VRPageController.IsWorldInputBlocked)
+        {
+            mouseGrabbed = false;
+            return;
+        }
+
         if (enableMouseTest)
             UpdateDesktopInteraction();
 

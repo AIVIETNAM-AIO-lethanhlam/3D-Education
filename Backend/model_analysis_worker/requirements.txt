@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+trimesh
+numpy
+requests
+python-dotenv
+Pillow
+google-genai
+pydantic

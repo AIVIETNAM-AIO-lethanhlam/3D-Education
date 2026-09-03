@@ -21,7 +21,24 @@ UserSettings/
 # Node
 node_modules/
 
+# Environment variables / secrets
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.template
+
+# Python
+**/__pycache__/
+*.py[cod]
+*$py.class
+**/.venv/
+**/venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 # Visual Studio generated files
 *.csproj
 *.sln
 *.slnx
+Backend/model_analysis_worker/cloudrun-env.yaml
