@@ -744,10 +744,28 @@
     min-height: 0;
     width: 100%;
 
-    padding-right: 4px;
+    /* No visual space reserved for a scrollbar. */
+    padding-right: 0;
     padding-bottom: 10px;
 
     overflow: hidden;
+}
+
+/*
+ * Hide the visual vertical scrollbar only.
+ * The ScrollView itself is still active, so mouse drag / touch swipe /
+ * mouse wheel scrolling continues to work normally.
+ */
+.detail-popup-scroll .unity-scroll-view__vertical-scroller,
+.detail-popup-scroll .unity-scroller--vertical {
+    display: none;
+    width: 0;
+    min-width: 0;
+    max-width: 0;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 /*

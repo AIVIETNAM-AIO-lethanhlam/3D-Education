@@ -23,7 +23,7 @@ from glb_analyzer import (
 )
 
 
-APP_VERSION = "1.8.0"
+APP_VERSION = "1.9.1"
 
 GEMINI_MODELS = [
     "gemini-3.5-flash-lite",
@@ -271,6 +271,54 @@ def make_part_key(part_name: str) -> str:
     return value
 
 
+def deactivate_existing_ai_parts(asset_id: UUID) -> int:
+    """
+    Mark previously generated AI parts for this asset as inactive before
+    saving the latest Gemini result set.
+
+    Only rows with source='ai' are touched so manually managed rows are not
+    changed. Unity can then safely read only is_active=true rows.
+    """
+    supabase_url, _ = get_supabase_config()
+
+    headers = get_supabase_headers()
+    headers["Prefer"] = "return=representation"
+
+    response = requests.patch(
+        f"{supabase_url}/rest/v1/model_parts",
+        headers=headers,
+        params={
+            "asset_id": f"eq.{asset_id}",
+            "source": "eq.ai",
+            "is_active": "eq.true",
+        },
+        json={
+            "is_active": False,
+        },
+        timeout=30,
+    )
+
+    if not response.ok:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "Failed to deactivate previous AI model_parts.",
+                "supabase_status": response.status_code,
+                "supabase_response": response.text,
+            },
+        )
+
+    if not response.content:
+        return 0
+
+    try:
+        rows = response.json()
+    except ValueError:
+        return 0
+
+    return len(rows) if isinstance(rows, list) else 0
+
+
 def upsert_model_parts(
     asset_id: UUID,
     parts: list,
@@ -321,7 +369,7 @@ def upsert_model_parts(
             "part_key": part_key,
             "part_name": part_name,
             "description": str(part.get("description", "")).strip(),
-            "structure_description": str(part.get("structure", "")).strip(),
+            "structure_description": str(part.get("structure_description", part.get("structure", ""))).strip(),
             "function_description": str(part.get("function", "")).strip(),
             "anchor_x": part.get("anchor_x"),
             "anchor_y": part.get("anchor_y"),
@@ -770,7 +818,7 @@ For each part return exactly:
 - description:
   3 to 5 complete sentences explaining what the part is, where it is located,
   what it connects to or is related to, and why it is important in the model.
-- structure:
+- structure_description:
   2 to 4 complete sentences describing its visible/anatomical structure,
   shape, orientation, neighboring structures, and any important subdivisions
   that are supported by the model.
@@ -786,7 +834,7 @@ For each part return exactly:
 Writing requirements:
 - Use educational language suitable for university/secondary-school learners.
 - Prefer concrete anatomical/scientific relationships over generic statements.
-- Avoid repeating the same sentence across description, structure, and function.
+- Avoid repeating the same sentence across description, structure_description, and function.
 - Do not invent details that are not supported by the model or well-established
   anatomy/science.
 - Keep each field detailed but concise enough for a mobile scroll panel.
@@ -797,7 +845,7 @@ Point near the visual center of the named part.
 Do not invent invisible parts.
 
 Return ONLY valid JSON with this schema:
-{{"parts":[{{"part_name":"Aorta","description":"3-5 sentences...","structure":"2-4 sentences...","function":"3-5 sentences...","best_view":"front","normalized_x":0.5,"normalized_y":0.25,"confidence":0.95}}]}}
+{{"parts":[{{"part_name":"Aorta","description":"3-5 sentences...","structure_description":"2-4 sentences...","function":"3-5 sentences...","best_view":"front","normalized_x":0.5,"normalized_y":0.25,"confidence":0.95}}]}}
 """.strip()
 
             response, model_used, attempt, gemini_seconds = (
@@ -869,7 +917,7 @@ Return ONLY valid JSON with this schema:
                 validated_parts.append({
                     "part_name": part_name,
                     "description": str(item.get("description", "")).strip(),
-                    "structure": str(item.get("structure", "")).strip(),
+                    "structure_description": str(item.get("structure_description", item.get("structure", ""))).strip(),
                     "function": str(item.get("function", "")).strip(),
                     "best_view": best_view,
                     "normalized_x": normalized_x,
@@ -901,6 +949,10 @@ Return ONLY valid JSON with this schema:
 
             t0 = time.monotonic()
 
+            deactivated_count = deactivate_existing_ai_parts(
+                asset_id=request.asset_id,
+            )
+
             saved_rows = upsert_model_parts(
                 asset_id=request.asset_id,
                 parts=validated_parts,
@@ -914,6 +966,7 @@ Return ONLY valid JSON with this schema:
 
             print(
                 "[identify-parts] "
+                f"deactivated={deactivated_count} "
                 f"supabase_saved={len(saved_rows)} "
                 f"save={save_seconds}s",
                 flush=True,
@@ -928,6 +981,7 @@ Return ONLY valid JSON with this schema:
                 "asset_id": str(request.asset_id),
                 "part_count": len(validated_parts),
                 "saved_count": len(saved_rows),
+                "deactivated_count": deactivated_count,
                 "database_saved": True,
                 "timing": {
                     "download_seconds": download_seconds,
