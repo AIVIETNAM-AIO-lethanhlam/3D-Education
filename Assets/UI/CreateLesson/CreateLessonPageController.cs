@@ -1319,49 +1319,125 @@ public class CreateLessonPageController : MonoBehaviour
             );
         }
 
-        // 3. Upload 3D GLB Model lên Cloudflare R2
+        // 3. Upload 3D GLB Model lên R2, sau đó INSERT lesson_assets.
+        // Chính INSERT này sẽ kích hoạt database trigger auto_process_model_detail.
+        // Trigger gọi process-model-detail -> Cloud Run -> Gemini -> model_parts.
         if (!string.IsNullOrWhiteSpace(selectedModelPath))
         {
-            string uploadedPath = null;
-            string storagePath = $"{teacherId}/{classId}/{lessonId}/models/{Guid.NewGuid():N}.glb";
-            error = null;
-
-            yield return r2StorageService.UploadFile(
-                "lesson-models", // R2 Bucket Name
-                storagePath,
+            yield return UploadModelAssetAndQueueAutomaticDetailGeneration(
+                lessonId,
+                teacherId,
+                classId,
                 selectedModelPath,
-                "model/gltf-binary",
-                path => uploadedPath = path,
-                message => error = message
+                88f
             );
 
-            if (!string.IsNullOrWhiteSpace(error))
-            {
-                FailSaving(error);
+            if (!isSaving)
                 yield break;
-            }
-
-            LessonAssetInsert asset = new()
-            {
-                lesson_id = lessonId,
-                uploaded_by = teacherId,
-                asset_type = "model_3d",
-                file_name = Path.GetFileName(selectedModelPath),
-                storage_bucket = "lesson-models",
-                storage_path = uploadedPath,
-                mime_type = "model/gltf-binary",
-                file_extension = ".glb",
-                file_size_bytes = new FileInfo(selectedModelPath).Length,
-                display_order = 0
-            };
-
-            yield return lessonService.CreateLessonAsset(asset, () => { }, message => error = message);
-            if (!string.IsNullOrWhiteSpace(error))
-            {
-                FailSaving(error);
-                yield break;
-            }
         }
+    }
+
+    /// <summary>
+    /// Upload model GLB lên Cloudflare R2 trước. Chỉ khi upload thành công mới tạo
+    /// row lesson_assets(asset_type = model_3d). Database trigger
+    /// auto_process_model_detail sẽ tự động gọi process-model-detail ở backend.
+    /// Unity tuyệt đối không cần tạo signed URL hoặc gọi Cloud Run thủ công.
+    /// </summary>
+    private IEnumerator UploadModelAssetAndQueueAutomaticDetailGeneration(
+        string lessonId,
+        string teacherId,
+        string classId,
+        string localModelPath,
+        float progressValue
+    )
+    {
+        if (string.IsNullOrWhiteSpace(localModelPath) || !File.Exists(localModelPath))
+        {
+            FailSaving("Không tìm thấy file GLB đã chọn.");
+            yield break;
+        }
+
+        if (r2StorageService == null)
+        {
+            FailSaving("CloudflareR2StorageService is missing.");
+            yield break;
+        }
+
+        if (lessonService == null)
+        {
+            FailSaving("SupabaseLessonService is missing.");
+            yield break;
+        }
+
+        SetSaveProgress(progressValue, "Đang tải model 3D lên R2...");
+
+        string storagePath =
+            $"{teacherId}/{classId}/{lessonId}/models/{Guid.NewGuid():N}.glb";
+        string uploadedPath = null;
+        string uploadError = null;
+
+        yield return r2StorageService.UploadFile(
+            "lesson-models",
+            storagePath,
+            localModelPath,
+            "model/gltf-binary",
+            path => uploadedPath = path,
+            error => uploadError = error
+        );
+
+        if (!string.IsNullOrWhiteSpace(uploadError))
+        {
+            FailSaving(uploadError);
+            yield break;
+        }
+
+        if (string.IsNullOrWhiteSpace(uploadedPath))
+        {
+            FailSaving("R2 upload thành công nhưng storage_path trả về rỗng.");
+            yield break;
+        }
+
+        // QUAN TRỌNG: chỉ INSERT sau khi R2 upload thành công.
+        // AFTER INSERT trigger trên lesson_assets sẽ nhận row hoàn chỉnh và bắt đầu
+        // pipeline AI tạo label + description + structure + function + anchor.
+        LessonAssetInsert modelAsset = new()
+        {
+            lesson_id = lessonId,
+            uploaded_by = teacherId,
+            asset_type = "model_3d",
+            file_name = Path.GetFileName(localModelPath),
+            storage_bucket = "lesson-models",
+            storage_path = uploadedPath,
+            mime_type = "model/gltf-binary",
+            file_extension = ".glb",
+            file_size_bytes = new FileInfo(localModelPath).Length,
+            display_order = 0
+        };
+
+        string insertError = null;
+        yield return lessonService.CreateLessonAsset(
+            modelAsset,
+            () => { },
+            error => insertError = error
+        );
+
+        if (!string.IsNullOrWhiteSpace(insertError))
+        {
+            FailSaving(insertError);
+            yield break;
+        }
+
+        SetSaveProgress(
+            Mathf.Min(progressValue + 4f, 96f),
+            "Model đã tải lên. Backend đang tự động tạo nhãn và mô tả..."
+        );
+
+        Debug.Log(
+            "[CreateLessonPageController] Model asset inserted successfully. " +
+            "Database trigger auto_process_model_detail should now run automatically. " +
+            $"Lesson ID: {lessonId}, File: {Path.GetFileName(localModelPath)}, " +
+            $"R2: lesson-models/{uploadedPath}"
+        );
     }
 
     private void HandleSaveDraft()
@@ -1581,58 +1657,22 @@ public class CreateLessonPageController : MonoBehaviour
             );
         }
 
-        // 3. Upload 3D GLB Model lên Cloudflare R2
+        // 3. Upload 3D GLB Model lên R2 rồi INSERT lesson_assets.
+        // Không gọi process-model-detail từ Unity: backend trigger sẽ tự làm việc đó.
         if (modelSelected)
         {
-            SetSaveProgress(
-                CalculateUploadProgress(completedUploads, totalUploads),
-                "Uploading 3D model to R2..."
-            );
-
-            string storagePath = $"{teacherId}/{classId}/{createdLesson.id}/models/{Guid.NewGuid():N}.glb";
-            string uploadedPath = null;
-            operationError = null;
-
-            yield return r2StorageService.UploadFile(
-                "lesson-models", // R2 Bucket Name
-                storagePath,
+            yield return UploadModelAssetAndQueueAutomaticDetailGeneration(
+                createdLesson.id,
+                teacherId,
+                classId,
                 selectedModelPath,
-                "model/gltf-binary",
-                path => uploadedPath = path,
-                error => operationError = error
+                CalculateUploadProgress(completedUploads, totalUploads)
             );
 
-            if (!string.IsNullOrWhiteSpace(operationError))
-            {
-                FailSaving(operationError);
+            if (!isSaving)
                 yield break;
-            }
 
-            LessonAssetInsert modelAsset = new()
-            {
-                lesson_id = createdLesson.id,
-                uploaded_by = teacherId,
-                asset_type = "model_3d",
-                file_name = Path.GetFileName(selectedModelPath),
-                storage_bucket = "lesson-models",
-                storage_path = uploadedPath,
-                mime_type = "model/gltf-binary",
-                file_extension = ".glb",
-                file_size_bytes = new FileInfo(selectedModelPath).Length,
-                display_order = 0
-            };
-
-            yield return lessonService.CreateLessonAsset(
-                modelAsset,
-                () => { },
-                error => operationError = error
-            );
-
-            if (!string.IsNullOrWhiteSpace(operationError))
-            {
-                FailSaving(operationError);
-                yield break;
-            }
+            completedUploads++;
         }
 
         SetSaveProgress(85f, "Saving learning objectives...");

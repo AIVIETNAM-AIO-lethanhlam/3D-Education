@@ -153,11 +153,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ShowLessonPageController
   previousSceneName: ClassDetailScene
   editLessonSceneName: CreateLessonScene
-  interactiveModelSceneName: InteractiveModelScene
+  Mode3DSceneName: Mode3DScene
+  vrSceneName: VRClassroomScene
   arModelsSceneName: ARScene
   aiSceneName: AIScene
   modelSignedUrlLifetimeSeconds: 3600
   r2PublicBaseUrl: 
+  lessonModelsPublicBaseUrl: https://pub-d18240b07b8944fabf89fcb8663dcf5f.r2.dev
   r2SignedUrlFunctionName: ' r2-signed-url'
   showTeacherControls: 1
 --- !u!114 &354097096
@@ -222,7 +224,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e78831988f94585478341949bd9facf5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UnityWebViewYouTubeBridge
-  hostedPlayerPageUrl: https://nfribubvehdzjyguxejq.supabase.co/storage/v1/object/public/web-player/youtube-player.html
+  hostedPlayerPageUrl: https://restless-art-a494.lamlethanh1702.workers.dev/youtube-player
   videoElementName: video-wrapper
   bottomControlInset: 40
   horizontalInset: 0

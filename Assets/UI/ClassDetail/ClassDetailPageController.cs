@@ -2129,6 +2129,9 @@ public class ClassDetailPageController : MonoBehaviour
                 if (student == null || !Guid.TryParse(student.user_id, out _))
                     continue;
 
+                // Keep EVERY enrolled student in the list, including the
+                // currently logged-in student. The current student will be
+                // rendered first and without a message button.
                 UserPresenceRecord presence = null;
                 string presenceError = null;
 
@@ -2204,8 +2207,56 @@ public class ClassDetailPageController : MonoBehaviour
         SetVisible(studentListEmptyState, enrolledStudents.Count == 0);
 
         int onlineCount = 0;
+        string currentUserId = GetCurrentUserId();
 
-        foreach (ClassMemberStudent student in enrolledStudents)
+        // Render a copy so the backend-loaded order remains untouched.
+        List<ClassMemberStudent> orderedStudents =
+            new List<ClassMemberStudent>(enrolledStudents);
+
+        orderedStudents.Sort((left, right) =>
+        {
+            if (left == null && right == null) return 0;
+            if (left == null) return 1;
+            if (right == null) return -1;
+
+            bool leftIsCurrent =
+                !string.IsNullOrWhiteSpace(currentUserId) &&
+                string.Equals(
+                    left.user_id,
+                    currentUserId,
+                    StringComparison.OrdinalIgnoreCase
+                );
+
+            bool rightIsCurrent =
+                !string.IsNullOrWhiteSpace(currentUserId) &&
+                string.Equals(
+                    right.user_id,
+                    currentUserId,
+                    StringComparison.OrdinalIgnoreCase
+                );
+
+            // Logged-in student is always first.
+            if (leftIsCurrent && !rightIsCurrent) return -1;
+            if (!leftIsCurrent && rightIsCurrent) return 1;
+
+            string leftName =
+                left.profiles != null
+                    ? left.profiles.full_name ?? string.Empty
+                    : string.Empty;
+
+            string rightName =
+                right.profiles != null
+                    ? right.profiles.full_name ?? string.Empty
+                    : string.Empty;
+
+            return string.Compare(
+                leftName,
+                rightName,
+                StringComparison.OrdinalIgnoreCase
+            );
+        });
+
+        foreach (ClassMemberStudent student in orderedStudents)
         {
             if (student == null)
                 continue;
@@ -2213,7 +2264,17 @@ public class ClassDetailPageController : MonoBehaviour
             if (student.is_online)
                 onlineCount++;
 
-            studentCardList?.Add(CreateStudentCard(student));
+            bool isCurrentStudent =
+                !string.IsNullOrWhiteSpace(currentUserId) &&
+                string.Equals(
+                    student.user_id,
+                    currentUserId,
+                    StringComparison.OrdinalIgnoreCase
+                );
+
+            studentCardList?.Add(
+                CreateStudentCard(student, isCurrentStudent)
+            );
         }
 
         if (studentListCountLabel != null)
@@ -2231,7 +2292,8 @@ public class ClassDetailPageController : MonoBehaviour
     }
 
     private VisualElement CreateStudentCard(
-        ClassMemberStudent student
+        ClassMemberStudent student,
+        bool isCurrentStudent
     )
     {
         string fullName =
@@ -2281,31 +2343,38 @@ public class ClassDetailPageController : MonoBehaviour
         information.Add(activityLabel);
         information.Add(enrollmentLabel);
 
-        Button messageButton = new();
-        messageButton.AddToClassList("student-message-button");
-        messageButton.tooltip = $"Message {fullName}";
-
-        VisualElement messageIcon = new();
-        messageIcon.AddToClassList("student-message-icon");
-        messageButton.Add(messageIcon);
-
-        int unreadCount = GetStudentUnreadCount(student.user_id);
-        if (unreadCount > 0)
-        {
-            Label unreadBadge = new(
-                unreadCount > 99 ? "99+" : unreadCount.ToString()
-            );
-            unreadBadge.AddToClassList("student-message-unread-badge");
-            unreadBadge.pickingMode = PickingMode.Ignore;
-            messageButton.Add(unreadBadge);
-        }
-
-        messageButton.clicked += () =>
-            OpenChatForStudent(student, fullName);
-
         card.Add(avatarWrap);
         card.Add(information);
-        card.Add(messageButton);
+
+        // Only OTHER students get a message button.
+        // The logged-in student's own row remains visible (and is rendered first),
+        // but there is intentionally no self-chat action.
+        if (!isCurrentStudent)
+        {
+            Button messageButton = new();
+            messageButton.AddToClassList("student-message-button");
+            messageButton.tooltip = $"Message {fullName}";
+
+            VisualElement messageIcon = new();
+            messageIcon.AddToClassList("student-message-icon");
+            messageButton.Add(messageIcon);
+
+            int unreadCount = GetStudentUnreadCount(student.user_id);
+            if (unreadCount > 0)
+            {
+                Label unreadBadge = new(
+                    unreadCount > 99 ? "99+" : unreadCount.ToString()
+                );
+                unreadBadge.AddToClassList("student-message-unread-badge");
+                unreadBadge.pickingMode = PickingMode.Ignore;
+                messageButton.Add(unreadBadge);
+            }
+
+            messageButton.clicked += () =>
+                OpenChatForStudent(student, fullName);
+
+            card.Add(messageButton);
+        }
 
         return card;
     }
@@ -2371,6 +2440,22 @@ public class ClassDetailPageController : MonoBehaviour
         {
             Debug.LogError(
                 "[ClassDetail] Cannot open ChatScene: invalid student user_id."
+            );
+            return;
+        }
+
+        string currentUserId = GetCurrentUserId();
+
+        if (!string.IsNullOrWhiteSpace(currentUserId) &&
+            string.Equals(
+                student.user_id,
+                currentUserId,
+                StringComparison.OrdinalIgnoreCase
+            ))
+        {
+            Debug.LogWarning(
+                "[ClassDetail] Ignored self-chat request. " +
+                "A user cannot create a direct conversation with themselves."
             );
             return;
         }

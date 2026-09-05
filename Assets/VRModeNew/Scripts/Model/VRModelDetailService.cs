@@ -153,6 +153,13 @@ public class VRModelDetailService : MonoBehaviour
 
         public string anchor_metadata;
 
+        // Semantic 2D localization returned by the backend AI.
+        // These are extracted directly from anchor_metadata by PostgREST
+        // so Unity does not need to parse a JSONB object with JsonUtility.
+        public string anchor_normalized_x;
+
+        public string anchor_normalized_y;
+
 
         // -----------------------------------------------------
         // Label offset
@@ -326,12 +333,52 @@ public class VRModelDetailService : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// Resolve the exact model_3d asset for a lesson by file name.
+    /// This prevents loading labels for the wrong model when a lesson
+    /// contains multiple GLB files.
+    /// </summary>
+    public void ResolveModelAssetForLessonAndFile(
+        string lessonId,
+        string fileName
+    )
+    {
+        if (string.IsNullOrWhiteSpace(lessonId))
+        {
+            Debug.LogError(
+                "[VRModelDetailService] "
+                + "ResolveModelAssetForLessonAndFile received empty lessonId."
+            );
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            Debug.LogWarning(
+                "[VRModelDetailService] "
+                + "Model file name is empty. Falling back to lesson-only resolver."
+            );
+
+            ResolveModelAssetForLesson(lessonId);
+            return;
+        }
+
+        StartCoroutine(
+            ResolveAssetCoroutine(
+                lessonId.Trim(),
+                fileName.Trim()
+            )
+        );
+    }
+
+
     // =========================================================
     // RESOLVE LESSON -> MODEL ASSET
     // =========================================================
 
     private IEnumerator ResolveAssetCoroutine(
-        string lessonId
+        string lessonId,
+        string exactFileName = null
     )
     {
         if (IsLoading)
@@ -348,6 +395,10 @@ public class VRModelDetailService : MonoBehaviour
         IsLoading = true;
 
 
+        // Clear stale parts first so labels from the previous model
+        // cannot be reused while this exact asset is resolving.
+        CurrentParts.Clear();
+
         string requestUrl =
             NormalizeSupabaseUrl(
                 supabaseUrl
@@ -357,8 +408,19 @@ public class VRModelDetailService : MonoBehaviour
             + UnityWebRequest.EscapeURL(
                 lessonId
             )
-            + "&asset_type=eq.model_3d"
-            + "&select="
+            + "&asset_type=eq.model_3d";
+
+        if (!string.IsNullOrWhiteSpace(exactFileName))
+        {
+            requestUrl +=
+                "&file_name=eq."
+                + UnityWebRequest.EscapeURL(
+                    exactFileName
+                );
+        }
+
+        requestUrl +=
+            "&select="
             + "id,"
             + "lesson_id,"
             + "asset_type,"
@@ -372,6 +434,9 @@ public class VRModelDetailService : MonoBehaviour
         Debug.Log(
             "[VRModelDetailService] "
             + "Looking for model_3d in lesson_assets..."
+            + (string.IsNullOrWhiteSpace(exactFileName)
+                ? ""
+                : "\nExact file = " + exactFileName)
         );
 
 
@@ -589,6 +654,8 @@ public class VRModelDetailService : MonoBehaviour
         assetId =
             newAssetId.Trim();
 
+        CurrentParts.Clear();
+
 
         Debug.Log(
             "[VRModelDetailService] "
@@ -671,7 +738,9 @@ public class VRModelDetailService : MonoBehaviour
             + "anchor_source,"
             + "anchor_confidence,"
             + "anchor_view,"
-            + "anchor_metadata"
+            + "anchor_metadata,"
+            + "anchor_normalized_x:anchor_metadata->>normalized_x,"
+            + "anchor_normalized_y:anchor_metadata->>normalized_y"
             + "&order=display_order.asc";
 
 
@@ -895,6 +964,58 @@ public class VRModelDetailService : MonoBehaviour
         return
             !float.IsNaN(value) &&
             !float.IsInfinity(value);
+    }
+
+
+    public bool TryGetSemanticNormalizedPoint(
+        ModelPartData part,
+        out Vector2 normalizedPoint
+    )
+    {
+        normalizedPoint =
+            Vector2.zero;
+
+        if (part == null)
+        {
+            return false;
+        }
+
+        if (
+            !float.TryParse(
+                part.anchor_normalized_x,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out float x
+            )
+            ||
+            !float.TryParse(
+                part.anchor_normalized_y,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out float y
+            )
+        )
+        {
+            return false;
+        }
+
+        if (
+            float.IsNaN(x) ||
+            float.IsInfinity(x) ||
+            float.IsNaN(y) ||
+            float.IsInfinity(y)
+        )
+        {
+            return false;
+        }
+
+        normalizedPoint =
+            new Vector2(
+                Mathf.Clamp01(x),
+                Mathf.Clamp01(y)
+            );
+
+        return true;
     }
 
 

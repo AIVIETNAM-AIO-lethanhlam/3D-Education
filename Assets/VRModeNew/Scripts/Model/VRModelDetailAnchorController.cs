@@ -93,6 +93,49 @@ public class VRModelDetailAnchorController : MonoBehaviour
     private float maxSnapDistance = 0.05f;
 
     [Tooltip(
+        "Automatically scale the allowed snap distance from the actual rendered "
+        + "model size. Different GLB files may use very different coordinate units."
+    )]
+    [SerializeField]
+    private bool useAdaptiveMaxSnapDistance = true;
+
+    [Tooltip(
+        "Maximum snap distance as a fraction of the model's largest local dimension."
+    )]
+    [SerializeField, Range(0.01f, 1.5f)]
+    private float adaptiveMaxSnapDistanceFraction = 0.45f;
+
+    [Tooltip(
+        "If an AI anchor is still far from the runtime mesh, force it onto the nearest "
+        + "visible surface instead of leaving a yellow marker floating in space."
+    )]
+    [SerializeField]
+    private bool forceSnapToSurface = true;
+
+    [Header("Semantic View Projection")]
+
+    [Tooltip(
+        "Prefer the backend AI's best_view + normalized_x/y and project that "
+        + "2D semantic location back onto the CURRENT runtime model mesh. "
+        + "This is more reliable across GLBs with different coordinate scales."
+    )]
+    [SerializeField]
+    private bool preferSemanticViewProjection = true;
+
+    [Tooltip(
+        "Normalized screen-space radius used when choosing the front-most "
+        + "surface vertex around the AI-selected 2D location."
+    )]
+    [SerializeField, Range(0.005f, 0.10f)]
+    private float semanticProjectionSurfaceRadius = 0.025f;
+
+    [Tooltip(
+        "When enabled, prints semantic projection diagnostics."
+    )]
+    [SerializeField]
+    private bool printSemanticProjectionDebug = true;
+
+    [Tooltip(
         "When enabled, prints the original AI point, snapped point and snap distance."
     )]
     [SerializeField]
@@ -126,6 +169,20 @@ public class VRModelDetailAnchorController : MonoBehaviour
     private float automaticAnchorMarkerSize = 0.0035f;
 
     [Tooltip(
+        "Use the rendered model world-size to calculate yellow marker size. "
+        + "This keeps markers visible for GLBs whose internal coordinate scale is very large "
+        + "(for example brain models using coordinates in the hundreds) or very small."
+    )]
+    [SerializeField]
+    private bool normalizeMarkerSizeToModelBounds = true;
+
+    [Tooltip(
+        "Yellow marker diameter as a fraction of the model's largest rendered world dimension."
+    )]
+    [SerializeField, Range(0.003f, 0.05f)]
+    private float automaticMarkerModelSizeFraction = 0.014f;
+
+    [Tooltip(
         "Shrink markers automatically as the camera gets closer, so the yellow dots " +
         "do not grow excessively on screen."
     )]
@@ -142,7 +199,7 @@ public class VRModelDetailAnchorController : MonoBehaviour
         "Minimum multiplier applied to the marker when very close to the camera."
     )]
     [SerializeField, Range(0.15f, 1f)]
-    private float automaticMarkerMinScaleMultiplier = 0.30f;
+    private float automaticMarkerMinScaleMultiplier = 0.55f;
 
     [Tooltip(
         "Maximum multiplier applied to the marker when far away."
@@ -178,6 +235,9 @@ public class VRModelDetailAnchorController : MonoBehaviour
     private readonly List<Vector3>
         cachedModelSurfaceVertices =
             new List<Vector3>();
+
+    private Bounds cachedModelLocalBounds;
+    private bool cachedModelLocalBoundsValid = false;
 
 
     // =========================================================
@@ -413,6 +473,14 @@ public class VRModelDetailAnchorController : MonoBehaviour
         Transform newModelRoot
     )
     {
+        bool modelChanged =
+            modelRoot != newModelRoot;
+
+        if (modelChanged)
+        {
+            ClearAutomaticAnchors();
+        }
+
         modelRoot =
             newModelRoot;
 
@@ -429,7 +497,13 @@ public class VRModelDetailAnchorController : MonoBehaviour
             );
         }
 
-        TryBuildAutomaticAnchors();
+        // If this is the same root, rebuilding is safe.
+        // For a newly switched model, wait for OnModelPartsLoaded so
+        // stale parts from the previous asset cannot be used.
+        if (!modelChanged)
+        {
+            TryBuildAutomaticAnchors();
+        }
     }
 
 
@@ -767,7 +841,37 @@ public class VRModelDetailAnchorController : MonoBehaviour
             bool snapped =
                 false;
 
+            bool semanticProjected =
+                false;
+
+            float semanticPixelDistance =
+                0f;
+
+            // BEST PATH:
+            // Reconstruct the anchor from the exact 2D semantic location that
+            // Gemini selected in best_view. This avoids depending on the GLB's
+            // native coordinate scale/origin and prevents different parts from
+            // collapsing onto the same side of models such as brain.glb.
             if (
+                preferSemanticViewProjection &&
+                cachedModelSurfaceVertices.Count > 0
+            )
+            {
+                semanticProjected =
+                    TryProjectSemanticPointToRuntimeSurface(
+                        part,
+                        out finalLocalPoint,
+                        out semanticPixelDistance
+                    );
+
+                snapped =
+                    semanticProjected;
+            }
+
+            // FALLBACK:
+            // Older rows may not contain normalized_x/y metadata.
+            if (
+                !semanticProjected &&
                 snapAutomaticAnchorsToMesh &&
                 cachedModelSurfaceVertices.Count > 0
             )
@@ -841,6 +945,10 @@ public class VRModelDetailAnchorController : MonoBehaviour
                     + originalLocalPoint.ToString("F4")
                     + " | finalLocal="
                     + finalLocalPoint.ToString("F4")
+                    + " | semanticProjected="
+                    + semanticProjected
+                    + " | semantic2DDistance="
+                    + semanticPixelDistance.ToString("F5")
                     + " | snapped="
                     + snapped
                     + " | snapDistance="
@@ -864,6 +972,7 @@ public class VRModelDetailAnchorController : MonoBehaviour
     private void BuildModelSurfaceVertexCache()
     {
         cachedModelSurfaceVertices.Clear();
+        cachedModelLocalBoundsValid = false;
 
         if (modelRoot == null)
         {
@@ -909,10 +1018,17 @@ public class VRModelDetailAnchorController : MonoBehaviour
                         vertices[v]
                     );
 
-                cachedModelSurfaceVertices.Add(
+                Vector3 modelLocalPoint =
                     modelRoot.InverseTransformPoint(
                         worldPoint
-                    )
+                    );
+
+                cachedModelSurfaceVertices.Add(
+                    modelLocalPoint
+                );
+
+                EncapsulateCachedModelLocalBounds(
+                    modelLocalPoint
                 );
             }
         }
@@ -963,10 +1079,17 @@ public class VRModelDetailAnchorController : MonoBehaviour
                         vertices[v]
                     );
 
-                cachedModelSurfaceVertices.Add(
+                Vector3 modelLocalPoint =
                     modelRoot.InverseTransformPoint(
                         worldPoint
-                    )
+                    );
+
+                cachedModelSurfaceVertices.Add(
+                    modelLocalPoint
+                );
+
+                EncapsulateCachedModelLocalBounds(
+                    modelLocalPoint
                 );
             }
 
@@ -983,6 +1106,607 @@ public class VRModelDetailAnchorController : MonoBehaviour
                 + cachedModelSurfaceVertices.Count
             );
         }
+    }
+
+
+    private bool TryProjectSemanticPointToRuntimeSurface(
+        VRModelDetailService.ModelPartData part,
+        out Vector3 projectedLocalPoint,
+        out float normalizedScreenDistance
+    )
+    {
+        projectedLocalPoint =
+            Vector3.zero;
+
+        normalizedScreenDistance =
+            float.PositiveInfinity;
+
+        if (
+            part == null ||
+            detailService == null ||
+            cachedModelSurfaceVertices == null ||
+            cachedModelSurfaceVertices.Count == 0 ||
+            string.IsNullOrWhiteSpace(part.anchor_view)
+        )
+        {
+            return false;
+        }
+
+        if (
+            !detailService.TryGetSemanticNormalizedPoint(
+                part,
+                out Vector2 target
+            )
+        )
+        {
+            return false;
+        }
+
+        if (
+            !TryGetBackendViewBasisInUnityLocal(
+                part.anchor_view,
+                out Vector3 right,
+                out Vector3 up,
+                out Vector3 camera
+            )
+        )
+        {
+            return false;
+        }
+
+        float minX =
+            float.PositiveInfinity;
+
+        float maxX =
+            float.NegativeInfinity;
+
+        float minY =
+            float.PositiveInfinity;
+
+        float maxY =
+            float.NegativeInfinity;
+
+        float minDepth =
+            float.PositiveInfinity;
+
+        float maxDepth =
+            float.NegativeInfinity;
+
+        // First pass: reproduce the backend renderer's projected bounds.
+        for (
+            int i = 0;
+            i < cachedModelSurfaceVertices.Count;
+            i++
+        )
+        {
+            Vector3 p =
+                cachedModelSurfaceVertices[i];
+
+            float sx =
+                Vector3.Dot(
+                    p,
+                    right
+                );
+
+            float sy =
+                Vector3.Dot(
+                    p,
+                    up
+                );
+
+            float depth =
+                Vector3.Dot(
+                    p,
+                    camera
+                );
+
+            minX = Mathf.Min(minX, sx);
+            maxX = Mathf.Max(maxX, sx);
+            minY = Mathf.Min(minY, sy);
+            maxY = Mathf.Max(maxY, sy);
+            minDepth = Mathf.Min(minDepth, depth);
+            maxDepth = Mathf.Max(maxDepth, depth);
+        }
+
+        float projectedWidth =
+            maxX - minX;
+
+        float projectedHeight =
+            maxY - minY;
+
+        float modelSize =
+            Mathf.Max(
+                projectedWidth,
+                projectedHeight,
+                0.000001f
+            );
+
+        float centerX =
+            (minX + maxX) * 0.5f;
+
+        float centerY =
+            (minY + maxY) * 0.5f;
+
+        float depthRange =
+            Mathf.Max(
+                maxDepth - minDepth,
+                0.000001f
+            );
+
+        // Match glb_analyzer.py:
+        // usable_size = image_size * 0.84, centered in the image.
+        const float usableFraction =
+            0.84f;
+
+        float best2DSquared =
+            float.PositiveInfinity;
+
+        // Pass 2: find the closest projected location.
+        for (
+            int i = 0;
+            i < cachedModelSurfaceVertices.Count;
+            i++
+        )
+        {
+            Vector3 p =
+                cachedModelSurfaceVertices[i];
+
+            float sx =
+                Vector3.Dot(
+                    p,
+                    right
+                );
+
+            float sy =
+                Vector3.Dot(
+                    p,
+                    up
+                );
+
+            float nx =
+                0.5f
+                + (
+                    (sx - centerX)
+                    / modelSize
+                )
+                * usableFraction;
+
+            float ny =
+                0.5f
+                - (
+                    (sy - centerY)
+                    / modelSize
+                )
+                * usableFraction;
+
+            float dx =
+                nx - target.x;
+
+            float dy =
+                ny - target.y;
+
+            float d2 =
+                dx * dx
+                + dy * dy;
+
+            if (d2 < best2DSquared)
+            {
+                best2DSquared =
+                    d2;
+            }
+        }
+
+        if (float.IsInfinity(best2DSquared))
+        {
+            return false;
+        }
+
+        float minDistance =
+            Mathf.Sqrt(
+                best2DSquared
+            );
+
+        float acceptedRadius =
+            Mathf.Max(
+                minDistance
+                + 0.006f,
+                semanticProjectionSurfaceRadius
+            );
+
+        float acceptedRadiusSquared =
+            acceptedRadius
+            * acceptedRadius;
+
+        bool found =
+            false;
+
+        float bestDepth =
+            float.NegativeInfinity;
+
+        float chosen2DSquared =
+            float.PositiveInfinity;
+
+        Vector3 chosenPoint =
+            Vector3.zero;
+
+        // Pass 3: among vertices near the semantic pixel, pick the FRONT-MOST
+        // one. This mirrors the backend point renderer where high-depth points
+        // are drawn last and therefore represent the visible surface.
+        for (
+            int i = 0;
+            i < cachedModelSurfaceVertices.Count;
+            i++
+        )
+        {
+            Vector3 p =
+                cachedModelSurfaceVertices[i];
+
+            float sx =
+                Vector3.Dot(
+                    p,
+                    right
+                );
+
+            float sy =
+                Vector3.Dot(
+                    p,
+                    up
+                );
+
+            float nx =
+                0.5f
+                + (
+                    (sx - centerX)
+                    / modelSize
+                )
+                * usableFraction;
+
+            float ny =
+                0.5f
+                - (
+                    (sy - centerY)
+                    / modelSize
+                )
+                * usableFraction;
+
+            float dx =
+                nx - target.x;
+
+            float dy =
+                ny - target.y;
+
+            float d2 =
+                dx * dx
+                + dy * dy;
+
+            if (d2 > acceptedRadiusSquared)
+            {
+                continue;
+            }
+
+            float depth =
+                Vector3.Dot(
+                    p,
+                    camera
+                );
+
+            // Favor visible/front surface first, then exact 2D proximity.
+            if (
+                !found ||
+                depth > bestDepth + depthRange * 0.002f ||
+                (
+                    Mathf.Abs(depth - bestDepth)
+                    <= depthRange * 0.002f
+                    &&
+                    d2 < chosen2DSquared
+                )
+            )
+            {
+                found =
+                    true;
+
+                bestDepth =
+                    depth;
+
+                chosen2DSquared =
+                    d2;
+
+                chosenPoint =
+                    p;
+            }
+        }
+
+        if (!found)
+        {
+            return false;
+        }
+
+        projectedLocalPoint =
+            chosenPoint;
+
+        normalizedScreenDistance =
+            Mathf.Sqrt(
+                chosen2DSquared
+            );
+
+        if (printSemanticProjectionDebug)
+        {
+            Debug.Log(
+                "[VRModelDetailAnchorController] "
+                + "Semantic projection: "
+                + part.part_name
+                + " | view="
+                + part.anchor_view
+                + " | target=("
+                + target.x.ToString("F3")
+                + ", "
+                + target.y.ToString("F3")
+                + ") | screenDistance="
+                + normalizedScreenDistance.ToString("F4")
+                + " | local="
+                + projectedLocalPoint.ToString("F4")
+            );
+        }
+
+        return true;
+    }
+
+
+    private bool TryGetBackendViewBasisInUnityLocal(
+        string viewName,
+        out Vector3 right,
+        out Vector3 up,
+        out Vector3 camera
+    )
+    {
+        right =
+            Vector3.right;
+
+        up =
+            Vector3.up;
+
+        camera =
+            Vector3.forward;
+
+        string view =
+            (
+                viewName
+                ?? ""
+            )
+            .Trim()
+            .ToLowerInvariant();
+
+        Vector3 backendCamera;
+
+        switch (view)
+        {
+            case "front":
+                backendCamera = new Vector3(0f, 0f, 1f);
+                break;
+
+            case "front_right":
+                backendCamera = new Vector3(1f, 0f, 1f).normalized;
+                break;
+
+            case "right":
+                backendCamera = new Vector3(1f, 0f, 0f);
+                break;
+
+            case "back_right":
+                backendCamera = new Vector3(1f, 0f, -1f).normalized;
+                break;
+
+            case "back":
+                backendCamera = new Vector3(0f, 0f, -1f);
+                break;
+
+            case "back_left":
+                backendCamera = new Vector3(-1f, 0f, -1f).normalized;
+                break;
+
+            case "left":
+                backendCamera = new Vector3(-1f, 0f, 0f);
+                break;
+
+            case "front_left":
+                backendCamera = new Vector3(-1f, 0f, 1f).normalized;
+                break;
+
+            case "top":
+                backendCamera = new Vector3(0f, 1f, 0f);
+                break;
+
+            case "bottom":
+                backendCamera = new Vector3(0f, -1f, 0f);
+                break;
+
+            case "top_front":
+                backendCamera = new Vector3(0f, 1f, 1f).normalized;
+                break;
+
+            case "top_right":
+                backendCamera = new Vector3(1f, 1f, 0f).normalized;
+                break;
+
+            case "top_back":
+                backendCamera = new Vector3(0f, 1f, -1f).normalized;
+                break;
+
+            case "top_left":
+                backendCamera = new Vector3(-1f, 1f, 0f).normalized;
+                break;
+
+            case "bottom_front":
+                backendCamera = new Vector3(0f, -1f, 1f).normalized;
+                break;
+
+            case "bottom_back":
+                backendCamera = new Vector3(0f, -1f, -1f).normalized;
+                break;
+
+            default:
+                return false;
+        }
+
+        // Apply the SAME axis-sign conversion used for backend anchors.
+        camera =
+            ConvertBackendDirectionToUnityLocal(
+                backendCamera
+            ).normalized;
+
+        Vector3 backendWorldUp =
+            Vector3.up;
+
+        Vector3 unityWorldUp =
+            ConvertBackendDirectionToUnityLocal(
+                backendWorldUp
+            ).normalized;
+
+        // For top/bottom, world-up is parallel to the camera and cannot define
+        // screen up. Match the backend renderer convention explicitly.
+        if (
+            view == "top"
+            || view == "bottom"
+        )
+        {
+            Vector3 backendScreenUp =
+                view == "top"
+                    ? new Vector3(0f, 0f, -1f)
+                    : new Vector3(0f, 0f, 1f);
+
+            up =
+                ConvertBackendDirectionToUnityLocal(
+                    backendScreenUp
+                ).normalized;
+
+            right =
+                Vector3.Cross(
+                    up,
+                    camera
+                ).normalized;
+
+            return
+                right.sqrMagnitude > 0.5f
+                && up.sqrMagnitude > 0.5f
+                && camera.sqrMagnitude > 0.5f;
+        }
+
+        // Project the global up vector onto the camera plane.
+        up =
+            unityWorldUp
+            - Vector3.Dot(
+                unityWorldUp,
+                camera
+            )
+            * camera;
+
+        if (up.sqrMagnitude < 0.000001f)
+        {
+            return false;
+        }
+
+        up.Normalize();
+
+        right =
+            Vector3.Cross(
+                up,
+                camera
+            ).normalized;
+
+        return
+            right.sqrMagnitude > 0.5f
+            && up.sqrMagnitude > 0.5f
+            && camera.sqrMagnitude > 0.5f;
+    }
+
+
+    private Vector3 ConvertBackendDirectionToUnityLocal(
+        Vector3 backendDirection
+    )
+    {
+        Vector3 converted =
+            backendDirection;
+
+        if (flipAnchorX)
+        {
+            converted.x = -converted.x;
+        }
+
+        if (flipAnchorY)
+        {
+            converted.y = -converted.y;
+        }
+
+        if (flipAnchorZ)
+        {
+            converted.z = -converted.z;
+        }
+
+        return converted;
+    }
+
+
+    private void EncapsulateCachedModelLocalBounds(
+        Vector3 point
+    )
+    {
+        if (!cachedModelLocalBoundsValid)
+        {
+            cachedModelLocalBounds =
+                new Bounds(
+                    point,
+                    Vector3.zero
+                );
+
+            cachedModelLocalBoundsValid =
+                true;
+
+            return;
+        }
+
+        cachedModelLocalBounds.Encapsulate(
+            point
+        );
+    }
+
+
+    private float GetEffectiveMaxSnapDistance()
+    {
+        float threshold =
+            Mathf.Max(
+                0f,
+                maxSnapDistance
+            );
+
+        if (
+            useAdaptiveMaxSnapDistance &&
+            cachedModelLocalBoundsValid
+        )
+        {
+            Vector3 size =
+                cachedModelLocalBounds.size;
+
+            float modelSize =
+                Mathf.Max(
+                    size.x,
+                    Mathf.Max(
+                        size.y,
+                        size.z
+                    )
+                );
+
+            threshold =
+                Mathf.Max(
+                    threshold,
+                    modelSize
+                    * Mathf.Max(
+                        0.001f,
+                        adaptiveMaxSnapDistanceFraction
+                    )
+                );
+        }
+
+        return threshold;
     }
 
 
@@ -1054,20 +1778,27 @@ public class VRModelDetailAnchorController : MonoBehaviour
                 bestSqrDistance
             );
 
+        float effectiveMaxSnapDistance =
+            GetEffectiveMaxSnapDistance();
+
+        bool outsidePreferredDistance =
+            effectiveMaxSnapDistance > 0f &&
+            snapDistance > effectiveMaxSnapDistance;
+
         if (
-            maxSnapDistance > 0f &&
-            snapDistance > maxSnapDistance
+            outsidePreferredDistance &&
+            !forceSnapToSurface
         )
         {
             if (printSnapDebug)
             {
                 Debug.LogWarning(
                     "[VRModelDetailAnchorController] "
-                    + "Nearest model vertex is farther than Max Snap Distance. "
+                    + "Nearest model surface is farther than the adaptive snap threshold. "
                     + "Original point kept. Distance = "
                     + snapDistance.ToString("F5")
-                    + " | Max = "
-                    + maxSnapDistance.ToString("F5")
+                    + " | EffectiveMax = "
+                    + effectiveMaxSnapDistance.ToString("F5")
                 );
             }
 
@@ -1077,8 +1808,27 @@ public class VRModelDetailAnchorController : MonoBehaviour
             return false;
         }
 
+        // Always prefer a real runtime-mesh surface point for automatic AI
+        // anchors. This makes the behavior independent of the GLB's native unit
+        // scale (heart, brain, server, etc.).
         snappedLocalPoint =
             bestPoint;
+
+        if (
+            printSnapDebug &&
+            outsidePreferredDistance &&
+            forceSnapToSurface
+        )
+        {
+            Debug.LogWarning(
+                "[VRModelDetailAnchorController] "
+                + "Anchor was far from the model in source coordinates, but was "
+                + "forced onto the nearest runtime mesh surface. Distance = "
+                + snapDistance.ToString("F5")
+                + " | AdaptiveMax = "
+                + effectiveMaxSnapDistance.ToString("F5")
+            );
+        }
 
         return true;
     }
@@ -1263,6 +2013,83 @@ public class VRModelDetailAnchorController : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// Show/hide the yellow automatic AI anchor dots.
+    /// When turning them on, recreate any missing markers for anchors that
+    /// were already built before Detail Mode became visible.
+    /// </summary>
+    public void SetAutomaticAnchorMarkersVisible(
+        bool visible
+    )
+    {
+        showAutomaticAnchorMarkers =
+            visible;
+
+        if (!visible)
+        {
+            for (
+                int i = automaticAnchorDebugMarkers.Count - 1;
+                i >= 0;
+                i--
+            )
+            {
+                Transform marker =
+                    automaticAnchorDebugMarkers[i];
+
+                if (marker != null)
+                {
+                    Destroy(
+                        marker.gameObject
+                    );
+                }
+            }
+
+            automaticAnchorDebugMarkers.Clear();
+            return;
+        }
+
+        // Anchors may already exist while their debug markers do not,
+        // especially when this bool was serialized false in the scene.
+        foreach (
+            KeyValuePair<string, Transform> pair
+            in automaticAnchors
+        )
+        {
+            Transform anchor =
+                pair.Value;
+
+            if (anchor == null)
+            {
+                continue;
+            }
+
+            Transform existingMarker =
+                anchor.Find(
+                    "DebugMarker"
+                );
+
+            if (existingMarker == null)
+            {
+                CreateDebugMarker(
+                    anchor
+                );
+            }
+            else if (
+                !automaticAnchorDebugMarkers.Contains(
+                    existingMarker
+                )
+            )
+            {
+                automaticAnchorDebugMarkers.Add(
+                    existingMarker
+                );
+            }
+        }
+
+        UpdateAutomaticAnchorMarkerSizes();
+    }
+
+
     private void UpdateAutomaticAnchorMarkerSizes()
     {
         if (
@@ -1321,11 +2148,141 @@ public class VRModelDetailAnchorController : MonoBehaviour
                     );
             }
 
+            float desiredWorldSize =
+                automaticAnchorMarkerSize;
+
+            if (normalizeMarkerSizeToModelBounds)
+            {
+                float modelWorldSize =
+                    GetRenderedModelWorldSize();
+
+                if (modelWorldSize > 0.0001f)
+                {
+                    desiredWorldSize =
+                        modelWorldSize
+                        * automaticMarkerModelSizeFraction;
+                }
+            }
+
+            // The marker is parented below the external AI-anchor container.
+            // Convert our desired WORLD diameter back to a local scale so models
+            // with wildly different imported GLB coordinate scales still show
+            // approximately the same on-screen yellow dot size.
+            float parentWorldScale =
+                GetLargestAbsScale(
+                    marker.parent != null
+                        ? marker.parent.lossyScale
+                        : Vector3.one);
+
+            float desiredLocalSize =
+                desiredWorldSize
+                / Mathf.Max(
+                    0.000001f,
+                    parentWorldScale);
+
             marker.localScale =
                 Vector3.one
-                * automaticAnchorMarkerSize
+                * desiredLocalSize
                 * multiplier;
         }
+    }
+
+
+    private float GetRenderedModelWorldSize()
+    {
+        if (modelRoot == null)
+        {
+            return 0f;
+        }
+
+        Renderer[] renderers =
+            modelRoot.GetComponentsInChildren<Renderer>(
+                true
+            );
+
+        bool hasBounds =
+            false;
+
+        Bounds combined =
+            new Bounds(
+                modelRoot.position,
+                Vector3.zero
+            );
+
+        for (
+            int i = 0;
+            i < renderers.Length;
+            i++
+        )
+        {
+            Renderer renderer =
+                renderers[i];
+
+            if (
+                renderer == null ||
+                !renderer.enabled
+            )
+            {
+                continue;
+            }
+
+            // Ignore any runtime marker/debug renderer if one ever appears
+            // under the model hierarchy.
+            if (
+                renderer.transform.name.Equals(
+                    "DebugMarker",
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                combined =
+                    renderer.bounds;
+
+                hasBounds =
+                    true;
+            }
+            else
+            {
+                combined.Encapsulate(
+                    renderer.bounds
+                );
+            }
+        }
+
+        if (!hasBounds)
+        {
+            return 0f;
+        }
+
+        Vector3 size =
+            combined.size;
+
+        return Mathf.Max(
+            size.x,
+            Mathf.Max(
+                size.y,
+                size.z
+            )
+        );
+    }
+
+
+    private static float GetLargestAbsScale(
+        Vector3 scale
+    )
+    {
+        return Mathf.Max(
+            Mathf.Abs(scale.x),
+            Mathf.Max(
+                Mathf.Abs(scale.y),
+                Mathf.Abs(scale.z)
+            )
+        );
     }
 
 
@@ -1333,6 +2290,7 @@ public class VRModelDetailAnchorController : MonoBehaviour
     {
         automaticAnchors.Clear();
         cachedModelSurfaceVertices.Clear();
+        cachedModelLocalBoundsValid = false;
         automaticAnchorDebugMarkers.Clear();
 
         if (automaticAnchorContainer != null)

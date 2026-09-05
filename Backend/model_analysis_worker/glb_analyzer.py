@@ -168,98 +168,336 @@ def analyze_glb(file_path: str):
 # View configuration
 # =========================================================
 
+def _normalized_vector(values):
+    vector = np.asarray(values, dtype=np.float32)
+    length = float(np.linalg.norm(vector))
+    if length <= 1e-8:
+        raise ValueError("View vector must be non-zero.")
+    return vector / length
+
+
+def _make_view_config(camera, up_hint=(0.0, 1.0, 0.0)):
+    """
+    Build an orthonormal camera basis.
+
+    `camera` points from the model toward the virtual camera.
+    `right` and `up` define the 2D projection plane used by both
+    render_points_cpu() and normalized_point_to_3d_anchor().
+    """
+    camera = _normalized_vector(camera)
+    up_hint = _normalized_vector(up_hint)
+
+    # Avoid a degenerate cross-product when camera is nearly parallel to up.
+    if abs(float(np.dot(camera, up_hint))) > 0.97:
+        up_hint = _normalized_vector((0.0, 0.0, -1.0))
+
+    right = np.cross(up_hint, camera)
+    right = _normalized_vector(right)
+
+    up = np.cross(camera, right)
+    up = _normalized_vector(up)
+
+    return {
+        "right": right.astype(np.float32),
+        "up": up.astype(np.float32),
+        "camera": camera.astype(np.float32),
+    }
+
+
+# 16 views:
+# 8 views around the horizontal ring,
+# 4 upper-oblique views,
+# 2 lower-oblique views,
+# plus exact top and bottom.
+#
+# These names are shared with app.py and therefore MUST remain stable.
 VIEW_CONFIGS = {
+    # Horizontal ring
+    "front": _make_view_config((0.0, 0.0, 1.0)),
+    "front_right": _make_view_config((1.0, 0.0, 1.0)),
+    "right": _make_view_config((1.0, 0.0, 0.0)),
+    "back_right": _make_view_config((1.0, 0.0, -1.0)),
+    "back": _make_view_config((0.0, 0.0, -1.0)),
+    "back_left": _make_view_config((-1.0, 0.0, -1.0)),
+    "left": _make_view_config((-1.0, 0.0, 0.0)),
+    "front_left": _make_view_config((-1.0, 0.0, 1.0)),
 
-    "front": {
-        "right": np.array(
-            [1.0, 0.0, 0.0],
-            dtype=np.float32,
-        ),
-        "up": np.array(
-            [0.0, 1.0, 0.0],
-            dtype=np.float32,
-        ),
-        "camera": np.array(
-            [0.0, 0.0, 1.0],
-            dtype=np.float32,
-        ),
-    },
+    # Exact poles
+    "top": _make_view_config((0.0, 1.0, 0.0)),
+    "bottom": _make_view_config((0.0, -1.0, 0.0)),
 
-    "back": {
-        "right": np.array(
-            [-1.0, 0.0, 0.0],
-            dtype=np.float32,
-        ),
-        "up": np.array(
-            [0.0, 1.0, 0.0],
-            dtype=np.float32,
-        ),
-        "camera": np.array(
-            [0.0, 0.0, -1.0],
-            dtype=np.float32,
-        ),
-    },
+    # Upper oblique ring
+    "top_front": _make_view_config((0.0, 1.0, 1.0)),
+    "top_right": _make_view_config((1.0, 1.0, 0.0)),
+    "top_back": _make_view_config((0.0, 1.0, -1.0)),
+    "top_left": _make_view_config((-1.0, 1.0, 0.0)),
 
-    "right": {
-        "right": np.array(
-            [0.0, 0.0, -1.0],
-            dtype=np.float32,
-        ),
-        "up": np.array(
-            [0.0, 1.0, 0.0],
-            dtype=np.float32,
-        ),
-        "camera": np.array(
-            [1.0, 0.0, 0.0],
-            dtype=np.float32,
-        ),
-    },
-
-    "left": {
-        "right": np.array(
-            [0.0, 0.0, 1.0],
-            dtype=np.float32,
-        ),
-        "up": np.array(
-            [0.0, 1.0, 0.0],
-            dtype=np.float32,
-        ),
-        "camera": np.array(
-            [-1.0, 0.0, 0.0],
-            dtype=np.float32,
-        ),
-    },
-
-    "top": {
-        "right": np.array(
-            [1.0, 0.0, 0.0],
-            dtype=np.float32,
-        ),
-        "up": np.array(
-            [0.0, 0.0, -1.0],
-            dtype=np.float32,
-        ),
-        "camera": np.array(
-            [0.0, 1.0, 0.0],
-            dtype=np.float32,
-        ),
-    },
-
-    "bottom": {
-        "right": np.array(
-            [1.0, 0.0, 0.0],
-            dtype=np.float32,
-        ),
-        "up": np.array(
-            [0.0, 0.0, 1.0],
-            dtype=np.float32,
-        ),
-        "camera": np.array(
-            [0.0, -1.0, 0.0],
-            dtype=np.float32,
-        ),
-    },
+    # Lower oblique views — especially useful around the apex/inferior vessels
+    "bottom_front": _make_view_config((0.0, -1.0, 1.0)),
+    "bottom_back": _make_view_config((0.0, -1.0, -1.0)),
 }
+
+
+
+def _normalize_rgba_array(values, count: int):
+    """
+    Normalize trimesh visual colors to uint8 RGBA with exactly `count` rows.
+    """
+    array = np.asarray(values)
+
+    if array.ndim == 1:
+        array = np.tile(array.reshape(1, -1), (count, 1))
+
+    if len(array) != count:
+        return None
+
+    if array.shape[1] == 3:
+        alpha = np.full((count, 1), 255, dtype=array.dtype)
+        array = np.concatenate([array, alpha], axis=1)
+
+    array = np.clip(array[:, :4], 0, 255).astype(np.uint8)
+    return array
+
+
+def _material_fallback_rgba(geometry: trimesh.Trimesh):
+    """
+    Best-effort material/base color extraction for GLB meshes.
+
+    This is useful when the model uses separate red/blue/yellow materials
+    for arteries, veins, myocardium, etc. The old renderer ignored these
+    colors completely and painted every point red/pink.
+    """
+    default = np.array([190, 105, 105, 255], dtype=np.uint8)
+
+    visual = getattr(geometry, "visual", None)
+    material = getattr(visual, "material", None)
+
+    if material is None:
+        return default
+
+    candidates = [
+        getattr(material, "baseColorFactor", None),
+        getattr(material, "diffuse", None),
+        getattr(material, "main_color", None),
+    ]
+
+    for value in candidates:
+        if value is None:
+            continue
+
+        try:
+            rgba = np.asarray(value, dtype=float).reshape(-1)
+
+            if len(rgba) < 3:
+                continue
+
+            if np.nanmax(rgba[:4]) <= 1.0:
+                rgba = rgba * 255.0
+
+            if len(rgba) == 3:
+                rgba = np.concatenate([rgba, [255.0]])
+
+            return np.clip(rgba[:4], 0, 255).astype(np.uint8)
+        except Exception:
+            continue
+
+    return default
+
+
+def _geometry_vertex_colors(geometry: trimesh.Trimesh):
+    """
+    Return one RGBA color per vertex using a memory-safe strategy.
+
+    Priority:
+      1) explicit vertex colors, if they already exist
+      2) one uniform material/base color for the whole mesh
+      3) anatomical fallback color
+
+    IMPORTANT:
+    We intentionally DO NOT call TextureVisuals.to_color() here and we do not
+    average face colors onto vertices. Both operations can allocate very large
+    temporary arrays for a high-poly GLB and can cause Cloud Run to be killed
+    under memory pressure.
+
+    Using each mesh's material/base color still preserves useful anatomical
+    color separation (for example myocardium vs blue veins vs red arteries)
+    when the GLB is authored with separate materials.
+    """
+    vertex_count = len(geometry.vertices)
+
+    if vertex_count == 0:
+        return np.empty((0, 4), dtype=np.uint8)
+
+    visual = getattr(geometry, "visual", None)
+
+    # Explicit per-vertex colors are cheap to reuse because the array already
+    # exists on the mesh.
+    if visual is not None:
+        try:
+            vertex_colors = getattr(
+                visual,
+                "vertex_colors",
+                None,
+            )
+
+            if vertex_colors is not None:
+                normalized = _normalize_rgba_array(
+                    vertex_colors,
+                    vertex_count,
+                )
+
+                if normalized is not None:
+                    return normalized
+        except Exception:
+            pass
+
+    # Memory-safe fallback: one color for the complete mesh.
+    material_rgba = _material_fallback_rgba(
+        geometry
+    )
+
+    return np.tile(
+        material_rgba.reshape(1, 4),
+        (vertex_count, 1),
+    )
+
+
+
+def _extract_vertices_with_colors(
+    scene: trimesh.Scene,
+    max_points: int,
+):
+    """
+    Extract scene/root-space vertices plus matching RGBA colors.
+
+    Sampling is performed with the same indices for both arrays.
+    """
+    vertex_groups = []
+    color_groups = []
+
+    for node_name in scene.graph.nodes_geometry:
+        transform, geometry_name = scene.graph.get(node_name)
+
+        if geometry_name is None:
+            continue
+
+        geometry = scene.geometry.get(geometry_name)
+
+        if not isinstance(geometry, trimesh.Trimesh):
+            continue
+
+        if len(geometry.vertices) == 0:
+            continue
+
+        vertices = np.asarray(
+            geometry.vertices,
+            dtype=np.float32,
+        )
+
+        transformed = trimesh.transform_points(
+            vertices,
+            transform,
+        ).astype(np.float32)
+
+        colors = _geometry_vertex_colors(
+            geometry
+        )
+
+        vertex_groups.append(transformed)
+        color_groups.append(colors)
+
+    if not vertex_groups:
+        for geometry in scene.geometry.values():
+            if not isinstance(geometry, trimesh.Trimesh):
+                continue
+
+            if len(geometry.vertices) == 0:
+                continue
+
+            vertex_groups.append(
+                np.asarray(
+                    geometry.vertices,
+                    dtype=np.float32,
+                )
+            )
+
+            color_groups.append(
+                _geometry_vertex_colors(
+                    geometry
+                )
+            )
+
+    if not vertex_groups:
+        raise ValueError(
+            "No vertices found in GLB."
+        )
+
+    total_vertices = sum(
+        len(vertices)
+        for vertices in vertex_groups
+    )
+
+    sampled_vertices = []
+    sampled_colors = []
+
+    for vertices, colors in zip(
+        vertex_groups,
+        color_groups,
+    ):
+        if total_vertices <= max_points:
+            indices = np.arange(
+                len(vertices),
+                dtype=np.int64,
+            )
+        else:
+            ratio = len(vertices) / total_vertices
+
+            sample_count = max(
+                1,
+                int(max_points * ratio),
+            )
+
+            sample_count = min(
+                sample_count,
+                len(vertices),
+            )
+
+            indices = np.linspace(
+                0,
+                len(vertices) - 1,
+                sample_count,
+                dtype=np.int64,
+            )
+
+        sampled_vertices.append(
+            vertices[indices]
+        )
+        sampled_colors.append(
+            colors[indices]
+        )
+
+    vertices = np.concatenate(
+        sampled_vertices,
+        axis=0,
+    )
+
+    colors = np.concatenate(
+        sampled_colors,
+        axis=0,
+    )
+
+    if len(vertices) > max_points:
+        indices = np.linspace(
+            0,
+            len(vertices) - 1,
+            max_points,
+            dtype=np.int64,
+        )
+
+        vertices = vertices[indices]
+        colors = colors[indices]
+
+    return vertices, colors
 
 
 # =========================================================
@@ -834,7 +1072,7 @@ def render_points_cpu(
     max_points: int = 30000,
 ):
     """
-    Lightweight CPU point renderer.
+    Lightweight CPU point renderer with GLB/material color preservation.
 
     No:
     - OpenGL
@@ -872,8 +1110,8 @@ def render_points_cpu(
     # 2. Extract sampled vertices
     # -----------------------------------------------------
 
-    vertices = (
-        _extract_vertices(
+    vertices, vertex_colors = (
+        _extract_vertices_with_colors(
             scene,
             max_points=max_points,
         )
@@ -976,50 +1214,35 @@ def render_points_cpu(
             ]
         )
 
-        # Red/pink anatomical shading
-        red = int(
-            145
-            + depth_value
-            * 90
+        # Preserve the model's real GLB/material color instead of forcing
+        # every anatomical structure to red/pink. Apply only a mild depth
+        # brightness term so arteries, veins, myocardium and fat remain
+        # visually separable for Gemini.
+        base_rgba = vertex_colors[index].astype(np.float32)
+
+        brightness = (
+            0.72
+            + depth_value * 0.38
         )
 
-        green = int(
-            45
-            + depth_value
-            * 70
-        )
+        rgb = np.clip(
+            base_rgba[:3] * brightness,
+            0,
+            255,
+        ).astype(np.uint8)
 
-        blue = int(
-            55
-            + depth_value
-            * 70
-        )
+        red = int(rgb[0])
+        green = int(rgb[1])
+        blue = int(rgb[2])
 
-        red = min(
-            240,
-            max(
-                0,
-                red
-            ),
+        # Larger previews benefit from a 2px point radius. This makes thin
+        # coronary vessels more continuous without changing projection or
+        # anchor math.
+        radius = (
+            2
+            if image_size >= 320
+            else 1
         )
-
-        green = min(
-            180,
-            max(
-                0,
-                green
-            ),
-        )
-
-        blue = min(
-            190,
-            max(
-                0,
-                blue
-            ),
-        )
-
-        radius = 1
 
         draw.ellipse(
             (

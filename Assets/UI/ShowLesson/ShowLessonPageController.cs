@@ -909,7 +909,12 @@ public class ShowLessonPageController : MonoBehaviour
         if (resumeVideoAfterModal)
             youtubeBridge.Pause();
 
-        // Native Android WebView is rendered above UI Toolkit. Hide it while the popup is open.
+        // Native Android WebView is rendered above UI Toolkit. A UI Toolkit
+        // modal cannot cover/intercept it, so suspend the YouTube WebView at the
+        // bridge level for the whole lifetime of this popup.
+        if (youtubeBridge != null)
+            youtubeBridge.SetEmbeddedWebViewSuppressed(true);
+
         SetNativeWebViewVisible(false);
         nativeVideoWebViewVisible = false;
         nativeVideoWebViewVisibilityKnown = true;
@@ -995,11 +1000,15 @@ public class ShowLessonPageController : MonoBehaviour
         if (youtubeBridge != null && youtubeBridge.IsReady)
             youtubeBridge.Pause();
 
-        // IMPORTANT: UnityWebViewYouTubeBridge normally recalculates WebView margins
-        // every frame for the lesson video. Put the bridge in fullscreen mode while
-        // the PDF is open so it stops overriding the PDF reader margins.
+        // The resource-list popup had suspended the YouTube WebView. We are now
+        // reusing that same native WebView for the PDF reader, so release the
+        // embedded-video suppression and switch the bridge to fullscreen mode.
+        // Fullscreen mode prevents the bridge from overwriting the PDF margins.
         if (youtubeBridge != null)
+        {
+            youtubeBridge.SetEmbeddedWebViewSuppressed(false);
             youtubeBridge.SetFullscreen(true);
+        }
 
         // Hide the file-list popup while the full-page PDF viewer is active.
         SetVisible(resourceModalOverlay, false);
@@ -1357,9 +1366,12 @@ canvas{
         pdfViewerOpen = false;
         currentPdfAsset = null;
 
-        // Allow UnityWebViewYouTubeBridge to control the native WebView again.
+        // Allow UnityWebViewYouTubeBridge to control the embedded lesson video again.
         if (youtubeBridge != null)
+        {
+            youtubeBridge.SetEmbeddedWebViewSuppressed(false);
             youtubeBridge.SetFullscreen(false);
+        }
 
         // The PDF temporarily reused the same native WebView as the embedded YouTube player.
         // Reload the lesson video page when returning to ShowLessonScene.
@@ -2961,8 +2973,12 @@ canvas{
     private void CloseResourceModal()
     {
         SetVisible(resourceModalOverlay, false);
-        // The next Update() recalculates the correct scrolled video rectangle
-        // before showing the native YouTube WebView again.
+
+        // The popup is gone, so the embedded YouTube WebView may become visible
+        // again. The bridge recalculates its exact video-section rectangle.
+        if (youtubeBridge != null)
+            youtubeBridge.SetEmbeddedWebViewSuppressed(false);
+
         nativeVideoWebViewVisible = false;
         nativeVideoWebViewVisibilityKnown = false;
 

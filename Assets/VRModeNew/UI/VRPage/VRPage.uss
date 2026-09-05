@@ -804,3 +804,27 @@
 .hidden {
     display: none;
 }
+
+
+/* =========================================================
+   AI CHAT - FORCE HIDE INTERNAL SCROLLBARS
+   Keep drag/wheel scrolling, but remove the visible track,
+   thumb and arrow buttons in Unity 6 UI Toolkit.
+   ========================================================= */
+.ai-chat-messages .unity-scroll-view__vertical-scroller,
+.ai-chat-messages .unity-scroll-view__horizontal-scroller,
+.ai-chat-messages .unity-scroller--vertical,
+.ai-chat-messages .unity-scroller--horizontal {
+    display: none;
+    width: 0;
+    min-width: 0;
+    max-width: 0;
+    height: 0;
+    min-height: 0;
+    max-height: 0;
+}
+
+.ai-chat-messages .unity-scroll-view__content-viewport {
+    margin-right: 0;
+    padding-right: 0;
+}

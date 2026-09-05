@@ -12,19 +12,23 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
 {
     [Header("Hosted player page")]
     [Tooltip(
-        "Public HTTPS URL of youtube-player.html, for example: " +
-        "https://YOUR_PROJECT.supabase.co/storage/v1/object/public/web-player/youtube-player.html"
+        "Public HTTPS URL of the hosted YouTube player page, for example: " +
+        "https://YOUR-WORKER.workers.dev/youtube-player"
     )]
     [SerializeField] private string hostedPlayerPageUrl = string.Empty;
 
     [Header("UI Toolkit")]
-    [SerializeField] private string videoElementName = "video-wrapper";
-    [SerializeField] private float bottomControlInset = 40f;
-    [SerializeField] private float horizontalInset = 0f;
-    [SerializeField] private float topInset = 0f;
+    [Tooltip("The native WebView must match only the actual video box, not the wrapper that also contains Unity controls.")]
+    [SerializeField] private string videoElementName = "video-section";
 
     [Header("YouTube")]
-    [SerializeField] private bool showNativeYouTubeControls = true;
+    // IMPORTANT:
+    // YouTube controls are rendered inside a cross-origin iframe. On a narrow
+    // mobile-sized player YouTube may move its native fullscreen button upward,
+    // and Unity/USS cannot reposition that button. Disable native controls and
+    // use ShowLessonScene's own replay / volume / fullscreen row instead.
+    private const bool UseNativeYouTubeControls = true;
+
     [SerializeField] private float statePollingInterval = 0.4f;
 
     private UIDocument uiDocument;
@@ -44,6 +48,15 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
     private Coroutine loadPlayerCoroutine;
     private string pendingVideoId = string.Empty;
 
+    // Prevent the native WebView from appearing full-screen before UI Toolkit
+    // has finished laying out video-section.
+    private bool allowEmbeddedWebViewVisibility;
+
+    // UI Toolkit popups cannot render above a native Android WebView.
+    // When a lesson modal (Lecture Slides / Exercises) is open, keep the
+    // embedded YouTube WebView completely hidden so it cannot receive taps.
+    private bool suppressEmbeddedWebView;
+
     public bool IsReady => isReady;
     public bool IsPlaying => isPlaying;
     public float CurrentTimeSeconds => currentTimeSeconds;
@@ -60,12 +73,19 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
             return;
         }
 
-        videoElement = root.Q<VisualElement>(videoElementName);
+        // IMPORTANT: target the actual 205px video box only.
+        // Older scene instances may still have the serialized value "video-wrapper".
+        // video-wrapper also contains the Unity control row below the video, which made
+        // YouTube's own bottom controls/fullscreen icon appear vertically displaced.
+        videoElement = root.Q<VisualElement>("video-section");
+
+        if (videoElement == null && !string.IsNullOrWhiteSpace(videoElementName))
+            videoElement = root.Q<VisualElement>(videoElementName);
 
         if (videoElement == null)
         {
             Debug.LogError(
-                $"[UnityWebViewYouTubeBridge] Cannot find '{videoElementName}' in UXML."
+                "[UnityWebViewYouTubeBridge] Cannot find 'video-section' in UXML."
             );
             return;
         }
@@ -137,21 +157,32 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
         if (webViewObject == null)
             return;
 
-        UpdateWebViewMargins();
+        allowEmbeddedWebViewVisibility = false;
+        webViewObject.SetVisibility(false);
 
         string origin = GetOrigin(hostedPlayerPageUrl);
         string separator = hostedPlayerPageUrl.Contains("?") ? "&" : "?";
         string playerUrl =
             hostedPlayerPageUrl.Trim() + separator +
             "v=" + Uri.EscapeDataString(videoId) +
-            "&controls=" + (showNativeYouTubeControls ? "1" : "0") +
+            "&controls=" + (UseNativeYouTubeControls ? "1" : "0") +
             "&origin=" + Uri.EscapeDataString(origin) +
             "&widget_referrer=" + Uri.EscapeDataString(hostedPlayerPageUrl.Trim()) +
             "&cache=" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
+        Debug.Log("[UnityWebViewYouTubeBridge] Native YouTube controls enabled.");
         Debug.Log("[UnityWebViewYouTubeBridge] Loading HTTPS player: " + playerUrl);
+
+        // Loading while hidden is safe. We only reveal the native WebView after
+        // UI Toolkit has produced a real video-section rectangle.
         webViewObject.LoadURL(playerUrl);
-        webViewObject.SetVisibility(true);
+
+        if (loadPlayerCoroutine != null)
+            StopCoroutine(loadPlayerCoroutine);
+
+        loadPlayerCoroutine = StartCoroutine(
+            RevealEmbeddedWebViewWhenLayoutIsReady()
+        );
     }
 
     public void Play()
@@ -193,6 +224,30 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
         }
     }
 
+    /// <summary>
+    /// Temporarily hides the embedded YouTube native WebView.
+    /// Use this while a UI Toolkit modal is open because native Android
+    /// WebViews render above UI Toolkit and would otherwise still receive taps.
+    /// </summary>
+    public void SetEmbeddedWebViewSuppressed(bool suppressed)
+    {
+        suppressEmbeddedWebView = suppressed;
+
+        if (webViewObject == null)
+            return;
+
+        if (suppressed)
+        {
+            webViewObject.SetVisibility(false);
+            return;
+        }
+
+        // Restore only the embedded lesson-video placement.
+        // PDF/fullscreen mode manages its own native WebView rectangle.
+        if (!isFullscreen)
+            UpdateWebViewMargins();
+    }
+
     public void SetFullscreen(bool fullscreen)
     {
         if (webViewObject == null)
@@ -204,6 +259,71 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
             webViewObject.SetMargins(0, 0, 0, 0);
         else
             UpdateWebViewMargins();
+
+        EvaluateJavaScript(
+            "window.unitySetWebFullscreenState && window.unitySetWebFullscreenState(" +
+            (isFullscreen ? "true" : "false") +
+            ");"
+        );
+    }
+
+    private IEnumerator RevealEmbeddedWebViewWhenLayoutIsReady()
+    {
+        // UI Toolkit can need several frames after a scene change before worldBound
+        // is trustworthy. Showing a native WebView earlier leaves its default
+        // margins at 0,0,0,0, which covers the whole phone screen.
+        const int maxFrames = 30;
+
+        for (int frame = 0; frame < maxFrames; frame++)
+        {
+            yield return null;
+
+            if (webViewObject == null || videoElement == null || root == null)
+                continue;
+
+            Rect bounds = videoElement.worldBound;
+
+            if (bounds.width <= 10f || bounds.height <= 10f)
+                continue;
+
+            float panelScale = 1f;
+            if (root.panel != null)
+                panelScale = Mathf.Max(0.01f, root.panel.scaledPixelsPerPoint);
+
+            float pixelWidth = bounds.width * panelScale;
+            float pixelHeight = bounds.height * panelScale;
+
+            // Reject the temporary "whole panel" geometry that can occur while
+            // UI Toolkit is still rebuilding the scene.
+            if (pixelWidth >= Screen.width * 0.98f &&
+                pixelHeight >= Screen.height * 0.90f)
+            {
+                continue;
+            }
+
+            allowEmbeddedWebViewVisibility = true;
+            UpdateWebViewMargins();
+
+            Debug.Log(
+                "[UnityWebViewYouTubeBridge] Embedded video layout ready: " +
+                bounds
+            );
+
+            loadPlayerCoroutine = null;
+            yield break;
+        }
+
+        Debug.LogError(
+            "[UnityWebViewYouTubeBridge] video-section never received a valid " +
+            "embedded layout. WebView stays hidden instead of covering the screen."
+        );
+
+        allowEmbeddedWebViewVisibility = false;
+
+        if (webViewObject != null)
+            webViewObject.SetVisibility(false);
+
+        loadPlayerCoroutine = null;
     }
 
     private void CreateWebViewIfNeeded()
@@ -312,6 +432,17 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
             return;
         }
 
+        if (message == "youtube-toggle-fullscreen")
+        {
+            SetFullscreen(!isFullscreen);
+            EvaluateJavaScript(
+                "window.unitySetWebFullscreenState && window.unitySetWebFullscreenState(" +
+                (isFullscreen ? "true" : "false") +
+                ");"
+            );
+            return;
+        }
+
         if (message.StartsWith(
             "youtube-error:",
             StringComparison.Ordinal
@@ -389,7 +520,7 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
         string script =
             "window.unityLoadVideo && window.unityLoadVideo(" +
             ToJavaScriptString(pendingVideoId) + "," +
-            (showNativeYouTubeControls ? "1" : "0") + "," +
+            (UseNativeYouTubeControls ? "1" : "0") + "," +
             ToJavaScriptString(GetOrigin(hostedPlayerPageUrl)) + "," +
             ToJavaScriptString(hostedPlayerPageUrl.Trim()) +
             ");";
@@ -446,56 +577,56 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
             return;
         }
 
-        float rootWidth = root.resolvedStyle.width;
-        float rootHeight = root.resolvedStyle.height;
-
-        if (rootWidth <= 0f || rootHeight <= 0f)
+        if (!allowEmbeddedWebViewVisibility)
+        {
+            webViewObject.SetVisibility(false);
             return;
+        }
+
+        if (suppressEmbeddedWebView)
+        {
+            webViewObject.SetVisibility(false);
+            return;
+        }
 
         Rect bounds = videoElement.worldBound;
 
-        float scaleX = Screen.width / rootWidth;
-        float scaleY = Screen.height / rootHeight;
+        if (bounds.width <= 1f || bounds.height <= 1f)
+        {
+            webViewObject.SetVisibility(false);
+            return;
+        }
 
-        int left = Mathf.RoundToInt(
-            Mathf.Max(
-                0f,
-                (bounds.xMin + horizontalInset) * scaleX
-            )
-        );
+        // UI Toolkit worldBound is expressed in panel points. Convert it to native
+        // screen pixels using the panel scale so the WebView exactly covers
+        // video-section. Do NOT calculate from video-wrapper and subtract a guessed
+        // control-row height; that caused YouTube's fullscreen/control bar to shift.
+        float panelScale = 1f;
+        if (root.panel != null)
+            panelScale = Mathf.Max(0.01f, root.panel.scaledPixelsPerPoint);
 
-        int top = Mathf.RoundToInt(
-            Mathf.Max(
-                0f,
-                (bounds.yMin + topInset) * scaleY
-            )
-        );
+        int left = Mathf.RoundToInt(bounds.xMin * panelScale);
+        int top = Mathf.RoundToInt(bounds.yMin * panelScale);
+        int right = Mathf.RoundToInt(Screen.width - bounds.xMax * panelScale);
+        int bottom = Mathf.RoundToInt(Screen.height - bounds.yMax * panelScale);
 
-        float visibleWidth = Mathf.Max(
-            1f,
-            bounds.width - horizontalInset * 2f
-        );
+        // Hide the native view when the video is completely outside the screen.
+        if (bounds.xMax <= 0f || bounds.yMax <= 0f ||
+            left >= Screen.width || top >= Screen.height ||
+            right >= Screen.width || bottom >= Screen.height)
+        {
+            webViewObject.SetVisibility(false);
+            return;
+        }
 
-        float visibleHeight = Mathf.Max(
-            1f,
-            bounds.height - topInset - bottomControlInset
-        );
-
-        int right = Mathf.RoundToInt(
-            Mathf.Max(
-                0f,
-                Screen.width - left - visibleWidth * scaleX
-            )
-        );
-
-        int bottom = Mathf.RoundToInt(
-            Mathf.Max(
-                0f,
-                Screen.height - top - visibleHeight * scaleY
-            )
-        );
+        // Clamp partially visible edges while scrolling.
+        left = Mathf.Clamp(left, 0, Screen.width);
+        top = Mathf.Clamp(top, 0, Screen.height);
+        right = Mathf.Clamp(right, 0, Screen.width);
+        bottom = Mathf.Clamp(bottom, 0, Screen.height);
 
         webViewObject.SetMargins(left, top, right, bottom);
+        webViewObject.SetVisibility(true);
     }
 
     private static string GetHostedOrigin(string value)
@@ -552,5 +683,7 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
         durationSeconds = 0f;
         nextPollingTime = 0f;
         pendingVideoId = string.Empty;
+        allowEmbeddedWebViewVisibility = false;
+        suppressEmbeddedWebView = false;
     }
 }

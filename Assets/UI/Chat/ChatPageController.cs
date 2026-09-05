@@ -218,6 +218,20 @@ public class ChatPageController : MonoBehaviour
             return false;
         }
 
+        if (string.Equals(
+                currentUserId,
+                partnerUserId,
+                StringComparison.OrdinalIgnoreCase
+            ))
+        {
+            Debug.LogWarning(
+                "[ChatPageController] Self-chat was blocked before calling " +
+                "get_or_create_direct_conversation."
+            );
+            ShowError("You cannot start a direct chat with yourself.");
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(accessToken))
         {
             ShowError("Missing Supabase access token. Save the login session token to PlayerPrefs key access_token.");
@@ -707,7 +721,29 @@ public class ChatPageController : MonoBehaviour
             }
             else
             {
-                Debug.LogError($"[ChatPageController] {method} {path} failed ({request.responseCode}): {request.downloadHandler.text}");
+                string responseText = request.downloadHandler != null
+                    ? request.downloadHandler.text
+                    : string.Empty;
+
+                Debug.LogError(
+                    $"[ChatPageController] {method} {path} failed " +
+                    $"({request.responseCode}): {responseText}"
+                );
+
+                // Helpful diagnostic for the direct-conversation RPC.
+                if (path.Contains("get_or_create_direct_conversation") &&
+                    responseText.IndexOf(
+                        "Invalid chat participant",
+                        StringComparison.OrdinalIgnoreCase
+                    ) >= 0)
+                {
+                    Debug.LogError(
+                        "[ChatPageController] Supabase rejected the chat participant. " +
+                        $"currentUserId={currentUserId}, partnerUserId={partnerUserId}, " +
+                        $"classId={classId}. Check that the partner is another user " +
+                        "and is an allowed participant in this class."
+                    );
+                }
             }
         }
     }

@@ -32,11 +32,119 @@ public class VRPageController : MonoBehaviour
 
     [Tooltip("Minimum vertical separation between labels placed on the same side.")]
     [SerializeField, Range(22f, 80f)]
-    private float detailLabelVerticalSpacing = 38f;
+    private float detailLabelVerticalSpacing = 52f;
 
     [Tooltip("Screen padding used when clamping labels.")]
     [SerializeField, Range(4f, 40f)]
     private float detailLabelScreenPadding = 14f;
+
+    [Tooltip(
+        "Top edge of the vertical zone reserved for Detail labels, as a fraction "
+        + "of the phone UI height. Keeping this below the toolbar prevents labels "
+        + "from covering the top controls."
+    )]
+    [SerializeField, Range(0.08f, 0.35f)]
+    private float detailLabelSafeTop = 0.16f;
+
+    [Tooltip(
+        "Bottom edge of the Detail-label zone, as a fraction of the phone UI "
+        + "height. Labels are never placed below this line, keeping the joystick "
+        + "and AI button area clear."
+    )]
+    [SerializeField, Range(0.55f, 0.90f)]
+    private float detailLabelSafeBottom = 0.76f;
+
+    [Tooltip(
+        "When many labels are visible, distribute the whole label column through "
+        + "the safe vertical zone instead of allowing the group to accumulate "
+        + "near the projected model position."
+    )]
+    [SerializeField]
+    private bool distributeDetailLabelsInSafeZone = true;
+
+    [Tooltip(
+        "Minimum visible gap between two adjacent Detail labels. "
+        + "The layout uses the actual resolved label height plus this gap."
+    )]
+    [SerializeField, Range(2f, 24f)]
+    private float detailLabelMinimumGap = 12f;
+
+    [Header("Detail label horizontal layout")]
+
+    [Tooltip(
+        "Optionally force a nearly even left/right split. Disabled by default so "
+        + "labels follow their natural projected side while still using collision-safe spacing."
+    )]
+    [SerializeField]
+    private bool balanceDetailLabelColumns = false;
+
+    [Tooltip(
+        "Horizontal center of the left label column, as a fraction of the phone UI width."
+    )]
+    [SerializeField, Range(0.12f, 0.45f)]
+    private float detailLeftColumnX = 0.23f;
+
+    [Tooltip(
+        "Horizontal center of the right label column, as a fraction of the phone UI width."
+    )]
+    [SerializeField, Range(0.50f, 0.82f)]
+    private float detailRightColumnX = 0.64f;
+
+    [Tooltip(
+        "Right-most boundary that Detail labels may use. Keeping this below the "
+        + "menu column prevents labels from covering the menu buttons."
+    )]
+    [SerializeField, Range(0.65f, 0.90f)]
+    private float detailRightSafeEdge = 0.76f;
+
+    [Tooltip(
+        "Top reservation for the RIGHT label column. Because the right column is "
+        + "kept left of the menu stack, this can stay close to the normal safe top."
+    )]
+    [SerializeField, Range(0.18f, 0.42f)]
+    private float detailRightSafeTop = 0.26f;
+
+    [Tooltip(
+        "Bottom edge used only by the RIGHT Detail-label column. A slightly lower "
+        + "value than the global bottom still leaves the AI chat button area clear."
+    )]
+    [SerializeField, Range(0.65f, 0.85f)]
+    private float detailRightSafeBottom = 0.78f;
+
+    [Tooltip(
+        "Extra vertical spacing used by labels in the RIGHT column so they are as "
+        + "easy to scan as the labels on the left."
+    )]
+    [SerializeField, Range(0f, 24f)]
+    private float detailRightExtraVerticalSpacing = 8f;
+
+    [Tooltip(
+        "Minimum visible gap between adjacent labels in the RIGHT column."
+    )]
+    [SerializeField, Range(4f, 28f)]
+    private float detailRightMinimumGap = 16f;
+
+    [Header("Centered model auto rotation")]
+
+    [Tooltip(
+        "Angular speed for the Rotate button. The model rotates around the "
+        + "visual center of its rendered geometry, so it spins in place instead "
+        + "of orbiting around an offset model pivot."
+    )]
+    [SerializeField, Range(5f, 120f)]
+    private float centeredAutoRotateSpeed = 28f;
+
+    [Tooltip(
+        "Use world-up as the spin axis. Recommended for anatomical models so "
+        + "they remain upright while rotating."
+    )]
+    [SerializeField]
+    private bool centeredAutoRotateUseWorldUp = true;
+
+    private bool centeredAutoRotateEnabled = false;
+    private Transform centeredAutoRotateModel;
+    private Vector3 centeredAutoRotatePivotWorld;
+    private bool centeredAutoRotatePivotValid = false;
 
     [Header("Player start pose")]
     [SerializeField]
@@ -237,9 +345,18 @@ public class VRPageController : MonoBehaviour
             modelCatalog == null ||
             modelCatalog.ModelVisible);
 
-        RefreshRotateIcon(
-            modelCatalog != null &&
-            modelCatalog.AutoRotateEnabled);
+        // The Rotate button now controls centered in-place rotation.
+        // Start in the OFF state even if the catalog had its own legacy flag.
+        if (modelCatalog != null &&
+            modelCatalog.AutoRotateEnabled)
+        {
+            modelCatalog.ToggleAutoRotate();
+        }
+
+        centeredAutoRotateEnabled = false;
+        centeredAutoRotatePivotValid = false;
+
+        RefreshRotateIcon(false);
 
         RefreshLoadingLabel(
             modelCatalog != null &&
@@ -264,6 +381,8 @@ public class VRPageController : MonoBehaviour
                     0f,
                     spinnerAngle);
         }
+
+        UpdateCenteredAutoRotation();
 
         // Keep the detail popup ScrollView inside its real scroll range.
         // In Device Simulator, dragging short content can otherwise pull
@@ -431,6 +550,12 @@ public class VRPageController : MonoBehaviour
         aiChatContext =
             root.Q<Label>("AIChatContext");
 
+        // Some VRPage UXML versions only contain the orange BtnAIChat button
+        // and do not yet contain the chat modal itself. Build a complete
+        // runtime chat window when those elements are missing so the feature
+        // works without requiring another UXML/USS migration.
+        EnsureAIChatUI();
+
         detailConnectorLayer =
             root.Q<VisualElement>("DetailConnectorLayer");
 
@@ -503,6 +628,260 @@ public class VRPageController : MonoBehaviour
             modelList.verticalScrollerVisibility =
                 ScrollerVisibility.Hidden;
     }
+
+    private void EnsureAIChatUI()
+    {
+        if (root == null)
+            return;
+
+        // If the UXML already provides the complete AI chat window, keep it.
+        if (aiChatOverlay != null &&
+            aiChatPanel != null &&
+            aiChatMessages != null &&
+            aiChatInput != null &&
+            sendAIChatButton != null &&
+            closeAIChatButton != null)
+        {
+            return;
+        }
+
+        aiChatOverlay =
+            new VisualElement
+            {
+                name = "AIChatOverlay"
+            };
+
+        aiChatOverlay.style.position = Position.Absolute;
+        aiChatOverlay.style.left = 0;
+        aiChatOverlay.style.right = 0;
+        aiChatOverlay.style.top = 0;
+        aiChatOverlay.style.bottom = 0;
+        aiChatOverlay.style.backgroundColor =
+            new Color(0f, 0f, 0f, 0.38f);
+        aiChatOverlay.style.alignItems = Align.Center;
+        aiChatOverlay.style.justifyContent = Justify.Center;
+        aiChatOverlay.style.display = DisplayStyle.None;
+
+        aiChatPanel =
+            new VisualElement
+            {
+                name = "AIChatPanel"
+            };
+
+        aiChatPanel.style.width = Length.Percent(91f);
+        aiChatPanel.style.height = Length.Percent(76f);
+        aiChatPanel.style.maxWidth = 720f;
+        aiChatPanel.style.backgroundColor =
+            new Color(0.965f, 0.975f, 0.995f, 1f);
+        aiChatPanel.style.borderTopLeftRadius = 22f;
+        aiChatPanel.style.borderTopRightRadius = 22f;
+        aiChatPanel.style.borderBottomLeftRadius = 22f;
+        aiChatPanel.style.borderBottomRightRadius = 22f;
+        aiChatPanel.style.paddingLeft = 16f;
+        aiChatPanel.style.paddingRight = 16f;
+        aiChatPanel.style.paddingTop = 14f;
+        aiChatPanel.style.paddingBottom = 14f;
+        aiChatPanel.style.flexDirection = FlexDirection.Column;
+
+        VisualElement header = new VisualElement();
+        header.style.flexDirection = FlexDirection.Row;
+        header.style.alignItems = Align.Center;
+        header.style.marginBottom = 6f;
+
+        VisualElement titleBox = new VisualElement();
+        titleBox.style.flexGrow = 1f;
+
+        Label title = new Label("AI học tập");
+        title.style.fontSize = 19f;
+        title.style.unityFontStyleAndWeight = FontStyle.Bold;
+        title.style.color = new Color(0.08f, 0.16f, 0.30f, 1f);
+
+        aiChatContext =
+            new Label("Bài học hiện tại • Mô hình 3D")
+            {
+                name = "AIChatContext"
+            };
+        aiChatContext.style.fontSize = 11f;
+        aiChatContext.style.color = new Color(0.35f, 0.42f, 0.54f, 1f);
+        aiChatContext.style.marginTop = 2f;
+
+        titleBox.Add(title);
+        titleBox.Add(aiChatContext);
+
+        closeAIChatButton =
+            new UIToolkitButton
+            {
+                name = "BtnCloseAIChat",
+                text = "×"
+            };
+        closeAIChatButton.style.width = 38f;
+        closeAIChatButton.style.height = 38f;
+        closeAIChatButton.style.fontSize = 24f;
+        closeAIChatButton.style.backgroundColor =
+            new Color(1f, 1f, 1f, 1f);
+        closeAIChatButton.style.borderTopLeftRadius = 19f;
+        closeAIChatButton.style.borderTopRightRadius = 19f;
+        closeAIChatButton.style.borderBottomLeftRadius = 19f;
+        closeAIChatButton.style.borderBottomRightRadius = 19f;
+
+        header.Add(titleBox);
+        header.Add(closeAIChatButton);
+        aiChatPanel.Add(header);
+
+        Label helper =
+            new Label(
+                "Hỏi AI về bài học, cấu tạo, chức năng hoặc các bộ phận của mô hình đang xem.");
+        helper.style.whiteSpace = WhiteSpace.Normal;
+        helper.style.fontSize = 12f;
+        helper.style.color = new Color(0.30f, 0.36f, 0.46f, 1f);
+        helper.style.marginBottom = 8f;
+        aiChatPanel.Add(helper);
+
+        aiChatMessages =
+            new ScrollView(ScrollViewMode.Vertical)
+            {
+                name = "AIChatMessages"
+            };
+        // Keep the message area compact when the conversation is still short.
+        // Previously flexGrow = 1 made the ScrollView occupy all remaining
+        // vertical space, creating the large empty light-blue area below the
+        // first message.
+        aiChatMessages.style.flexGrow = 0f;
+        aiChatMessages.style.flexShrink = 1f;
+        aiChatMessages.style.height = Length.Percent(52f);
+        aiChatMessages.style.minHeight = 180f;
+        aiChatMessages.style.maxHeight = 390f;
+        aiChatMessages.style.backgroundColor =
+            new Color(1f, 1f, 1f, 0.72f);
+        aiChatMessages.style.borderTopLeftRadius = 15f;
+        aiChatMessages.style.borderTopRightRadius = 15f;
+        aiChatMessages.style.borderBottomLeftRadius = 15f;
+        aiChatMessages.style.borderBottomRightRadius = 15f;
+        aiChatMessages.style.paddingLeft = 8f;
+        aiChatMessages.style.paddingRight = 8f;
+        aiChatMessages.style.paddingTop = 8f;
+        aiChatMessages.style.paddingBottom = 8f;
+        // Keep the chat vertically scrollable, but hide the visible scrollbar.
+        // Users can still drag/swipe inside the chat history or use the mouse wheel.
+        aiChatMessages.verticalScrollerVisibility = ScrollerVisibility.Hidden;
+        aiChatMessages.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+        aiChatMessages.touchScrollBehavior = ScrollView.TouchScrollBehavior.Clamped;
+
+        // Force-hide the internal UI Toolkit scrollers too.
+        // On some Unity 6 versions, ScrollerVisibility.Hidden alone can still
+        // leave the vertical track/arrows visible after layout.
+        if (aiChatMessages.verticalScroller != null)
+        {
+            aiChatMessages.verticalScroller.style.display = DisplayStyle.None;
+            aiChatMessages.verticalScroller.style.width = 0f;
+            aiChatMessages.verticalScroller.style.minWidth = 0f;
+            aiChatMessages.verticalScroller.style.maxWidth = 0f;
+        }
+
+        if (aiChatMessages.horizontalScroller != null)
+        {
+            aiChatMessages.horizontalScroller.style.display = DisplayStyle.None;
+            aiChatMessages.horizontalScroller.style.height = 0f;
+            aiChatMessages.horizontalScroller.style.minHeight = 0f;
+            aiChatMessages.horizontalScroller.style.maxHeight = 0f;
+        }
+
+        // Re-apply after the first layout pass because Unity can rebuild the
+        // internal ScrollView hierarchy during geometry resolution.
+        aiChatMessages.schedule.Execute(() =>
+        {
+            aiChatMessages.verticalScrollerVisibility = ScrollerVisibility.Hidden;
+            aiChatMessages.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+
+            if (aiChatMessages.verticalScroller != null)
+            {
+                aiChatMessages.verticalScroller.style.display = DisplayStyle.None;
+                aiChatMessages.verticalScroller.style.width = 0f;
+                aiChatMessages.verticalScroller.style.minWidth = 0f;
+                aiChatMessages.verticalScroller.style.maxWidth = 0f;
+            }
+
+            if (aiChatMessages.horizontalScroller != null)
+            {
+                aiChatMessages.horizontalScroller.style.display = DisplayStyle.None;
+                aiChatMessages.horizontalScroller.style.height = 0f;
+                aiChatMessages.horizontalScroller.style.minHeight = 0f;
+                aiChatMessages.horizontalScroller.style.maxHeight = 0f;
+            }
+        }).ExecuteLater(1);
+
+        aiChatMessageContainer =
+            new VisualElement
+            {
+                name = "AIChatMessageContainer"
+            };
+        aiChatMessageContainer.style.flexDirection = FlexDirection.Column;
+        aiChatMessageContainer.style.flexGrow = 0f;
+        aiChatMessageContainer.style.flexShrink = 0f;
+        aiChatMessageContainer.style.height = StyleKeyword.Auto;
+        aiChatMessages.Add(aiChatMessageContainer);
+        aiChatPanel.Add(aiChatMessages);
+
+        aiChatTyping =
+            new Label("AI đang trả lời...")
+            {
+                name = "AIChatTyping"
+            };
+        aiChatTyping.style.fontSize = 11f;
+        aiChatTyping.style.color = new Color(0.28f, 0.43f, 0.72f, 1f);
+        aiChatTyping.style.marginTop = 6f;
+        aiChatTyping.style.display = DisplayStyle.None;
+        aiChatPanel.Add(aiChatTyping);
+
+        VisualElement inputRow = new VisualElement();
+        inputRow.style.flexDirection = FlexDirection.Row;
+        inputRow.style.alignItems = Align.FlexEnd;
+        inputRow.style.marginTop = 8f;
+
+        aiChatInput =
+            new TextField
+            {
+                name = "AIChatInput",
+                multiline = true
+            };
+        aiChatInput.style.flexGrow = 1f;
+        aiChatInput.style.minHeight = 44f;
+        aiChatInput.style.maxHeight = 92f;
+        aiChatInput.style.marginRight = 8f;
+        aiChatInput.style.backgroundColor = Color.white;
+        aiChatInput.style.borderTopLeftRadius = 13f;
+        aiChatInput.style.borderTopRightRadius = 13f;
+        aiChatInput.style.borderBottomLeftRadius = 13f;
+        aiChatInput.style.borderBottomRightRadius = 13f;
+
+        sendAIChatButton =
+            new UIToolkitButton
+            {
+                name = "BtnSendAIChat",
+                text = "Gửi"
+            };
+        sendAIChatButton.style.width = 62f;
+        sendAIChatButton.style.height = 44f;
+        sendAIChatButton.style.backgroundColor =
+            new Color(0.10f, 0.38f, 0.92f, 1f);
+        sendAIChatButton.style.color = Color.white;
+        sendAIChatButton.style.unityFontStyleAndWeight = FontStyle.Bold;
+        sendAIChatButton.style.borderTopLeftRadius = 13f;
+        sendAIChatButton.style.borderTopRightRadius = 13f;
+        sendAIChatButton.style.borderBottomLeftRadius = 13f;
+        sendAIChatButton.style.borderBottomRightRadius = 13f;
+
+        inputRow.Add(aiChatInput);
+        inputRow.Add(sendAIChatButton);
+        aiChatPanel.Add(inputRow);
+
+        aiChatOverlay.Add(aiChatPanel);
+        root.Add(aiChatOverlay);
+
+        Debug.Log(
+            "[VRPageController] Runtime AI chat window created.");
+    }
+
 
     private void ConfigurePickingModes()
     {
@@ -760,7 +1139,7 @@ public class VRPageController : MonoBehaviour
         modelCatalog.CatalogReady += HandleCatalogReady;
         modelCatalog.ModelChanged += HandleModelChanged;
         modelCatalog.VisibilityChanged += RefreshVisibilityIcon;
-        modelCatalog.AutoRotateChanged += RefreshRotateIcon;
+        modelCatalog.AutoRotateChanged += HandleLegacyAutoRotateChanged;
         modelCatalog.LoadingStateChanged += RefreshLoadingLabel;
     }
 
@@ -772,7 +1151,7 @@ public class VRPageController : MonoBehaviour
         modelCatalog.CatalogReady -= HandleCatalogReady;
         modelCatalog.ModelChanged -= HandleModelChanged;
         modelCatalog.VisibilityChanged -= RefreshVisibilityIcon;
-        modelCatalog.AutoRotateChanged -= RefreshRotateIcon;
+        modelCatalog.AutoRotateChanged -= HandleLegacyAutoRotateChanged;
         modelCatalog.LoadingStateChanged -= RefreshLoadingLabel;
     }
 
@@ -877,11 +1256,161 @@ public class VRPageController : MonoBehaviour
             return;
         }
 
-        // Tap once: start automatic rotation.
-        // Tap again: stop rotation.
-        modelCatalog.ToggleAutoRotate();
+        // Disable the catalog's old auto-rotation first. That implementation
+        // may rotate around the GLB/root pivot, which can be offset from the
+        // visible center and makes the model appear to orbit.
+        if (modelCatalog.AutoRotateEnabled)
+        {
+            modelCatalog.ToggleAutoRotate();
+        }
+
+        centeredAutoRotateEnabled =
+            !centeredAutoRotateEnabled;
+
+        centeredAutoRotateModel =
+            modelCatalog.CurrentModel.transform;
+
+        // Recalculate the VISUAL pivot whenever rotation starts. This uses
+        // renderer bounds rather than transform.position, so models whose GLB
+        // origin is off-center still spin in place.
+        centeredAutoRotatePivotValid =
+            TryCalculateCurrentModelVisualCenter(
+                out centeredAutoRotatePivotWorld);
+
+        if (!centeredAutoRotatePivotValid)
+        {
+            centeredAutoRotatePivotWorld =
+                centeredAutoRotateModel.position;
+
+            centeredAutoRotatePivotValid = true;
+        }
+
+        RefreshRotateIcon(
+            centeredAutoRotateEnabled);
+
+        Debug.Log(
+            "[VRPageController] Centered auto rotation: "
+            + (centeredAutoRotateEnabled
+                ? "ON"
+                : "OFF")
+            + " pivot="
+            + centeredAutoRotatePivotWorld);
 
         // Keep the action menu open.
+    }
+
+    private void UpdateCenteredAutoRotation()
+    {
+        if (!centeredAutoRotateEnabled)
+            return;
+
+        if (modelCatalog == null ||
+            modelCatalog.CurrentModel == null)
+        {
+            StopCenteredAutoRotation();
+            return;
+        }
+
+        Transform currentModel =
+            modelCatalog.CurrentModel.transform;
+
+        centeredAutoRotateModel =
+            currentModel;
+
+        // IMPORTANT:
+        // The user can grab/move the model while auto-rotation is enabled.
+        // Therefore the pivot must NOT remain a fixed world-space point from
+        // the moment the Rotate button was pressed. Recalculate the model's
+        // current visible center every frame so it continues to spin in place
+        // wherever the user moves it.
+        centeredAutoRotatePivotValid =
+            TryCalculateCurrentModelVisualCenter(
+                out centeredAutoRotatePivotWorld);
+
+        if (!centeredAutoRotatePivotValid)
+        {
+            centeredAutoRotatePivotWorld =
+                currentModel.position;
+
+            centeredAutoRotatePivotValid = true;
+        }
+
+        float angle =
+            centeredAutoRotateSpeed *
+            Time.deltaTime;
+
+        Vector3 axis =
+            centeredAutoRotateUseWorldUp
+                ? Vector3.up
+                : currentModel.up;
+
+        // Rotate around the CURRENT visible center. Because the center is
+        // refreshed after any move/scale interaction, the model spins at its
+        // present location instead of orbiting around an old fixed pivot.
+        currentModel.RotateAround(
+            centeredAutoRotatePivotWorld,
+            axis,
+            angle);
+    }
+
+    private bool TryCalculateCurrentModelVisualCenter(
+        out Vector3 center)
+    {
+        center = Vector3.zero;
+
+        if (modelCatalog == null ||
+            modelCatalog.CurrentModel == null)
+        {
+            return false;
+        }
+
+        Renderer[] renderers =
+            modelCatalog.CurrentModel
+                .GetComponentsInChildren<Renderer>(
+                    true);
+
+        bool hasBounds = false;
+        Bounds combinedBounds =
+            new Bounds();
+
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer == null ||
+                !renderer.enabled)
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                combinedBounds =
+                    renderer.bounds;
+
+                hasBounds = true;
+            }
+            else
+            {
+                combinedBounds.Encapsulate(
+                    renderer.bounds);
+            }
+        }
+
+        if (!hasBounds)
+            return false;
+
+        center =
+            combinedBounds.center;
+
+        return true;
+    }
+
+    private void StopCenteredAutoRotation()
+    {
+        centeredAutoRotateEnabled = false;
+        centeredAutoRotateModel = null;
+        centeredAutoRotatePivotValid = false;
+
+        RefreshRotateIcon(false);
     }
 
     private void RefreshVisibilityIcon(bool visible)
@@ -896,6 +1425,22 @@ public class VRPageController : MonoBehaviour
             visible
                 ? "eye-icon"
                 : "eye-off-icon");
+    }
+
+    private void HandleLegacyAutoRotateChanged(
+        bool enabled)
+    {
+        // The catalog may still emit this legacy event. Do not let it change
+        // the UI state for our centered rotation. If legacy rotation somehow
+        // becomes enabled, immediately turn it back off.
+        if (enabled &&
+            modelCatalog != null)
+        {
+            modelCatalog.ToggleAutoRotate();
+        }
+
+        RefreshRotateIcon(
+            centeredAutoRotateEnabled);
     }
 
     private void RefreshRotateIcon(bool enabled)
@@ -1265,6 +1810,13 @@ public class VRPageController : MonoBehaviour
         VRModelLaunchItem record,
         GameObject model)
     {
+        centeredAutoRotateModel =
+            model != null
+                ? model.transform
+                : null;
+
+        centeredAutoRotatePivotValid = false;
+
         RefreshVisibilityIcon(true);
 
         firstModelReady = true;
@@ -1286,6 +1838,49 @@ public class VRPageController : MonoBehaviour
             VRRuntimeModelCatalog.GetDisplayName(record));
 
         ClearDetailLabels();
+
+        ResolveDetailControllers();
+
+        // Bind the anchor controller to the exact runtime GLB that was
+        // just loaded by VRRuntimeModelCatalog.
+        if (detailAnchorController != null)
+        {
+            detailAnchorController.SetModelRoot(
+                model != null ? model.transform : null
+            );
+        }
+
+        // Resolve labels for the exact GLB file, not merely the first
+        // model_3d row belonging to the lesson.
+        if (detailService != null && record != null)
+        {
+            string lessonId =
+                PlayerPrefs.GetString(
+                    "selected_lesson_id",
+                    ""
+                );
+
+            if (!string.IsNullOrWhiteSpace(lessonId) &&
+                !string.IsNullOrWhiteSpace(record.file_name))
+            {
+                Debug.Log(
+                    "[VRPageController] Resolving Detail labels for runtime model:"
+                    + "\nLesson ID = " + lessonId
+                    + "\nFile = " + record.file_name
+                );
+
+                detailService.ResolveModelAssetForLessonAndFile(
+                    lessonId,
+                    record.file_name
+                );
+            }
+            else if (!string.IsNullOrWhiteSpace(lessonId))
+            {
+                detailService.ResolveModelAssetForLesson(
+                    lessonId
+                );
+            }
+        }
 
         if (detailModeEnabled)
         {
@@ -2002,12 +2597,27 @@ public class VRPageController : MonoBehaviour
 
         if (!enabled)
         {
+            ResolveDetailControllers();
+
+            if (detailAnchorController != null)
+            {
+                detailAnchorController.SetAutomaticAnchorMarkersVisible(false);
+            }
+
             CloseDetailPopup();
             ClearDetailLabels();
             return;
         }
 
         ResolveDetailControllers();
+
+        if (detailAnchorController != null)
+        {
+            // Always show the yellow 3D anchor dots while Detail Mode is ON.
+            // This also recreates markers if the scene previously serialized
+            // Show Automatic Anchor Markers as false.
+            detailAnchorController.SetAutomaticAnchorMarkersVisible(true);
+        }
 
         if (detailService == null ||
             detailAnchorController == null)
@@ -2296,10 +2906,54 @@ public class VRPageController : MonoBehaviour
                     anchorPanel = anchorPanel
                 };
 
-            if (panelX < rootWidth * 0.5f)
-                left.Add(entry);
+            if (balanceDetailLabelColumns)
+            {
+                // First collect by natural projected side. We rebalance after
+                // all anchors are known so one side cannot become overloaded.
+                if (panelX < rootWidth * 0.5f)
+                    left.Add(entry);
+                else
+                    right.Add(entry);
+            }
             else
-                right.Add(entry);
+            {
+                if (panelX < rootWidth * 0.5f)
+                    left.Add(entry);
+                else
+                    right.Add(entry);
+            }
+        }
+
+        if (balanceDetailLabelColumns)
+        {
+            List<DetailPlacementEntry> allEntries =
+                new List<DetailPlacementEntry>(
+                    left.Count + right.Count);
+
+            allEntries.AddRange(left);
+            allEntries.AddRange(right);
+
+            // Sort top-to-bottom first, then alternate columns.
+            // This gives a visually even two-column distribution instead
+            // of putting almost every label on the same side.
+            allEntries.Sort(
+                (a, b) =>
+                    a.anchorPanel.y.CompareTo(
+                        b.anchorPanel.y));
+
+            left.Clear();
+            right.Clear();
+
+            for (int i = 0; i < allEntries.Count; i++)
+            {
+                DetailPlacementEntry item =
+                    allEntries[i];
+
+                if ((i & 1) == 0)
+                    left.Add(item);
+                else
+                    right.Add(item);
+            }
         }
 
         left.Sort(
@@ -2342,15 +2996,18 @@ public class VRPageController : MonoBehaviour
         Painter2D painter =
             context.painter2D;
 
+        // Keep connector visibility consistent across light/dark model
+        // backgrounds. The previous semi-transparent blue could look very pale
+        // on some scenes/models (brain.glb in particular).
         painter.lineWidth =
-            1.6f;
+            2.25f;
 
         painter.strokeColor =
             new Color(
-                0.23f,
-                0.48f,
-                0.78f,
-                0.90f);
+                0.08f,
+                0.42f,
+                0.95f,
+                1.00f);
 
         foreach (
             KeyValuePair<string, Vector2> pair
@@ -2405,11 +3062,202 @@ public class VRPageController : MonoBehaviour
             return;
         }
 
-        float lastY =
-            float.NegativeInfinity;
+        // ---------------------------------------------------------
+        // Reserve a vertical Detail-label zone.
+        //
+        // The old layout started every label close to its projected
+        // anchor and only pushed later labels DOWN. When 20+ parts
+        // were present and the model was far away, most projected
+        // anchors were low on screen, so the whole label column
+        // accumulated above the joystick / AI controls.
+        //
+        // The new layout keeps all labels between safeTop and
+        // safeBottom, then shifts/distributes the complete group
+        // upward as needed.
+        // ---------------------------------------------------------
+
+        float requestedSafeTop =
+            rightSide
+                ? Mathf.Max(
+                    detailLabelSafeTop,
+                    detailRightSafeTop)
+                : detailLabelSafeTop;
+
+        float safeTop =
+            Mathf.Clamp(
+                rootHeight * requestedSafeTop,
+                detailLabelScreenPadding,
+                rootHeight - detailLabelScreenPadding);
+
+        float requestedSafeBottom =
+            rightSide
+                ? Mathf.Max(
+                    detailLabelSafeBottom,
+                    detailRightSafeBottom)
+                : detailLabelSafeBottom;
+
+        float safeBottom =
+            Mathf.Clamp(
+                rootHeight * requestedSafeBottom,
+                safeTop + 40f,
+                rootHeight - detailLabelScreenPadding);
+
+        int count =
+            entries.Count;
+
+        // UI Toolkit may not have resolved every label size on the
+        // first frame, so use the same stable fallback as before.
+        float representativeHeight = 36f;
+
+        for (int i = 0; i < count; i++)
+        {
+            UIToolkitButton candidate =
+                entries[i].label;
+
+            if (candidate == null)
+                continue;
+
+            float resolvedHeight =
+                candidate.resolvedStyle.height;
+
+            if (resolvedHeight > 1f)
+            {
+                representativeHeight =
+                    Mathf.Max(
+                        representativeHeight,
+                        resolvedHeight);
+            }
+        }
+
+        float minCenterY =
+            safeTop +
+            representativeHeight * 0.5f;
+
+        float maxCenterY =
+            safeBottom -
+            representativeHeight * 0.5f;
+
+        if (maxCenterY < minCenterY)
+        {
+            float middle =
+                (safeTop + safeBottom) * 0.5f;
+
+            minCenterY =
+                middle;
+
+            maxCenterY =
+                middle;
+        }
+
+        // Fit the requested spacing inside the available safe zone.
+        // For very large part counts this automatically compresses
+        // spacing, but never lets the column run into the joystick.
+        float availableCenterSpan =
+            Mathf.Max(
+                0f,
+                maxCenterY - minCenterY);
+
+        // Center-to-center spacing should be at least the current label height
+        // plus a visible gap. This prevents adjacent white label cards from
+        // appearing stuck together when there are many parts.
+        float columnVerticalSpacing =
+            detailLabelVerticalSpacing +
+            (rightSide
+                ? detailRightExtraVerticalSpacing
+                : 0f);
+
+        float columnMinimumGap =
+            rightSide
+                ? Mathf.Max(
+                    detailLabelMinimumGap,
+                    detailRightMinimumGap)
+                : detailLabelMinimumGap;
+
+        float desiredSpacing =
+            Mathf.Max(
+                columnVerticalSpacing,
+                representativeHeight +
+                columnMinimumGap);
+
+        float spacing =
+            desiredSpacing;
+
+        if (count > 1)
+        {
+            float maximumSpacingThatFits =
+                availableCenterSpan /
+                (count - 1);
+
+            spacing =
+                Mathf.Min(
+                    desiredSpacing,
+                    maximumSpacingThatFits);
+        }
+
+        // Never collapse labels to an unreadably tiny spacing unless the safe
+        // zone physically cannot fit the current column.
+        float readableMinimumSpacing =
+            representativeHeight + 4f;
+
+        if (count > 1 &&
+            availableCenterSpan >=
+            readableMinimumSpacing * (count - 1))
+        {
+            spacing =
+                Mathf.Max(
+                    spacing,
+                    readableMinimumSpacing);
+        }
+
+        // Find the average projected Y. This lets the label group
+        // still follow the model vertically, but as ONE group.
+        float averageAnchorY = 0f;
+
+        for (int i = 0; i < count; i++)
+        {
+            averageAnchorY +=
+                entries[i].anchorPanel.y;
+        }
+
+        averageAnchorY /=
+            count;
+
+        float groupSpan =
+            spacing *
+            Mathf.Max(
+                0,
+                count - 1);
+
+        float groupStartY;
+
+        if (distributeDetailLabelsInSafeZone &&
+            count > 1)
+        {
+            // Center the sorted label group near the projected model,
+            // then clamp the whole group into the reserved safe zone.
+            groupStartY =
+                averageAnchorY -
+                groupSpan * 0.5f;
+
+            groupStartY =
+                Mathf.Clamp(
+                    groupStartY,
+                    minCenterY,
+                    Mathf.Max(
+                        minCenterY,
+                        maxCenterY - groupSpan));
+        }
+        else
+        {
+            groupStartY =
+                Mathf.Clamp(
+                    entries[0].anchorPanel.y,
+                    minCenterY,
+                    maxCenterY);
+        }
 
         for (int i = 0;
-             i < entries.Count;
+             i < count;
              i++)
         {
             DetailPlacementEntry entry =
@@ -2434,51 +3282,89 @@ public class VRPageController : MonoBehaviour
                 label.resolvedStyle.height;
 
             if (height <= 1f)
-                height = 36f;
+                height = representativeHeight;
 
+            // Always use two visually separated columns.
+            // balanceDetailLabelColumns only decides HOW MANY labels go to
+            // each side; it no longer controls the X position itself.
             float centerX =
-                rightSide
-                    ? entry.anchorPanel.x +
-                      detailLabelHorizontalOffset
-                    : entry.anchorPanel.x -
-                      detailLabelHorizontalOffset;
+                rootWidth *
+                (rightSide
+                    ? detailRightColumnX
+                    : detailLeftColumnX);
 
+            float leftBoundary =
+                detailLabelScreenPadding +
+                width * 0.5f;
+
+            float rightBoundary =
+                rootWidth *
+                detailRightSafeEdge -
+                width * 0.5f;
+
+            // Keep an empty center corridor between the two label columns.
+            // This makes the left/right groups easier to read and prevents
+            // adjacent white cards from visually merging.
+            float centerCorridorHalfWidth =
+                Mathf.Max(
+                    18f,
+                    rootWidth * 0.045f);
+
+            if (rightSide)
+            {
+                leftBoundary =
+                    Mathf.Max(
+                        leftBoundary,
+                        rootWidth * 0.5f +
+                        centerCorridorHalfWidth +
+                        width * 0.5f);
+            }
+            else
+            {
+                rightBoundary =
+                    Mathf.Min(
+                        rightBoundary,
+                        rootWidth * 0.5f -
+                        centerCorridorHalfWidth -
+                        width * 0.5f);
+            }
+
+            // Never let labels enter the right-side menu column.
             centerX =
                 Mathf.Clamp(
                     centerX,
-                    detailLabelScreenPadding +
-                    width * 0.5f,
-                    rootWidth -
-                    detailLabelScreenPadding -
-                    width * 0.5f);
+                    leftBoundary,
+                    Mathf.Max(
+                        leftBoundary,
+                        rightBoundary));
 
-            float centerY =
-                Mathf.Clamp(
-                    entry.anchorPanel.y,
-                    detailLabelScreenPadding +
-                    height * 0.5f,
-                    rootHeight -
-                    detailLabelScreenPadding -
-                    height * 0.5f);
+            float centerY;
 
-            if (!float.IsNegativeInfinity(lastY))
+            if (distributeDetailLabelsInSafeZone &&
+                count > 1)
             {
                 centerY =
-                    Mathf.Max(
-                        centerY,
-                        lastY +
-                        detailLabelVerticalSpacing);
+                    groupStartY +
+                    spacing * i;
+            }
+            else
+            {
+                centerY =
+                    Mathf.Clamp(
+                        entry.anchorPanel.y,
+                        minCenterY,
+                        maxCenterY);
             }
 
-            float maxCenterY =
-                rootHeight -
-                detailLabelScreenPadding -
-                height * 0.5f;
-
+            // Final per-label clamp accounts for an individual
+            // label being taller than the representative height.
             centerY =
-                Mathf.Min(
+                Mathf.Clamp(
                     centerY,
-                    maxCenterY);
+                    safeTop +
+                    height * 0.5f,
+                    safeBottom -
+                    height * 0.5f);
 
             label.style.left =
                 centerX -
@@ -2492,8 +3378,6 @@ public class VRPageController : MonoBehaviour
                 new Vector2(
                     centerX,
                     centerY);
-
-            lastY = centerY;
         }
     }
 
@@ -2893,13 +3777,32 @@ public class VRPageController : MonoBehaviour
     private void OpenAIChat()
     {
         if (aiChatOverlay == null)
+        {
+            EnsureAIChatUI();
+        }
+
+        if (aiChatOverlay == null)
+        {
+            Debug.LogError(
+                "[VRPageController] AI chat overlay could not be created.");
             return;
+        }
 
         UpdateAIChatContextLabel();
 
         aiChatOverlay.RemoveFromClassList(HiddenClass);
+        aiChatOverlay.style.display = DisplayStyle.Flex;
         aiChatOverlay.BringToFront();
         SetAIChatPicking(true);
+
+        if (aiChatMessageContainer != null &&
+            aiChatMessageContainer.childCount == 0)
+        {
+            AddAIChatBubble(
+                "Xin chào! Bạn có thể hỏi mình về bài học hoặc mô hình 3D đang xem. " +
+                "Ví dụ: ‘Thùy trán có chức năng gì?’ hoặc ‘Giải thích cấu tạo của mô hình này’." ,
+                false);
+        }
 
         if (playerMovementBehaviour != null)
             playerMovementBehaviour.enabled = false;
@@ -2915,10 +3818,12 @@ public class VRPageController : MonoBehaviour
 
     private void CloseAIChat()
     {
-        if (aiChatOverlay != null &&
-            !aiChatOverlay.ClassListContains(HiddenClass))
+        if (aiChatOverlay != null)
         {
-            aiChatOverlay.AddToClassList(HiddenClass);
+            if (!aiChatOverlay.ClassListContains(HiddenClass))
+                aiChatOverlay.AddToClassList(HiddenClass);
+
+            aiChatOverlay.style.display = DisplayStyle.None;
         }
 
         SetAIChatPicking(false);
@@ -2991,19 +3896,65 @@ public class VRPageController : MonoBehaviour
         string answer = string.Empty;
         string requestError = string.Empty;
 
-        // Reuse the SAME AIService already used by ChatAIScene.
-        yield return AIService.SendMessage(
-            contextualPrompt,
-            value =>
+        // Gemini may temporarily return HTTP 503 when the selected model is
+        // under high demand. Retry automatically instead of immediately
+        // showing an error to the student.
+        const int maxAttempts = 3;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            requestFinished = false;
+            answer = string.Empty;
+            requestError = string.Empty;
+
+            Debug.Log(
+                $"[VRPageController] AI chat attempt {attempt}/{maxAttempts}");
+
+            yield return AIService.SendMessage(
+                contextualPrompt,
+                value =>
+                {
+                    answer = value;
+                    requestFinished = true;
+                },
+                error =>
+                {
+                    requestError = error;
+                    requestFinished = true;
+                });
+
+            if (requestFinished &&
+                !string.IsNullOrWhiteSpace(answer))
             {
-                answer = value;
-                requestFinished = true;
-            },
-            error =>
+                break;
+            }
+
+            bool retryable =
+                IsRetryableAIChatError(requestError);
+
+            if (!retryable || attempt >= maxAttempts)
             {
-                requestError = error;
-                requestFinished = true;
-            });
+                break;
+            }
+
+            float retryDelay =
+                attempt == 1 ? 1.5f : 3.0f;
+
+            Debug.LogWarning(
+                $"[VRPageController] Gemini temporarily unavailable. " +
+                $"Retrying in {retryDelay:0.0}s...");
+
+            if (aiChatTyping != null)
+            {
+                aiChatTyping.text =
+                    $"AI đang bận, đang thử lại ({attempt + 1}/{maxAttempts})...";
+            }
+
+            yield return new WaitForSecondsRealtime(retryDelay);
+        }
+
+        if (aiChatTyping != null)
+            aiChatTyping.text = "AI đang trả lời...";
 
         SetAIChatTyping(false);
 
@@ -3014,9 +3965,27 @@ public class VRPageController : MonoBehaviour
                 "[VRPageController] VR AI chat failed: " +
                 requestError);
 
-            answer =
-                "Mình chưa nhận được phản hồi từ AI. " +
-                "Bạn thử gửi lại câu hỏi nhé.";
+            if (!string.IsNullOrWhiteSpace(requestError) &&
+                requestError.IndexOf(
+                    "too long",
+                    StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                answer =
+                    "Nội dung gửi tới AI vẫn vượt giới hạn. " +
+                    "Mình đã tự rút gọn context; bạn hãy thử gửi lại câu hỏi.";
+            }
+            else if (IsRetryableAIChatError(requestError))
+            {
+                answer =
+                    "AI đang có lượng truy cập cao nên chưa phản hồi được. " +
+                    "Bạn thử lại sau vài giây nhé.";
+            }
+            else
+            {
+                answer =
+                    "Mình chưa nhận được phản hồi từ AI. " +
+                    "Bạn thử gửi lại câu hỏi nhé.";
+            }
         }
 
         AddAIChatBubble(
@@ -3033,52 +4002,277 @@ public class VRPageController : MonoBehaviour
             sendAIChatButton.SetEnabled(true);
     }
 
+    private static bool IsRetryableAIChatError(
+        string error)
+    {
+        if (string.IsNullOrWhiteSpace(error))
+            return true;
+
+        string value = error.ToLowerInvariant();
+
+        return
+            value.Contains("503") ||
+            value.Contains("service unavailable") ||
+            value.Contains("high demand") ||
+            value.Contains("temporarily") ||
+            value.Contains("unavailable") ||
+            value.Contains("gemini api request failed") ||
+            value.Contains("429") ||
+            value.Contains("rate limit");
+    }
+
+
     private string BuildVRContextPrompt(
         string userQuestion)
     {
-        string classId =
-            PlayerPrefs.GetString(
-                "selected_class_id",
-                string.Empty);
-
-        string lessonId =
-            PlayerPrefs.GetString(
-                "selected_lesson_id",
-                string.Empty);
-
         string lessonTitle =
             PlayerPrefs.GetString(
                 "selected_lesson_title",
                 PlayerPrefs.GetString(
                     "selected_model_lesson_title",
-                    "Current lesson"));
+                    "Bài học hiện tại"));
 
         string modelName =
             PlayerPrefs.GetString(
                 "selected_model_name",
-                "Current 3D model");
-
-        string modelAssetId =
-            PlayerPrefs.GetString(
-                "selected_model_asset_id",
                 string.Empty);
 
-        return
-            "You are answering a student inside VR mode of a 3D education app.\n" +
-            $"Class ID: {classId}\n" +
-            $"Lesson ID: {lessonId}\n" +
-            $"Lesson title: {lessonTitle}\n" +
-            $"Current 3D model: {modelName}\n" +
-            $"Model asset ID: {modelAssetId}\n" +
-            "The student may ask about the lesson, the model's anatomy/structure, " +
-            "the function of its parts, relationships between parts, or how the model works. " +
-            "Use the context above when the student says 'this model', 'this part', " +
-            "'mô hình này', 'bộ phận này', or similar wording. " +
-            "If a specific model part was not selected, do not invent which part they mean; " +
-            "ask a short clarifying question when necessary.\n\n" +
-            "Student question:\n" +
-            userQuestion;
+        if (string.IsNullOrWhiteSpace(modelName) &&
+            modelCatalog != null &&
+            modelCatalog.CurrentModel != null)
+        {
+            modelName = modelCatalog.CurrentModel.name;
+        }
+
+        if (string.IsNullOrWhiteSpace(modelName))
+            modelName = "Mô hình 3D hiện tại";
+
+        string partsContext =
+            BuildCurrentModelPartsContext(userQuestion);
+
+        string prompt =
+            "Bạn là trợ lý AI học tập trong ứng dụng giáo dục 3D. " +
+            "Trả lời bằng tiếng Việt, rõ ràng, chính xác và dễ hiểu. " +
+            "Ưu tiên dữ liệu bộ phận của mô hình được cung cấp. " +
+            "Không tự bịa thông tin nếu dữ liệu không đủ.\n" +
+            $"Bài học: {lessonTitle}\n" +
+            $"Mô hình: {modelName}\n" +
+            "Dữ liệu mô hình:\n" +
+            partsContext +
+            "\nCâu hỏi: " +
+            (userQuestion ?? string.Empty).Trim();
+
+        // ai-chat Edge Function currently rejects oversized `message` payloads.
+        // Keep the complete request comfortably below that validation limit.
+        const int maxPromptCharacters = 3400;
+        if (prompt.Length > maxPromptCharacters)
+        {
+            int questionReserve =
+                Mathf.Min(
+                    600,
+                    (userQuestion ?? string.Empty).Length + 20);
+
+            int contextLimit =
+                Mathf.Max(
+                    800,
+                    maxPromptCharacters - questionReserve - 350);
+
+            if (partsContext.Length > contextLimit)
+            {
+                partsContext =
+                    partsContext.Substring(0, contextLimit) +
+                    "\n...(đã rút gọn dữ liệu model để phù hợp giới hạn AI chat)";
+            }
+
+            prompt =
+                "Bạn là trợ lý AI học tập trong ứng dụng giáo dục 3D. " +
+                "Trả lời bằng tiếng Việt, chính xác, ngắn gọn và dễ hiểu.\n" +
+                $"Bài học: {lessonTitle}\n" +
+                $"Mô hình: {modelName}\n" +
+                "Dữ liệu mô hình:\n" +
+                partsContext +
+                "\nCâu hỏi: " +
+                (userQuestion ?? string.Empty).Trim();
+        }
+
+        if (prompt.Length > maxPromptCharacters)
+        {
+            prompt =
+                prompt.Substring(0, maxPromptCharacters - 3) +
+                "...";
+        }
+
+        Debug.Log(
+            "[VRPageController] AI chat prompt length = " +
+            prompt.Length);
+
+        return prompt;
     }
+
+
+    private string BuildCurrentModelPartsContext(
+        string userQuestion)
+    {
+        if (detailService == null ||
+            detailService.CurrentParts == null ||
+            detailService.CurrentParts.Count == 0)
+        {
+            return "(Chưa có dữ liệu label của mô hình.)";
+        }
+
+        string normalizedQuestion =
+            NormalizeChatSearchText(userQuestion);
+
+        List<VRModelDetailService.ModelPartData> matched =
+            new List<VRModelDetailService.ModelPartData>();
+
+        List<VRModelDetailService.ModelPartData> fallback =
+            new List<VRModelDetailService.ModelPartData>();
+
+        foreach (VRModelDetailService.ModelPartData part
+                 in detailService.CurrentParts)
+        {
+            if (part == null || !part.is_active)
+                continue;
+
+            fallback.Add(part);
+
+            string partName =
+                NormalizeChatSearchText(part.part_name);
+            string partKey =
+                NormalizeChatSearchText(part.part_key);
+
+            if (!string.IsNullOrWhiteSpace(normalizedQuestion) &&
+                ((!string.IsNullOrWhiteSpace(partName) &&
+                  normalizedQuestion.Contains(partName)) ||
+                 (!string.IsNullOrWhiteSpace(partKey) &&
+                  normalizedQuestion.Contains(partKey))))
+            {
+                matched.Add(part);
+            }
+        }
+
+        // If the student mentions a specific label, send rich details only for
+        // matching labels. Otherwise send a compact overview of the model.
+        List<VRModelDetailService.ModelPartData> source =
+            matched.Count > 0
+                ? matched
+                : fallback;
+
+        int maxParts =
+            matched.Count > 0
+                ? 4
+                : 10;
+
+        System.Text.StringBuilder builder =
+            new System.Text.StringBuilder();
+
+        int appended = 0;
+        for (int i = 0;
+             i < source.Count && appended < maxParts;
+             i++)
+        {
+            VRModelDetailService.ModelPartData part = source[i];
+            if (part == null)
+                continue;
+
+            string displayName =
+                string.IsNullOrWhiteSpace(part.part_name)
+                    ? part.part_key
+                    : part.part_name;
+
+            builder.Append("- ");
+            builder.Append(displayName);
+
+            if (matched.Count > 0)
+            {
+                AppendCompactChatField(
+                    builder,
+                    " | Mô tả: ",
+                    part.description,
+                    260);
+
+                AppendCompactChatField(
+                    builder,
+                    " | Cấu tạo: ",
+                    part.structure_description,
+                    260);
+
+                AppendCompactChatField(
+                    builder,
+                    " | Chức năng: ",
+                    part.function_description,
+                    260);
+            }
+            else
+            {
+                // Overview requests only need enough context to know which
+                // labels exist. A short description helps without overflowing
+                // the Edge Function's message-length validation.
+                AppendCompactChatField(
+                    builder,
+                    " | ",
+                    part.description,
+                    110);
+            }
+
+            builder.AppendLine();
+            appended++;
+        }
+
+        if (fallback.Count > appended && matched.Count == 0)
+        {
+            builder.Append("- ... và ");
+            builder.Append(fallback.Count - appended);
+            builder.Append(" bộ phận khác trên mô hình.");
+        }
+
+        return builder.Length > 0
+            ? builder.ToString().TrimEnd()
+            : "(Chưa có bộ phận active.)";
+    }
+
+
+    private static void AppendCompactChatField(
+        System.Text.StringBuilder builder,
+        string prefix,
+        string value,
+        int maxLength)
+    {
+        if (builder == null ||
+            string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        string compact =
+            value.Trim()
+                .Replace("\r", " ")
+                .Replace("\n", " ");
+
+        while (compact.Contains("  "))
+            compact = compact.Replace("  ", " ");
+
+        if (compact.Length > maxLength)
+            compact = compact.Substring(0, maxLength - 3) + "...";
+
+        builder.Append(prefix);
+        builder.Append(compact);
+    }
+
+
+    private static string NormalizeChatSearchText(
+        string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        return value.Trim()
+            .ToLowerInvariant()
+            .Replace("_", " ")
+            .Replace("-", " ");
+    }
+
 
     private void AddAIChatBubble(
         string text,
@@ -3087,35 +4281,168 @@ public class VRPageController : MonoBehaviour
         if (aiChatMessageContainer == null)
             return;
 
+        aiChatMessageContainer.style.width =
+            Length.Percent(100f);
+        aiChatMessageContainer.style.alignItems =
+            Align.Stretch;
+
         VisualElement row =
             new VisualElement();
 
-        row.AddToClassList("ai-chat-row");
-        row.AddToClassList(
+        row.style.width = Length.Percent(100f);
+        row.style.flexGrow = 0f;
+        row.style.flexShrink = 0f;
+        row.style.flexDirection = FlexDirection.Row;
+        row.style.justifyContent =
             fromUser
-                ? "ai-chat-row-user"
-                : "ai-chat-row-assistant");
+                ? Justify.FlexEnd
+                : Justify.FlexStart;
+        row.style.alignItems = Align.FlexStart;
+        row.style.marginTop = 4f;
+        row.style.marginBottom = 4f;
+        row.style.paddingLeft = 3f;
+        row.style.paddingRight = 3f;
+
+        string safeText =
+            text ?? string.Empty;
 
         Label bubble =
-            new Label(text ?? string.Empty);
+            new Label(safeText);
 
-        bubble.AddToClassList("ai-chat-bubble");
-        bubble.AddToClassList(
+        // Important:
+        // Do not use the old USS bubble classes here. Previous rules can
+        // force a fixed/min height and clip multi-line messages.
+        bubble.style.width = StyleKeyword.Auto;
+        bubble.style.height = StyleKeyword.Auto;
+        bubble.style.minWidth = 0f;
+        bubble.style.minHeight = 0f;
+        bubble.style.maxWidth = Length.Percent(80f);
+        bubble.style.flexGrow = 0f;
+        bubble.style.flexShrink = 0f;
+        bubble.style.whiteSpace = WhiteSpace.Normal;
+
+        // Keep text visible while the first layout pass is being calculated.
+        // The exact bubble width/height is set by FitAIChatBubbleToText below.
+        bubble.style.overflow = Overflow.Visible;
+
+        bubble.style.fontSize = 13f;
+        bubble.style.unityTextAlign = TextAnchor.UpperLeft;
+        bubble.style.paddingLeft = 11f;
+        bubble.style.paddingRight = 11f;
+        bubble.style.paddingTop = 8f;
+        bubble.style.paddingBottom = 8f;
+
+        bubble.style.borderTopLeftRadius = 12f;
+        bubble.style.borderTopRightRadius = 12f;
+        bubble.style.borderBottomLeftRadius = 12f;
+        bubble.style.borderBottomRightRadius = 12f;
+
+        bubble.style.backgroundColor =
             fromUser
-                ? "ai-chat-bubble-user"
-                : "ai-chat-bubble-assistant");
+                ? new Color(0.10f, 0.38f, 0.92f, 1f)
+                : new Color(0.91f, 0.94f, 0.98f, 1f);
+
+        bubble.style.color =
+            fromUser
+                ? Color.white
+                : new Color(0.10f, 0.15f, 0.24f, 1f);
 
         row.Add(bubble);
         aiChatMessageContainer.Add(row);
 
-        aiChatMessages?.schedule.Execute(
-            () => aiChatMessages.ScrollTo(row));
+        // UI Toolkit needs one layout pass before the ScrollView width is
+        // reliable. Then measure the real wrapped text and explicitly resize
+        // the background so no line is clipped.
+        bubble.schedule.Execute(
+            () =>
+            {
+                FitAIChatBubbleToText(
+                    bubble,
+                    safeText);
+
+                aiChatMessages?.ScrollTo(row);
+            });
     }
+
+
+    private void FitAIChatBubbleToText(
+        Label bubble,
+        string text)
+    {
+        if (bubble == null)
+            return;
+
+        float viewportWidth = 0f;
+
+        if (aiChatMessages != null &&
+            aiChatMessages.contentViewport != null)
+        {
+            viewportWidth =
+                aiChatMessages.contentViewport.resolvedStyle.width;
+        }
+
+        if (float.IsNaN(viewportWidth) ||
+            viewportWidth <= 1f)
+        {
+            viewportWidth =
+                aiChatPanel != null
+                    ? aiChatPanel.resolvedStyle.width - 36f
+                    : 260f;
+        }
+
+        if (float.IsNaN(viewportWidth) ||
+            viewportWidth <= 1f)
+        {
+            viewportWidth = 260f;
+        }
+
+        float maxBubbleWidth =
+            Mathf.Max(
+                120f,
+                viewportWidth * 0.80f);
+
+        // Avoid MeasureTextSize/MeasureMode because the enum/API differs
+        // between Unity UI Toolkit versions. Estimate a compact width for
+        // short messages, and let UI Toolkit wrap + auto-size the height.
+        int characterCount =
+            string.IsNullOrEmpty(text)
+                ? 0
+                : text.Length;
+
+        float estimatedWidth =
+            30f + characterCount * 6.8f;
+
+        float desiredWidth =
+            Mathf.Clamp(
+                estimatedWidth,
+                54f,
+                maxBubbleWidth);
+
+        bubble.style.width = desiredWidth;
+        bubble.style.maxWidth = maxBubbleWidth;
+
+        // Critical: no fixed height. WhiteSpace.Normal + auto height lets
+        // multi-line text expand the bubble instead of being clipped.
+        bubble.style.height = StyleKeyword.Auto;
+        bubble.style.minHeight = 0f;
+        bubble.style.flexGrow = 0f;
+        bubble.style.flexShrink = 0f;
+        bubble.style.whiteSpace = WhiteSpace.Normal;
+
+        // Keep all wrapped lines visible inside the message area.
+        bubble.style.overflow = Overflow.Visible;
+    }
+
 
     private void SetAIChatTyping(bool visible)
     {
         if (aiChatTyping == null)
             return;
+
+        aiChatTyping.style.display =
+            visible
+                ? DisplayStyle.Flex
+                : DisplayStyle.None;
 
         if (visible)
             aiChatTyping.RemoveFromClassList(HiddenClass);

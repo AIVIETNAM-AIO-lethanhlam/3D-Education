@@ -101,6 +101,8 @@
                 <ui:ScrollView name="AIChatMessages"
                                class="ai-chat-messages"
                                mode="Vertical"
+                               vertical-scroller-visibility="Hidden"
+                               horizontal-scroller-visibility="Hidden"
                                picking-mode="Position">
                     <ui:VisualElement name="AIChatMessageContainer"
                                       class="ai-chat-message-container" />
