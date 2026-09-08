@@ -49,6 +49,12 @@ public class ChatAIPageController : MonoBehaviour
     private VisualElement emptyChat;
     private VisualElement typingRow;
 
+    private Label courseLabel;
+    private Label dateLabel;
+    private Label emptyChatTitleLabel;
+    private Label emptyChatDescriptionLabel;
+    private Label typingLabel;
+
     private Label assistantNameLabel;
     private Label assistantPositionLabel;
     private Label assistantStatusLabel;
@@ -98,7 +104,11 @@ public class ChatAIPageController : MonoBehaviour
 
         FindVisualElements();
         RegisterCallbacks();
+
+        AppLanguageManager.LanguageChanged += OnLanguageChanged;
+
         ConfigureInitialUi();
+        ApplyCurrentLanguage();
 
         ApplySafeArea();
         root.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
@@ -108,6 +118,7 @@ public class ChatAIPageController : MonoBehaviour
 
     private void OnDisable()
     {
+        AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         UnregisterCallbacks();
 
         if (root != null)
@@ -132,6 +143,7 @@ public class ChatAIPageController : MonoBehaviour
 
         SetAssistantInformation();
         LoadLocalHistory();
+        LocalizeDefaultSystemMessages();
 
         // First AI conversation for this user only.
         if (messages.Count == 0)
@@ -140,7 +152,7 @@ public class ChatAIPageController : MonoBehaviour
             {
                 id = Guid.NewGuid().ToString(),
                 role = "assistant",
-                content = "Hello! I’m AI Assistant. How can I help you with your learning today?",
+                content = GetDefaultGreeting(),
                 created_at = DateTime.UtcNow.ToString("o")
             });
 
@@ -306,9 +318,10 @@ public class ChatAIPageController : MonoBehaviour
             {
                 id = Guid.NewGuid().ToString(),
                 role = "assistant",
-                content =
-                    "Sorry, I couldn't get an AI response right now. " +
-                    "Please try again.",
+                content = T(
+                    "Sorry, I couldn't get an AI response right now. Please try again.",
+                    "Xin lỗi, hiện tại tôi chưa thể nhận được phản hồi từ AI. Vui lòng thử lại."
+                ),
                 created_at = DateTime.UtcNow.ToString("o")
             });
         }
@@ -471,15 +484,22 @@ public class ChatAIPageController : MonoBehaviour
     private void SetAssistantInformation()
     {
         if (assistantNameLabel != null)
-            assistantNameLabel.text = "AI Assistant";
+            assistantNameLabel.text =
+                T("AI Assistant", "Trợ lý AI");
 
         if (assistantPositionLabel != null)
-            assistantPositionLabel.text = "AI Assistant";
+            assistantPositionLabel.text =
+                T("AI Assistant", "Trợ lý AI");
 
         if (assistantStatusLabel != null)
         {
-            assistantStatusLabel.text = "Ready to help";
-            assistantStatusLabel.EnableInClassList("offline", false);
+            assistantStatusLabel.text =
+                T("Ready to help", "Sẵn sàng");
+
+            assistantStatusLabel.EnableInClassList(
+                "offline",
+                false
+            );
         }
 
         if (assistantAvatarLabel != null)
@@ -515,6 +535,12 @@ public class ChatAIPageController : MonoBehaviour
         emptyChat = root.Q<VisualElement>("empty-chat");
         typingRow = root.Q<VisualElement>("typing-row");
 
+        courseLabel = root.Q<Label>("course-label");
+        dateLabel = root.Q<Label>("date-label");
+        emptyChatTitleLabel = root.Q<Label>("empty-chat-title");
+        emptyChatDescriptionLabel = root.Q<Label>("empty-chat-description");
+        typingLabel = root.Q<Label>("typing-label");
+
         assistantNameLabel = root.Q<Label>("teacher-name");
         assistantPositionLabel = root.Q<Label>("teacher-position");
         assistantStatusLabel = root.Q<Label>("teacher-status");
@@ -523,6 +549,145 @@ public class ChatAIPageController : MonoBehaviour
 
         headerOnlineDot = root.Q<VisualElement>("header-online-dot");
         statusDot = root.Q<VisualElement>("status-dot");
+    }
+
+
+    private static string T(
+        string english,
+        string vietnamese)
+    {
+        return AppLanguageManager.IsVietnamese
+            ? vietnamese
+            : english;
+    }
+
+    private void OnLanguageChanged(
+        string language)
+    {
+        ApplyCurrentLanguage();
+        LocalizeDefaultSystemMessages();
+
+        if (initialized)
+            RenderMessages();
+    }
+
+    private void ApplyCurrentLanguage()
+    {
+        SetAssistantInformation();
+
+        if (courseLabel != null)
+        {
+            courseLabel.text =
+                T(
+                    "AI learning assistant",
+                    "Trợ lý học tập AI"
+                );
+        }
+
+        if (dateLabel != null)
+            dateLabel.text = T("Today", "Hôm nay");
+
+        if (emptyChatTitleLabel != null)
+        {
+            emptyChatTitleLabel.text =
+                T(
+                    "Start a conversation with AI",
+                    "Bắt đầu trò chuyện với AI"
+                );
+        }
+
+        if (emptyChatDescriptionLabel != null)
+        {
+            emptyChatDescriptionLabel.text =
+                T(
+                    "Your AI chat history is private to this signed-in user on this device.",
+                    "Lịch sử trò chuyện AI chỉ được lưu cho tài khoản này trên thiết bị."
+                );
+        }
+
+        if (typingLabel != null)
+            typingLabel.text = T("Typing...", "AI đang trả lời...");
+
+        if (inputPlaceholder != null)
+        {
+            inputPlaceholder.text =
+                T(
+                    "Ask AI Assistant...",
+                    "Hỏi Trợ lý AI..."
+                );
+        }
+    }
+
+    private static string GetDefaultGreeting()
+    {
+        return T(
+            "Hello! I’m AI Assistant. How can I help you with your learning today?",
+            "Xin chào! Tôi là Trợ lý AI. Hôm nay tôi có thể hỗ trợ bạn học tập như thế nào?"
+        );
+    }
+
+    private void LocalizeDefaultSystemMessages()
+    {
+        bool changed = false;
+
+        const string EnglishGreeting =
+            "Hello! I’m AI Assistant. How can I help you with your learning today?";
+
+        const string VietnameseGreeting =
+            "Xin chào! Tôi là Trợ lý AI. Hôm nay tôi có thể hỗ trợ bạn học tập như thế nào?";
+
+        const string EnglishError =
+            "Sorry, I couldn't get an AI response right now. Please try again.";
+
+        const string VietnameseError =
+            "Xin lỗi, hiện tại tôi chưa thể nhận được phản hồi từ AI. Vui lòng thử lại.";
+
+        foreach (AIChatMessage message in messages)
+        {
+            if (message == null ||
+                !string.Equals(
+                    message.role,
+                    "assistant",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (message.content == EnglishGreeting ||
+                message.content == VietnameseGreeting)
+            {
+                string localizedGreeting =
+                    AppLanguageManager.IsVietnamese
+                        ? VietnameseGreeting
+                        : EnglishGreeting;
+
+                if (message.content != localizedGreeting)
+                {
+                    message.content = localizedGreeting;
+                    changed = true;
+                }
+
+                continue;
+            }
+
+            if (message.content == EnglishError ||
+                message.content == VietnameseError)
+            {
+                string localizedError =
+                    AppLanguageManager.IsVietnamese
+                        ? VietnameseError
+                        : EnglishError;
+
+                if (message.content != localizedError)
+                {
+                    message.content = localizedError;
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+            SaveLocalHistory();
     }
 
     private void RegisterCallbacks()

@@ -56,13 +56,17 @@ public class EnrollClassPageController : MonoBehaviour
         root = document.rootVisualElement;
 
         QueryElements();
+        AppLanguageManager.LanguageChanged += OnLanguageChanged;
+
         ConfigureHeader();
+        ApplyCurrentLanguage();
         RegisterEvents();
         LoadDiscoverClasses();
     }
 
     private void OnDisable()
     {
+        AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         UnregisterEvents();
 
         if (headerController != null)
@@ -107,8 +111,8 @@ public class EnrollClassPageController : MonoBehaviour
             new GeneralHeaderController(root);
 
         headerController.ConfigurePageWithIconAction(
-            "Discover Classes",
-            "Loading available classes...",
+            T("Discover Classes", "Khám phá lớp học"),
+            T("Loading available classes...", "Đang tải các lớp hiện có..."),
             "icon-header-graduation-cap",
             showBackButton: true,
             showSubtitleIcon: false
@@ -222,8 +226,11 @@ public class EnrollClassPageController : MonoBehaviour
             !Guid.TryParse(SupabaseSession.UserId, out _))
         {
             ShowState(
-                "Session expired",
-                "Please sign in again to discover available classes.",
+                T("Session expired", "Phiên đăng nhập đã hết hạn"),
+                T(
+                    "Please sign in again to discover available classes.",
+                    "Vui lòng đăng nhập lại để khám phá các lớp học."
+                ),
                 "error-state"
             );
 
@@ -234,8 +241,11 @@ public class EnrollClassPageController : MonoBehaviour
         isLoading = true;
 
         ShowState(
-            "Loading classes...",
-            "Please wait while we load available classes.",
+            T("Loading classes...", "Đang tải lớp học..."),
+            T(
+                "Please wait while we load available classes.",
+                "Vui lòng chờ trong khi hệ thống tải các lớp học."
+            ),
             "loading-state"
         );
 
@@ -337,7 +347,7 @@ public class EnrollClassPageController : MonoBehaviour
                             out string membershipError))
                     {
                         ShowState(
-                            "Unable to load enrollments",
+                            T("Unable to load enrollments", "Không thể tải thông tin đăng ký"),
                             membershipError,
                             "error-state"
                         );
@@ -405,7 +415,10 @@ public class EnrollClassPageController : MonoBehaviour
 
         ShowState(
             title,
-            "Please check your connection and Supabase policies.",
+            T(
+                "Please check your connection and Supabase policies.",
+                "Vui lòng kiểm tra kết nối mạng và quyền truy cập Supabase."
+            ),
             "error-state"
         );
 
@@ -433,7 +446,7 @@ public class EnrollClassPageController : MonoBehaviour
             string category =
                 string.IsNullOrWhiteSpace(record.category_name)
                     ? "Others"
-                    : record.category_name.Trim();
+                    : GetCanonicalCategoryName(record.category_name);
 
             string visibility =
                 visibilityByClassId.TryGetValue(
@@ -467,11 +480,11 @@ public class EnrollClassPageController : MonoBehaviour
                             : record.class_code.Trim(),
                     ClassName =
                         string.IsNullOrWhiteSpace(record.class_name)
-                            ? "Untitled Class"
+                            ? T("Untitled Class", "Lớp chưa đặt tên")
                             : record.class_name.Trim(),
                     TeacherName =
                         string.IsNullOrWhiteSpace(record.teacher_name)
-                            ? "Unknown Teacher"
+                            ? T("Unknown Teacher", "Giảng viên chưa xác định")
                             : record.teacher_name.Trim(),
                     EnrolledCount =
                         Mathf.Max(0, record.enrolled_count),
@@ -524,7 +537,7 @@ public class EnrollClassPageController : MonoBehaviour
     {
         Button button = new Button
         {
-            text = category,
+            text = LocalizeCategoryName(category),
             userData = category
         };
 
@@ -555,8 +568,11 @@ public class EnrollClassPageController : MonoBehaviour
         if (allCourses.Count == 0)
         {
             ShowState(
-                "No classes available yet",
-                "There are currently no classes in the system. Please check again later.",
+                T("No classes available yet", "Hiện chưa có lớp học"),
+                T(
+                    "There are currently no classes in the system. Please check again later.",
+                    "Hiện hệ thống chưa có lớp học nào. Vui lòng quay lại sau."
+                ),
                 "database-empty-state"
             );
 
@@ -586,7 +602,13 @@ public class EnrollClassPageController : MonoBehaviour
                         .Contains(searchText) ||
                     course.Category.ToLowerInvariant()
                         .Contains(searchText) ||
+                    LocalizeCategoryName(course.Category)
+                        .ToLowerInvariant()
+                        .Contains(searchText) ||
                     course.Visibility.ToLowerInvariant()
+                        .Contains(searchText) ||
+                    LocalizeVisibility(course.Visibility)
+                        .ToLowerInvariant()
                         .Contains(searchText))
                 .ToList();
 
@@ -595,8 +617,11 @@ public class EnrollClassPageController : MonoBehaviour
         if (filteredCourses.Count == 0)
         {
             ShowState(
-                "No classes found",
-                "Try another keyword or category.",
+                T("No classes found", "Không tìm thấy lớp học"),
+                T(
+                    "Try another keyword or category.",
+                    "Hãy thử từ khóa hoặc danh mục khác."
+                ),
                 "database-empty-state"
             );
 
@@ -652,7 +677,7 @@ public class EnrollClassPageController : MonoBehaviour
         codeRow.Add(codeBadge);
 
         Label visibilityBadge =
-            new Label(ToTitleCase(course.Visibility));
+            new Label(LocalizeVisibility(course.Visibility));
 
         visibilityBadge.AddToClassList(
             "visibility-badge");
@@ -701,12 +726,14 @@ public class EnrollClassPageController : MonoBehaviour
         metaRow.Add(
             CreateMetaItem(
                 "students-meta-icon",
-                $"{course.EnrolledCount} enrolled"));
+                AppLanguageManager.IsVietnamese
+                    ? $"{course.EnrolledCount} học viên"
+                    : $"{course.EnrolledCount} enrolled"));
 
         metaRow.Add(
             CreateMetaItem(
                 "category-meta-icon",
-                course.Category));
+                LocalizeCategoryName(course.Category)));
 
         VisualElement spacer = new VisualElement();
         spacer.AddToClassList("card-bottom-spacer");
@@ -941,7 +968,7 @@ public class EnrollClassPageController : MonoBehaviour
 
         if (isLoading)
         {
-            button.text = "Processing...";
+            button.text = T("Processing...", "Đang xử lý...");
             button.AddToClassList("enrolling-button");
             button.SetEnabled(false);
             return;
@@ -952,7 +979,7 @@ public class EnrollClassPageController : MonoBehaviour
 
         if (normalized == "enrolled")
         {
-            button.text = "Enrolled";
+            button.text = T("Enrolled", "Đã tham gia");
             button.AddToClassList("enrolled-button");
             button.SetEnabled(false);
             return;
@@ -960,14 +987,14 @@ public class EnrollClassPageController : MonoBehaviour
 
         if (normalized == "pending")
         {
-            button.text = "Pending";
+            button.text = T("Pending", "Đang chờ");
             button.AddToClassList("pending-button");
             button.SetEnabled(false);
             return;
         }
 
         // rejected or no membership
-        button.text = "Enroll";
+        button.text = T("Enroll", "Đăng ký");
         button.SetEnabled(true);
     }
 
@@ -1002,12 +1029,23 @@ public class EnrollClassPageController : MonoBehaviour
 
     private void UpdateHeaderCount(int count)
     {
-        string subtitle = count == 1
-            ? "1 course available this semester"
-            : $"{count} courses available this semester";
+        string subtitle;
+
+        if (AppLanguageManager.IsVietnamese)
+        {
+            subtitle = count == 0
+                ? "Chưa có lớp học phù hợp"
+                : $"{count} lớp học hiện có";
+        }
+        else
+        {
+            subtitle = count == 1
+                ? "1 course available this semester"
+                : $"{count} courses available this semester";
+        }
 
         headerController?.ConfigurePageWithIconAction(
-            "Discover Classes",
+            T("Discover Classes", "Khám phá lớp học"),
             subtitle,
             "icon-header-graduation-cap",
             showBackButton: true,
@@ -1054,6 +1092,124 @@ public class EnrollClassPageController : MonoBehaviour
             "category-button-active");
 
         RefreshCourseList();
+    }
+
+    private void OnLanguageChanged(string language)
+    {
+        ApplyCurrentLanguage();
+
+        // Category button và card đều được tạo động.
+        // Render lại để text đổi ngay theo ngôn ngữ mới.
+        if (allCourses.Count > 0)
+        {
+            BuildCategoryButtons();
+            RefreshCourseList();
+        }
+    }
+
+    private void ApplyCurrentLanguage()
+    {
+        if (searchField != null)
+        {
+            searchField.SetValueWithoutNotify(searchField.value);
+            searchField.tooltip = T(
+                "Search courses, codes, instructors...",
+                "Tìm lớp học, mã lớp, giảng viên..."
+            );
+
+            searchField.textEdition.placeholder = T(
+                "Search courses, codes, instructors...",
+                "Tìm lớp học, mã lớp, giảng viên..."
+            );
+            searchField.textEdition.hidePlaceholderOnFocus = true;
+        }
+
+        if (headerController != null)
+        {
+            headerController.ConfigurePageWithIconAction(
+                T("Discover Classes", "Khám phá lớp học"),
+                T(
+                    "Loading available classes...",
+                    "Đang tải các lớp hiện có..."
+                ),
+                "icon-header-graduation-cap",
+                showBackButton: true,
+                showSubtitleIcon: false
+            );
+
+            headerController.SetBottomBorderVisible(false);
+            headerController.SetCustomClass(
+                "enroll-class-header",
+                true
+            );
+        }
+    }
+
+    private static string T(string english, string vietnamese)
+    {
+        return AppLanguageManager.IsVietnamese
+            ? vietnamese
+            : english;
+    }
+
+    private static string LocalizeVisibility(string visibility)
+    {
+        return NormalizeVisibility(visibility) == "private"
+            ? T("Private", "Riêng tư")
+            : T("Public", "Công khai");
+    }
+
+    private static string LocalizeCategoryName(string category)
+    {
+        string canonical = GetCanonicalCategoryName(category);
+
+        if (!AppLanguageManager.IsVietnamese)
+            return canonical;
+
+        return canonical.ToLowerInvariant() switch
+        {
+            "all" => "Tất cả",
+            "math" => "Toán",
+            "mathematics" => "Toán",
+            "physics" => "Vật lý",
+            "chemistry" => "Hóa học",
+            "biology" => "Sinh học",
+            "english" => "Tiếng Anh",
+            "foreign language" => "Ngoại ngữ",
+            "history" => "Lịch sử",
+            "geography" => "Địa lý",
+            "technology" => "Công nghệ",
+            "computer science" => "Khoa học máy tính",
+            "programming" => "Lập trình",
+            "university" => "Đại học",
+            "others" => "Khác",
+            _ => canonical
+        };
+    }
+
+    private static string GetCanonicalCategoryName(string category)
+    {
+        if (string.IsNullOrWhiteSpace(category))
+            return "Others";
+
+        return category.Trim().ToLowerInvariant() switch
+        {
+            "tất cả" => "All",
+            "toán" => "Math",
+            "vật lý" => "Physics",
+            "hóa học" => "Chemistry",
+            "sinh học" => "Biology",
+            "tiếng anh" => "English",
+            "ngoại ngữ" => "Foreign Language",
+            "lịch sử" => "History",
+            "địa lý" => "Geography",
+            "công nghệ" => "Technology",
+            "khoa học máy tính" => "Computer Science",
+            "lập trình" => "Programming",
+            "đại học" => "University",
+            "khác" => "Others",
+            _ => category.Trim()
+        };
     }
 
     private static string NormalizeVisibility(

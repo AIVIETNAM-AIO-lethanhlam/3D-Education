@@ -46,7 +46,7 @@
                         </ui:Button>
 
                         <ui:VisualElement name="visibility-options-panel"
-                                          class="custom-visibility-options hidden">
+                                          class="custom-visibility-options dropdown-options-aligned hidden">
                             <ui:Button name="visibility-public-button"
                                        class="custom-visibility-option">
                                 <ui:VisualElement class="custom-visibility-option-icon visibility-public-icon" />
@@ -85,7 +85,7 @@
                         </ui:Button>
 
                         <ui:VisualElement name="category-options-panel"
-                                          class="custom-visibility-options category-options-panel hidden">
+                                          class="custom-visibility-options category-options-panel dropdown-options-aligned hidden">
                             <ui:Label name="category-loading-label"
                                       text="Loading categories..."
                                       class="category-state-label" />
@@ -156,7 +156,7 @@
                             <ui:VisualElement name="review-cover-image" class="brand-preview-background" />
                             <ui:VisualElement class="brand-preview-overlay" />
 
-                            <ui:VisualElement class="brand-preview-text">
+                            <ui:VisualElement class="brand-preview-text brand-preview-text-balanced">
                                 <ui:Label name="review-course-name" text="" class="brand-preview-name" />
 
                                 <ui:VisualElement class="brand-preview-meta-row">
@@ -191,10 +191,16 @@
 
                         <ui:Button
                             name="voice-input-button"
-                            class="voice-input-button">
+                            class="voice-input-button"
+                            tooltip="Voice input">
                             <ui:VisualElement class="voice-input-icon" />
                         </ui:Button>
                     </ui:VisualElement>
+
+                    <ui:Label
+                        name="voice-status-label"
+                        text=""
+                        class="voice-status-label hidden" />
 
                     <ui:VisualElement class="class-summary-card">
                         <ui:Label text="CLASS SUMMARY" class="class-summary-title" />

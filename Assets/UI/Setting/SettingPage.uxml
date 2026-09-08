@@ -74,6 +74,7 @@
                 <ui:VisualElement class="setting-card section-card">
 
                     <ui:Label
+                        name="account-title-label"
                         text="ACCOUNT"
                         class="section-title" />
 
@@ -88,10 +89,12 @@
                         <ui:VisualElement class="row-text-container">
 
                             <ui:Label
+                                name="user-information-title-label"
                                 text="User Information"
                                 class="row-title" />
 
                             <ui:Label
+                                name="user-information-description-label"
                                 text="Edit name, email, password"
                                 class="row-description" />
 
@@ -101,30 +104,13 @@
 
                     </ui:Button>
 
-                </ui:VisualElement>
-
-                <!-- APPEARANCE -->
+                </ui:VisualElement>                <!-- LANGUAGE -->
                 <ui:VisualElement class="setting-card section-card">
 
                     <ui:Label
-                        text="APPEARANCE"
+                        name="appearance-title-label"
+                        text="LANGUAGE"
                         class="section-title" />
-
-                    <ui:VisualElement class="section-divider" />
-
-                    <ui:VisualElement class="setting-row">
-
-                        <ui:VisualElement class="row-icon sun-icon" />
-
-                        <ui:Label
-                            text="Dark Mode"
-                            class="row-title row-grow" />
-
-                        <ui:Toggle
-                            name="dark-mode-toggle"
-                            class="switch-toggle" />
-
-                    </ui:VisualElement>
 
                     <ui:VisualElement class="section-divider" />
 
@@ -133,6 +119,7 @@
                         <ui:VisualElement class="row-icon language-icon" />
 
                         <ui:Label
+                            name="language-label"
                             text="Language"
                             class="row-title row-grow" />
 
@@ -158,6 +145,7 @@
                 <ui:VisualElement class="setting-card section-card">
 
                     <ui:Label
+                        name="audio-title-label"
                         text="AUDIO"
                         class="section-title" />
 
@@ -172,7 +160,8 @@
                             <ui:VisualElement class="audio-header">
 
                                 <ui:Label
-                                    text="SFX Volume"
+                                    name="sfx-title-label"
+                                    text="Video Volume"
                                     class="row-title row-grow" />
 
                                 <ui:Label
@@ -213,7 +202,8 @@
                             <ui:VisualElement class="audio-header">
 
                                 <ui:Label
-                                    text="BGM Volume"
+                                    name="bgm-title-label"
+                                    text="App Volume"
                                     class="row-title row-grow" />
 
                                 <ui:Label
@@ -247,40 +237,6 @@
 
                 </ui:VisualElement>
 
-                <!-- LEARNING -->
-                <ui:VisualElement class="setting-card section-card">
-
-                    <ui:Label
-                        text="LEARNING"
-                        class="section-title" />
-
-                    <ui:VisualElement class="section-divider" />
-
-                    <ui:VisualElement class="setting-row">
-
-                        <ui:VisualElement class="row-icon tutorial-icon" />
-
-                        <ui:VisualElement class="row-text-container">
-
-                            <ui:Label
-                                text="Tutorial Guide"
-                                class="row-title" />
-
-                            <ui:Label
-                                text="Show onboarding hints"
-                                class="row-description" />
-
-                        </ui:VisualElement>
-
-                        <ui:Toggle
-                            name="tutorial-toggle"
-                            value="true"
-                            class="switch-toggle" />
-
-                    </ui:VisualElement>
-
-                </ui:VisualElement>
-
                 <!-- SESSION RECOVERY -->
                 <ui:VisualElement
                     name="session-recovery-card"
@@ -293,10 +249,12 @@
                         <ui:VisualElement class="recovery-text-container">
 
                             <ui:Label
+                                name="recovery-title-label"
                                 text="Session Recovery"
                                 class="recovery-title" />
 
                             <ui:Label
+                                name="recovery-description-label"
                                 text="Unsaved session from 2h ago detected. Restore it?"
                                 class="recovery-description" />
 
@@ -328,6 +286,7 @@
                     <ui:VisualElement class="row-icon privacy-icon" />
 
                     <ui:Label
+                        name="privacy-title-label"
                         text="Privacy &amp; Terms"
                         class="row-title row-grow" />
 
@@ -345,6 +304,7 @@
                         <ui:VisualElement class="logout-icon" />
 
                         <ui:Label
+                            name="logout-label"
                             text="Logout"
                             class="logout-label" />
 
@@ -373,6 +333,7 @@
                         class="nav-icon icon-nav-home" />
 
                     <ui:Label
+                        name="home-nav-label"
                         text="Home"
                         class="nav-label" />
 
@@ -390,6 +351,7 @@
                         class="nav-icon icon-nav-classes" />
 
                     <ui:Label
+                        name="my-nav-label"
                         text="My"
                         class="nav-label" />
 
@@ -407,6 +369,7 @@
                         class="nav-icon icon-nav-ai" />
 
                     <ui:Label
+                        name="ai-nav-label"
                         text="AI"
                         class="nav-label" />
 
@@ -424,6 +387,7 @@
                         class="nav-icon icon-nav-settings" />
 
                     <ui:Label
+                        name="settings-nav-label"
                         text="Settings"
                         class="nav-label" />
 

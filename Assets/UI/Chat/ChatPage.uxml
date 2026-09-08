@@ -52,8 +52,8 @@
                     </ui:VisualElement>
 
                     <ui:VisualElement name="empty-chat" class="empty-chat">
-                        <ui:Label text="No messages yet" class="empty-chat-title"/>
-                        <ui:Label text="Send a message to start the conversation." class="empty-chat-description"/>
+                        <ui:Label name="empty-chat-title" text="No messages yet" class="empty-chat-title"/>
+                        <ui:Label name="empty-chat-description" text="Send a message to start the conversation." class="empty-chat-description"/>
                     </ui:VisualElement>
 
                     <ui:VisualElement name="typing-row" class="typing-row">
@@ -73,7 +73,7 @@
             </ui:ScrollView>
 
             <ui:VisualElement class="message-input-section">
-                <ui:Button name="attachment-button" class="input-side-button">
+                <ui:Button name="attachment-button" class="input-side-button" tooltip="Send photo">
                     <ui:VisualElement class="attachment-icon"/>
                 </ui:Button>
                 <ui:VisualElement class="message-input-wrapper">

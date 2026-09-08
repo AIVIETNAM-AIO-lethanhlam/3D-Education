@@ -14,6 +14,13 @@ public class SettingPageController : MonoBehaviour
     [Header("Optional Audio Mixer")]
     [SerializeField] private AudioMixer audioMixer;
 
+    [Header("Android Media Volume")]
+    [SerializeField, Min(0.1f)]
+    private float systemVolumePollInterval = 0.25f;
+
+    private float nextSystemVolumePollTime;
+    private bool updatingVolumeUiFromSystem;
+
     private GeneralHeaderController headerController;
     private BottomNavigationController bottomNavigationController;
 
@@ -22,6 +29,24 @@ public class SettingPageController : MonoBehaviour
     private Label profileRoleLabel;
     private Label sfxValueLabel;
     private Label bgmValueLabel;
+
+    // Localizable labels
+    private Label accountTitleLabel;
+    private Label userInformationTitleLabel;
+    private Label userInformationDescriptionLabel;
+    private Label appearanceTitleLabel;
+    private Label languageLabel;
+    private Label audioTitleLabel;
+    private Label sfxTitleLabel;
+    private Label bgmTitleLabel;
+    private Label recoveryTitleLabel;
+    private Label recoveryDescriptionLabel;
+    private Label privacyTitleLabel;
+    private Label logoutLabel;
+    private Label homeNavLabel;
+    private Label myNavLabel;
+    private Label aiNavLabel;
+    private Label settingsNavLabel;
 
     private Button editProfileButton;
     private Button userInformationButton;
@@ -32,8 +57,6 @@ public class SettingPageController : MonoBehaviour
     private Button privacyButton;
     private Button logoutButton;
 
-    private Toggle darkModeToggle;
-    private Toggle tutorialToggle;
 
     private Slider sfxSlider;
     private Slider bgmSlider;
@@ -66,14 +89,19 @@ public class SettingPageController : MonoBehaviour
         InitializeBottomNavigation(root);
         FindElements(root);
 
+        AppLanguageManager.LanguageChanged += OnLanguageChanged;
+
         LoadProfileInformation();
         LoadSavedSettings();
         UpdateRecoveryCardVisibility();
         RegisterEvents();
+        ApplyCurrentLanguage();
     }
 
     private void OnDisable()
     {
+        AppLanguageManager.LanguageChanged -= OnLanguageChanged;
+
         UnregisterEvents();
         DisposeHeader();
         DisposeBottomNavigation();
@@ -138,6 +166,53 @@ public class SettingPageController : MonoBehaviour
         profileRoleLabel =
             root.Q<Label>("profile-role-label");
 
+        accountTitleLabel =
+            root.Q<Label>("account-title-label");
+
+        userInformationTitleLabel =
+            root.Q<Label>("user-information-title-label");
+
+        userInformationDescriptionLabel =
+            root.Q<Label>("user-information-description-label");
+
+        appearanceTitleLabel =
+            root.Q<Label>("appearance-title-label");
+
+        languageLabel =
+            root.Q<Label>("language-label");
+
+        audioTitleLabel =
+            root.Q<Label>("audio-title-label");
+
+        sfxTitleLabel =
+            root.Q<Label>("sfx-title-label");
+
+        bgmTitleLabel =
+            root.Q<Label>("bgm-title-label");
+recoveryTitleLabel =
+            root.Q<Label>("recovery-title-label");
+
+        recoveryDescriptionLabel =
+            root.Q<Label>("recovery-description-label");
+
+        privacyTitleLabel =
+            root.Q<Label>("privacy-title-label");
+
+        logoutLabel =
+            root.Q<Label>("logout-label");
+
+        homeNavLabel =
+            root.Q<Label>("home-nav-label");
+
+        myNavLabel =
+            root.Q<Label>("my-nav-label");
+
+        aiNavLabel =
+            root.Q<Label>("ai-nav-label");
+
+        settingsNavLabel =
+            root.Q<Label>("settings-nav-label");
+
         sfxValueLabel =
             root.Q<Label>("sfx-value-label");
 
@@ -167,14 +242,7 @@ public class SettingPageController : MonoBehaviour
 
         logoutButton =
             root.Q<Button>("logout-button");
-
-        darkModeToggle =
-            root.Q<Toggle>("dark-mode-toggle");
-
-        tutorialToggle =
-            root.Q<Toggle>("tutorial-toggle");
-
-        sfxSlider =
+sfxSlider =
             root.Q<Slider>("sfx-slider");
 
         bgmSlider =
@@ -239,20 +307,7 @@ public class SettingPageController : MonoBehaviour
             logoutButton.clicked +=
                 Logout;
         }
-
-        if (darkModeToggle != null)
-        {
-            darkModeToggle.RegisterValueChangedCallback(
-                OnDarkModeChanged);
-        }
-
-        if (tutorialToggle != null)
-        {
-            tutorialToggle.RegisterValueChangedCallback(
-                OnTutorialChanged);
-        }
-
-        if (sfxSlider != null)
+if (sfxSlider != null)
         {
             sfxSlider.RegisterValueChangedCallback(
                 OnSfxVolumeChanged);
@@ -314,20 +369,7 @@ public class SettingPageController : MonoBehaviour
             logoutButton.clicked -=
                 Logout;
         }
-
-        if (darkModeToggle != null)
-        {
-            darkModeToggle.UnregisterValueChangedCallback(
-                OnDarkModeChanged);
-        }
-
-        if (tutorialToggle != null)
-        {
-            tutorialToggle.UnregisterValueChangedCallback(
-                OnTutorialChanged);
-        }
-
-        if (sfxSlider != null)
+if (sfxSlider != null)
         {
             sfxSlider.UnregisterValueChangedCallback(
                 OnSfxVolumeChanged);
@@ -400,39 +442,44 @@ public class SettingPageController : MonoBehaviour
 
         if (profileRoleLabel != null)
         {
-            profileRoleLabel.text =
+            bool isTeacher =
                 string.Equals(
                     role,
                     "teacher",
-                    StringComparison.OrdinalIgnoreCase)
-                    ? "Teacher"
-                    : "Student";
+                    StringComparison.OrdinalIgnoreCase);
+
+            if (AppLanguageManager.IsVietnamese)
+            {
+                profileRoleLabel.text =
+                    isTeacher
+                        ? "Giáo viên"
+                        : "Học sinh";
+            }
+            else
+            {
+                profileRoleLabel.text =
+                    isTeacher
+                        ? "Teacher"
+                        : "Student";
+            }
         }
     }
 
     private void LoadSavedSettings()
     {
-        bool darkMode =
-            PlayerPrefs.GetInt("dark_mode", 0) == 1;
-
-        bool tutorialEnabled =
-            PlayerPrefs.GetInt(
-                "tutorial_enabled",
-                1) == 1;
-
+// Slider 1 = Android media/video volume.
+        // On a real Android device it starts from the CURRENT phone
+        // STREAM_MUSIC volume, so it matches the hardware volume keys.
         float sfxVolume =
-            Mathf.Clamp(
-                PlayerPrefs.GetFloat(
-                    "sfx_volume",
-                    70f),
-                0f,
-                100f);
+            GetSystemMediaVolumePercent();
 
+        // Slider 2 = Unity/app audio multiplier.
+        // Actual output is still affected by the phone media volume above.
         float bgmVolume =
             Mathf.Clamp(
                 PlayerPrefs.GetFloat(
-                    "bgm_volume",
-                    50f),
+                    "app_audio_volume",
+                    100f),
                 0f,
                 100f);
 
@@ -440,14 +487,7 @@ public class SettingPageController : MonoBehaviour
             PlayerPrefs.GetString(
                 "app_language",
                 "EN");
-
-        darkModeToggle?.SetValueWithoutNotify(
-            darkMode);
-
-        tutorialToggle?.SetValueWithoutNotify(
-            tutorialEnabled);
-
-        sfxSlider?.SetValueWithoutNotify(
+sfxSlider?.SetValueWithoutNotify(
             sfxVolume);
 
         bgmSlider?.SetValueWithoutNotify(
@@ -471,55 +511,280 @@ public class SettingPageController : MonoBehaviour
 
         UpdateLanguageButtons(language);
 
-        ApplyAudioMixerVolume(
-            "SFXVolume",
-            sfxVolume);
+        ApplyAppAudioVolume(bgmVolume);
 
-        ApplyAudioMixerVolume(
-            "BGMVolume",
-            bgmVolume);
+        nextSystemVolumePollTime =
+            Time.unscaledTime + systemVolumePollInterval;
     }
-
-    private void OnDarkModeChanged(
-        ChangeEvent<bool> evt)
-    {
-        PlayerPrefs.SetInt(
-            "dark_mode",
-            evt.newValue ? 1 : 0);
-
-        PlayerPrefs.Save();
-    }
-
-    private void OnTutorialChanged(
-        ChangeEvent<bool> evt)
-    {
-        PlayerPrefs.SetInt(
-            "tutorial_enabled",
-            evt.newValue ? 1 : 0);
-
-        PlayerPrefs.Save();
-    }
-
-    private void OnSfxVolumeChanged(
+private void OnSfxVolumeChanged(
         ChangeEvent<float> evt)
     {
-        SaveVolume(
-            "sfx_volume",
-            "SFXVolume",
+        if (updatingVolumeUiFromSystem)
+            return;
+
+        float safeVolume =
+            Mathf.Clamp(evt.newValue, 0f, 100f);
+
+        UpdateVolumeLabel(
             sfxValueLabel,
+            safeVolume);
+
+        UpdateSliderFill(
             sfxSliderFill,
-            evt.newValue);
+            safeVolume);
+
+        SetSystemMediaVolumePercent(
+            safeVolume);
+
+        // Keep a fallback value for Unity Editor / non-Android testing.
+        PlayerPrefs.SetFloat(
+            "video_volume_fallback",
+            safeVolume);
+
+        PlayerPrefs.Save();
     }
 
     private void OnBgmVolumeChanged(
         ChangeEvent<float> evt)
     {
-        SaveVolume(
-            "bgm_volume",
-            "BGMVolume",
+        float safeVolume =
+            Mathf.Clamp(evt.newValue, 0f, 100f);
+
+        UpdateVolumeLabel(
             bgmValueLabel,
+            safeVolume);
+
+        UpdateSliderFill(
             bgmSliderFill,
-            evt.newValue);
+            safeVolume);
+
+        PlayerPrefs.SetFloat(
+            "app_audio_volume",
+            safeVolume);
+
+        PlayerPrefs.Save();
+
+        ApplyAppAudioVolume(
+            safeVolume);
+    }
+
+    private void Update()
+    {
+        // Keep the Video Volume slider synchronized when the user presses
+        // the phone's physical volume buttons while SettingsScene is open.
+        if (Time.unscaledTime < nextSystemVolumePollTime)
+            return;
+
+        nextSystemVolumePollTime =
+            Time.unscaledTime + systemVolumePollInterval;
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        SyncVideoVolumeFromPhone();
+#endif
+    }
+
+    private void SyncVideoVolumeFromPhone()
+    {
+        float phoneVolume =
+            GetSystemMediaVolumePercent();
+
+        if (sfxSlider == null)
+            return;
+
+        if (Mathf.Abs(
+                sfxSlider.value - phoneVolume) < 0.5f)
+        {
+            return;
+        }
+
+        updatingVolumeUiFromSystem = true;
+
+        sfxSlider.SetValueWithoutNotify(
+            phoneVolume);
+
+        UpdateVolumeLabel(
+            sfxValueLabel,
+            phoneVolume);
+
+        UpdateSliderFill(
+            sfxSliderFill,
+            phoneVolume);
+
+        updatingVolumeUiFromSystem = false;
+    }
+
+    private float GetSystemMediaVolumePercent()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            using AndroidJavaClass unityPlayer =
+                new AndroidJavaClass(
+                    "com.unity3d.player.UnityPlayer"
+                );
+
+            using AndroidJavaObject activity =
+                unityPlayer.GetStatic<AndroidJavaObject>(
+                    "currentActivity"
+                );
+
+            using AndroidJavaObject audioManager =
+                activity.Call<AndroidJavaObject>(
+                    "getSystemService",
+                    "audio"
+                );
+
+            using AndroidJavaClass audioManagerClass =
+                new AndroidJavaClass(
+                    "android.media.AudioManager"
+                );
+
+            int streamMusic =
+                audioManagerClass.GetStatic<int>(
+                    "STREAM_MUSIC"
+                );
+
+            int current =
+                audioManager.Call<int>(
+                    "getStreamVolume",
+                    streamMusic
+                );
+
+            int maximum =
+                audioManager.Call<int>(
+                    "getStreamMaxVolume",
+                    streamMusic
+                );
+
+            if (maximum <= 0)
+                return 0f;
+
+            return Mathf.Clamp(
+                current * 100f / maximum,
+                0f,
+                100f
+            );
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                "Không đọc được âm lượng media của Android: " +
+                exception.Message
+            );
+        }
+#endif
+
+        return Mathf.Clamp(
+            PlayerPrefs.GetFloat(
+                "video_volume_fallback",
+                70f
+            ),
+            0f,
+            100f
+        );
+    }
+
+    private void SetSystemMediaVolumePercent(
+        float percentage)
+    {
+        float safePercentage =
+            Mathf.Clamp(
+                percentage,
+                0f,
+                100f
+            );
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            using AndroidJavaClass unityPlayer =
+                new AndroidJavaClass(
+                    "com.unity3d.player.UnityPlayer"
+                );
+
+            using AndroidJavaObject activity =
+                unityPlayer.GetStatic<AndroidJavaObject>(
+                    "currentActivity"
+                );
+
+            using AndroidJavaObject audioManager =
+                activity.Call<AndroidJavaObject>(
+                    "getSystemService",
+                    "audio"
+                );
+
+            using AndroidJavaClass audioManagerClass =
+                new AndroidJavaClass(
+                    "android.media.AudioManager"
+                );
+
+            int streamMusic =
+                audioManagerClass.GetStatic<int>(
+                    "STREAM_MUSIC"
+                );
+
+            int maximum =
+                audioManager.Call<int>(
+                    "getStreamMaxVolume",
+                    streamMusic
+                );
+
+            int target =
+                Mathf.RoundToInt(
+                    maximum *
+                    safePercentage /
+                    100f
+                );
+
+            audioManager.Call(
+                "setStreamVolume",
+                streamMusic,
+                target,
+                0
+            );
+
+            return;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                "Không chỉnh được âm lượng media Android: " +
+                exception.Message
+            );
+        }
+#endif
+
+        PlayerPrefs.SetFloat(
+            "video_volume_fallback",
+            safePercentage
+        );
+    }
+
+    private void ApplyAppAudioVolume(
+        float percentage)
+    {
+        float safePercentage =
+            Mathf.Clamp(
+                percentage,
+                0f,
+                100f
+            );
+
+        // Controls ordinary Unity AudioSources.
+        AudioListener.volume =
+            safePercentage / 100f;
+
+        // If the project has the optional mixer parameters configured,
+        // keep them synchronized too.
+        ApplyAudioMixerVolume(
+            "SFXVolume",
+            safePercentage
+        );
+
+        ApplyAudioMixerVolume(
+            "BGMVolume",
+            safePercentage
+        );
     }
 
     private void SaveVolume(
@@ -620,22 +885,115 @@ public class SettingPageController : MonoBehaviour
 
     private void SetLanguage(string language)
     {
-        string normalizedLanguage =
-            string.Equals(
-                language,
-                "VI",
-                StringComparison.OrdinalIgnoreCase)
-                ? "VI"
-                : "EN";
+        AppLanguageManager.SetLanguage(language);
+    }
 
-        PlayerPrefs.SetString(
-            "app_language",
-            normalizedLanguage);
+    private void OnLanguageChanged(string language)
+    {
+        ApplyCurrentLanguage();
+    }
 
-        PlayerPrefs.Save();
+    private void ApplyCurrentLanguage()
+    {
+        bool vi =
+            AppLanguageManager.IsVietnamese;
+
+        // Header
+        headerController?.ConfigurePage(
+            title: vi ? "Cài đặt" : "Settings",
+            subtitle: null,
+            showBackButton: true,
+            showSubtitleIcon: false);
+
+        SetLabelText(
+            accountTitleLabel,
+            vi ? "TÀI KHOẢN" : "ACCOUNT");
+
+        SetLabelText(
+            userInformationTitleLabel,
+            vi ? "Thông tin người dùng" : "User Information");
+
+        SetLabelText(
+            userInformationDescriptionLabel,
+            vi ? "Chỉnh sửa tên, email, mật khẩu" : "Edit name, email, password");
+
+        SetLabelText(
+            appearanceTitleLabel,
+            vi ? "NGÔN NGỮ" : "LANGUAGE");
+
+        SetLabelText(
+            languageLabel,
+            vi ? "Ngôn ngữ" : "Language");
+
+        SetLabelText(
+            audioTitleLabel,
+            vi ? "ÂM THANH" : "AUDIO");
+
+        SetLabelText(
+            sfxTitleLabel,
+            vi ? "Âm lượng video" : "Video Volume");
+
+        SetLabelText(
+            bgmTitleLabel,
+            vi ? "Âm lượng ứng dụng" : "App Volume");
+SetLabelText(
+            recoveryTitleLabel,
+            vi ? "Khôi phục phiên" : "Session Recovery");
+
+        SetLabelText(
+            recoveryDescriptionLabel,
+            vi
+                ? "Phát hiện phiên chưa lưu từ 2 giờ trước. Khôi phục?"
+                : "Unsaved session from 2h ago detected. Restore it?");
+
+        if (restoreButton != null)
+            restoreButton.text =
+                vi ? "Khôi phục" : "Restore";
+
+        if (dismissButton != null)
+            dismissButton.text =
+                vi ? "Bỏ qua" : "Dismiss";
+
+        SetLabelText(
+            privacyTitleLabel,
+            vi ? "Quyền riêng tư & Điều khoản" : "Privacy & Terms");
+
+        SetLabelText(
+            logoutLabel,
+            vi ? "Đăng xuất" : "Logout");
+
+        SetLabelText(
+            homeNavLabel,
+            vi ? "Trang chủ" : "Home");
+
+        SetLabelText(
+            myNavLabel,
+            vi ? "Của tôi" : "My");
+
+        SetLabelText(
+            aiNavLabel,
+            "AI");
+
+        SetLabelText(
+            settingsNavLabel,
+            vi ? "Cài đặt" : "Settings");
 
         UpdateLanguageButtons(
-            normalizedLanguage);
+            AppLanguageManager.CurrentLanguage);
+
+        // Re-render role label in the selected language.
+        ApplyProfileToLabels(
+            SupabaseSession.FullName,
+            SupabaseSession.Email,
+            SupabaseSession.Role);
+    }
+
+    private static void SetLabelText(
+        Label label,
+        string value)
+    {
+        if (label != null)
+            label.text = value;
     }
 
     private void UpdateLanguageButtons(

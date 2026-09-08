@@ -167,12 +167,16 @@ public class ClassDetailPageController : MonoBehaviour
         root = uiDocument.rootVisualElement;
 
         CacheUIReferences();
+
+        AppLanguageManager.LanguageChanged += OnLanguageChanged;
+
         HideVerticalScrollbar();
         ResolveServices();
         RegisterEvents();
 
         SetEmptyClassInformation();
         ConfigureRoleUi();
+        ApplyCurrentLanguage();
         ShowSyllabusTab();
         StartCoroutine(LoadClassInformationFromSupabase());
         StartCoroutine(LoadChapterData());
@@ -186,6 +190,7 @@ public class ClassDetailPageController : MonoBehaviour
 
     private void OnDisable()
     {
+        AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         UnregisterEvents();
 
         if (teacherUnreadPollingCoroutine != null)
@@ -368,6 +373,175 @@ public class ClassDetailPageController : MonoBehaviour
     }
 
 
+    private void OnLanguageChanged(string language)
+    {
+        ApplyCurrentLanguage();
+    }
+
+    private void ApplyCurrentLanguage()
+    {
+        if (root == null)
+            return;
+
+        LocalizeElementTree(root);
+
+        if (semesterLabel != null)
+            semesterLabel.text = T("CLASS OVERVIEW", "TỔNG QUAN LỚP HỌC");
+
+        if (teacherPositionLabel != null)
+            teacherPositionLabel.text = T("Class instructor", "Giảng viên phụ trách");
+
+        if (editContentButton != null)
+        {
+            editContentButton.text =
+                isEditMode
+                    ? T("Done Editing", "Hoàn tất chỉnh sửa")
+                    : T("Edit", "Chỉnh sửa");
+        }
+
+        // Dynamic sections are rebuilt so chapter, model and student text
+        // follows the newly selected language immediately.
+        RenderChapterList();
+        UpdateProgress();
+
+        if (class3DModels.Count > 0)
+            Render3DModelCards();
+
+        if (hasLoadedStudents)
+            RenderStudentCards();
+    }
+
+    private void LocalizeElementTree(VisualElement element)
+    {
+        if (element == null)
+            return;
+
+        if (element is Label label && !string.IsNullOrWhiteSpace(label.text))
+            label.text = TranslateKnownUiText(label.text);
+
+        if (element is Button button && !string.IsNullOrWhiteSpace(button.text))
+            button.text = TranslateKnownUiText(button.text);
+
+        foreach (VisualElement child in element.Children())
+            LocalizeElementTree(child);
+    }
+
+    private static string TranslateKnownUiText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text;
+
+        bool vi = AppLanguageManager.IsVietnamese;
+
+        switch (text.Trim())
+        {
+            case "CLASS OVERVIEW":
+            case "TỔNG QUAN LỚP HỌC":
+                return vi ? "TỔNG QUAN LỚP HỌC" : "CLASS OVERVIEW";
+            case "Loading class...":
+            case "Đang tải lớp học...":
+                return vi ? "Đang tải lớp học..." : "Loading class...";
+            case "Teacher":
+            case "Giáo viên":
+                return vi ? "Giáo viên" : "Teacher";
+            case "Class instructor":
+            case "Giảng viên phụ trách":
+                return vi ? "Giảng viên phụ trách" : "Class instructor";
+            case "Students":
+            case "Học sinh":
+                return vi ? "Học sinh" : "Students";
+            case "Lessons":
+            case "Bài học":
+                return vi ? "Bài học" : "Lessons";
+            case "Avg Score":
+            case "Điểm TB":
+                return vi ? "Điểm TB" : "Avg Score";
+            case "Syllabus":
+            case "Nội dung":
+                return vi ? "Nội dung" : "Syllabus";
+            case "3D Labs":
+                return "3D Labs";
+            case "Student List":
+            case "Danh sách học sinh":
+                return vi ? "Danh sách học sinh" : "Student List";
+            case "Overall Progress":
+            case "Tiến độ tổng":
+                return vi ? "Tiến độ tổng" : "Overall Progress";
+            case "Preview drag & drop reordering":
+            case "Xem trước sắp xếp kéo & thả":
+                return vi ? "Xem trước sắp xếp kéo & thả" : "Preview drag & drop reordering";
+            case "Add New Chapter":
+            case "Thêm chương mới":
+                return vi ? "Thêm chương mới" : "Add New Chapter";
+            case "Tap to create a new chapter section":
+            case "Nhấn để tạo một chương mới":
+                return vi ? "Nhấn để tạo một chương mới" : "Tap to create a new chapter section";
+            case "Chỉnh sửa":
+            case "Edit":
+                return vi ? "Chỉnh sửa" : "Edit";
+            case "Hoàn tất chỉnh sửa":
+            case "Done Editing":
+                return vi ? "Hoàn tất chỉnh sửa" : "Done Editing";
+            case "Interactive 3D models tied to course content. Tap a card to launch the viewer.":
+            case "Các mô hình 3D tương tác gắn với nội dung lớp học. Nhấn vào thẻ để mở trình xem.":
+                return vi
+                    ? "Các mô hình 3D tương tác gắn với nội dung lớp học. Nhấn vào thẻ để mở trình xem."
+                    : "Interactive 3D models tied to course content. Tap a card to launch the viewer.";
+            case "Loading 3D models...":
+            case "Đang tải mô hình 3D...":
+                return vi ? "Đang tải mô hình 3D..." : "Loading 3D models...";
+            case "Getting the model files belonging to this class.":
+            case "Đang lấy các tệp mô hình thuộc lớp học này.":
+                return vi ? "Đang lấy các tệp mô hình thuộc lớp học này." : "Getting the model files belonging to this class.";
+            case "No 3D models yet":
+            case "Chưa có mô hình 3D":
+                return vi ? "Chưa có mô hình 3D" : "No 3D models yet";
+            case "3D model files uploaded to lessons in this class will appear here.":
+            case "Các tệp mô hình 3D được tải lên trong bài học sẽ xuất hiện tại đây.":
+                return vi ? "Các tệp mô hình 3D được tải lên trong bài học sẽ xuất hiện tại đây." : "3D model files uploaded to lessons in this class will appear here.";
+            case "Unable to load 3D models":
+            case "Không thể tải mô hình 3D":
+                return vi ? "Không thể tải mô hình 3D" : "Unable to load 3D models";
+            case "Try Again":
+            case "Thử lại":
+                return vi ? "Thử lại" : "Try Again";
+            case "0 ENROLLED STUDENTS":
+            case "0 HỌC SINH ĐÃ THAM GIA":
+                return vi ? "0 HỌC SINH ĐÃ THAM GIA" : "0 ENROLLED STUDENTS";
+            case "0 Online":
+            case "0 trực tuyến":
+                return vi ? "0 trực tuyến" : "0 Online";
+            case "Loading students...":
+            case "Đang tải học sinh...":
+                return vi ? "Đang tải học sinh..." : "Loading students...";
+            case "No enrolled students":
+            case "Chưa có học sinh tham gia":
+                return vi ? "Chưa có học sinh tham gia" : "No enrolled students";
+            case "Students who enroll in this class will appear here.":
+            case "Học sinh tham gia lớp sẽ xuất hiện tại đây.":
+                return vi ? "Học sinh tham gia lớp sẽ xuất hiện tại đây." : "Students who enroll in this class will appear here.";
+            case "Unable to load students.":
+            case "Không thể tải danh sách học sinh.":
+                return vi ? "Không thể tải danh sách học sinh." : "Unable to load students.";
+            case "Confirm":
+            case "Xác nhận":
+                return vi ? "Xác nhận" : "Confirm";
+            case "No":
+            case "Không":
+                return vi ? "Không" : "No";
+            case "Yes":
+            case "Có":
+                return vi ? "Có" : "Yes";
+        }
+
+        return text;
+    }
+
+    private static string T(string english, string vietnamese)
+    {
+        return AppLanguageManager.IsVietnamese ? vietnamese : english;
+    }
+
     private void HideVerticalScrollbar()
     {
         ScrollView scrollView = root.Q<ScrollView>("content-scroll-view");
@@ -498,7 +672,7 @@ public class ClassDetailPageController : MonoBehaviour
             isEditMode = false;
 
             if (editContentButton != null)
-                editContentButton.text = "Chỉnh sửa";
+                editContentButton.text = T("Edit", "Chỉnh sửa");
         }
 
         Debug.Log(
@@ -516,7 +690,7 @@ public class ClassDetailPageController : MonoBehaviour
         if (editContentButton != null)
         {
             editContentButton.text =
-                isEditMode ? "Hoàn tất chỉnh sửa" : "Chỉnh sửa";
+                isEditMode ? T("Done Editing", "Hoàn tất chỉnh sửa") : T("Edit", "Chỉnh sửa");
         }
 
         RenderChapterList();
@@ -544,19 +718,19 @@ public class ClassDetailPageController : MonoBehaviour
     {
         // A newly-created class starts with no students, lessons or scores.
         if (semesterLabel != null)
-            semesterLabel.text = "CLASS OVERVIEW";
+            semesterLabel.text = T("CLASS OVERVIEW", "TỔNG QUAN LỚP HỌC");
 
         if (classTitleLabel != null)
-            classTitleLabel.text = "Loading class...";
+            classTitleLabel.text = T("Loading class...", "Đang tải lớp học...");
 
         if (teacherInitialLabel != null)
             teacherInitialLabel.text = "T";
 
         if (teacherNameLabel != null)
-            teacherNameLabel.text = "Teacher";
+            teacherNameLabel.text = T("Teacher", "Giáo viên");
 
         if (teacherPositionLabel != null)
-            teacherPositionLabel.text = "Class instructor";
+            teacherPositionLabel.text = T("Class instructor", "Giảng viên phụ trách");
 
         if (studentCountLabel != null)
             studentCountLabel.text = "0";
@@ -608,7 +782,7 @@ public class ClassDetailPageController : MonoBehaviour
             yield break;
 
         string className = string.IsNullOrWhiteSpace(stats.class_name)
-            ? "Untitled Class"
+            ? T("Untitled Class", "Lớp chưa đặt tên")
             : stats.class_name.Trim();
 
         string classCode = string.IsNullOrWhiteSpace(stats.class_code)
@@ -623,7 +797,7 @@ public class ClassDetailPageController : MonoBehaviour
         }
 
         string teacherName = string.IsNullOrWhiteSpace(stats.teacher_name)
-            ? "Teacher"
+            ? T("Teacher", "Giáo viên")
             : stats.teacher_name.Trim();
 
         if (teacherNameLabel != null)
@@ -1261,7 +1435,7 @@ public class ClassDetailPageController : MonoBehaviour
                 : chapterIndex + 1;
 
         Label indexLabel =
-            new($"CHAPTER {displayOrder}");
+            new(T($"CHAPTER {displayOrder}", $"CHƯƠNG {displayOrder}"));
 
         indexLabel.AddToClassList(
             "chapter-index-label"
@@ -1278,7 +1452,7 @@ public class ClassDetailPageController : MonoBehaviour
         metaRow.AddToClassList("chapter-meta-row");
 
         Label lessonCount =
-            new($"{chapter.Lessons?.Count ?? 0} lessons");
+            new(T($"{chapter.Lessons?.Count ?? 0} lessons", $"{chapter.Lessons?.Count ?? 0} bài học"));
 
         lessonCount.AddToClassList(
             "chapter-lesson-count"
@@ -1485,7 +1659,7 @@ public class ClassDetailPageController : MonoBehaviour
         Label plusLabel = new("+");
         plusLabel.AddToClassList("add-lesson-plus");
 
-        Label textLabel = new("Add Lesson");
+        Label textLabel = new(T("Add Lesson", "Thêm bài học"));
 
         button.Add(plusLabel);
         button.Add(textLabel);
@@ -1717,7 +1891,7 @@ public class ClassDetailPageController : MonoBehaviour
         Label context = new(contextText);
         context.AddToClassList("model-context");
 
-        Label badge = new("◉  Launch 3D Viewer");
+        Label badge = new(T("◉  Launch 3D Viewer", "◉  Mở trình xem 3D"));
         badge.AddToClassList("model-launch-badge");
 
         information.Add(title);
@@ -2280,12 +2454,14 @@ public class ClassDetailPageController : MonoBehaviour
         if (studentListCountLabel != null)
         {
             studentListCountLabel.text =
-                $"{enrolledStudents.Count} ENROLLED " +
-                $"{(enrolledStudents.Count == 1 ? "STUDENT" : "STUDENTS")}";
+                AppLanguageManager.IsVietnamese
+                    ? $"{enrolledStudents.Count} HỌC SINH ĐÃ THAM GIA"
+                    : $"{enrolledStudents.Count} ENROLLED " +
+                      $"{(enrolledStudents.Count == 1 ? "STUDENT" : "STUDENTS")}";
         }
 
         if (studentOnlineCountLabel != null)
-            studentOnlineCountLabel.text = $"{onlineCount} Online";
+            studentOnlineCountLabel.text = T($"{onlineCount} Online", $"{onlineCount} trực tuyến");
 
         if (studentCountLabel != null)
             studentCountLabel.text = enrolledStudents.Count.ToString();
@@ -2300,7 +2476,7 @@ public class ClassDetailPageController : MonoBehaviour
             student.profiles != null &&
             !string.IsNullOrWhiteSpace(student.profiles.full_name)
                 ? student.profiles.full_name.Trim()
-                : "Student";
+                : T("Student", "Học sinh");
 
         VisualElement card = new();
         card.AddToClassList("student-card");
@@ -2384,38 +2560,38 @@ public class ClassDetailPageController : MonoBehaviour
     )
     {
         if (student == null)
-            return "Offline";
+            return T("Offline", "Ngoại tuyến");
 
         if (student.is_online)
-            return "Active now";
+            return T("Active now", "Đang hoạt động");
 
         if (!TryParseSupabaseDate(
                 student.last_seen_at,
                 out DateTime lastSeen))
         {
-            return "Offline";
+            return T("Offline", "Ngoại tuyến");
         }
 
         TimeSpan elapsed = DateTime.UtcNow - lastSeen.ToUniversalTime();
 
         if (elapsed.TotalMinutes < 1)
-            return "Active just now";
+            return T("Active just now", "Vừa hoạt động");
 
         if (elapsed.TotalMinutes < 60)
-            return $"Last active {Mathf.Max(1, (int)elapsed.TotalMinutes)} min ago";
+            return T($"Last active {Mathf.Max(1, (int)elapsed.TotalMinutes)} min ago", $"Hoạt động {Mathf.Max(1, (int)elapsed.TotalMinutes)} phút trước");
 
         if (elapsed.TotalHours < 24)
-            return $"Last active {Mathf.Max(1, (int)elapsed.TotalHours)} hours ago";
+            return T($"Last active {Mathf.Max(1, (int)elapsed.TotalHours)} hours ago", $"Hoạt động {Mathf.Max(1, (int)elapsed.TotalHours)} giờ trước");
 
-        return $"Last active {Mathf.Max(1, (int)elapsed.TotalDays)} days ago";
+        return T($"Last active {Mathf.Max(1, (int)elapsed.TotalDays)} days ago", $"Hoạt động {Mathf.Max(1, (int)elapsed.TotalDays)} ngày trước");
     }
 
     private static string GetEnrollmentText(string joinedAt)
     {
         if (!TryParseSupabaseDate(joinedAt, out DateTime joined))
-            return "Enrolled student";
+            return T("Enrolled student", "Học sinh đã tham gia");
 
-        return $"Enrolled {joined.ToLocalTime():dd/MM/yyyy}";
+        return T($"Enrolled {joined.ToLocalTime():dd/MM/yyyy}", $"Tham gia {joined.ToLocalTime():dd/MM/yyyy}");
     }
 
     private static bool TryParseSupabaseDate(
@@ -2844,8 +3020,8 @@ public class ClassDetailPageController : MonoBehaviour
     )
     {
         ShowEditorModal(
-            "Xóa chapter",
-            "Bạn có chắc chắn muốn xóa chapter này và toàn bộ bài học bên trong không?",
+            T("Delete chapter", "Xóa chương"),
+            T("Are you sure you want to delete this chapter and all lessons inside it?", "Bạn có chắc chắn muốn xóa chương này và toàn bộ bài học bên trong không?"),
             false,
             null,
             () => StartCoroutine(DeleteChapterRoutine(chapter))
@@ -2857,8 +3033,8 @@ public class ClassDetailPageController : MonoBehaviour
     )
     {
         ShowEditorModal(
-            "Đổi tên chapter",
-            "Nhập tên mới cho chapter.",
+            T("Rename chapter", "Đổi tên chương"),
+            T("Enter a new chapter name.", "Nhập tên mới cho chương."),
             true,
             chapter.Title,
             () =>
@@ -2880,8 +3056,8 @@ public class ClassDetailPageController : MonoBehaviour
     )
     {
         ShowEditorModal(
-            "Xóa bài học",
-            $"Bạn có chắc chắn muốn xóa bài học “{lesson.Title}” không?",
+            T("Delete lesson", "Xóa bài học"),
+            T($"Are you sure you want to delete lesson “{lesson.Title}”?", $"Bạn có chắc chắn muốn xóa bài học “{lesson.Title}” không?"),
             false,
             null,
             () => StartCoroutine(
@@ -2916,10 +3092,10 @@ public class ClassDetailPageController : MonoBehaviour
         }
 
         if (editorModalCancel != null)
-            editorModalCancel.text = showInput ? "Hủy" : "No";
+            editorModalCancel.text = showInput ? T("Cancel", "Hủy") : "No";
 
         if (editorModalConfirm != null)
-            editorModalConfirm.text = showInput ? "Lưu" : "Yes";
+            editorModalConfirm.text = showInput ? T("Save", "Lưu") : "Yes";
 
         SetVisible(editorModalOverlay, true);
 

@@ -223,15 +223,19 @@
 
 .active-course-label {
     margin-bottom: 9px;
-    font-size: 18px;
+    max-width: 210px;
+    font-size: 17px;
+    white-space: normal;
     -unity-font-style: bold;
     color: white;
     -unity-text-align: middle-left;
 }
 
 .my-classes-button {
-    width: 108px;
-    height: 29px;
+    width: 120px;
+    height: 31px;
+    margin-left: 0px;
+    margin-top: -8px;
     padding: 0;
     background-color: rgba(255, 255, 255, 0.18);
     border-width: 0;
@@ -246,7 +250,8 @@
 }
 
 .my-classes-button-text {
-    font-size: 12px;
+    font-size: 11px;
+    white-space: nowrap;
     -unity-font-style: bold;
     color: white;
 }

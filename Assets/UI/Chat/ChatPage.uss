@@ -24,8 +24,8 @@
    ========================================================= */
 
 .chat-header {
-    height: 112px;
-    min-height: 112px;
+    height: 94px;
+    min-height: 94px;
 
     flex-direction: row;
     align-items: center;
@@ -33,9 +33,10 @@
     /* Keep the two outer edges of the header perfectly symmetrical. */
     padding-left: 18px;
     padding-right: 18px;
-    /* Extra space below the phone camera / punch-hole area. */
-    padding-top: 34px;
-    padding-bottom: 8px;
+    /* Smaller top spacing for ChatAIScene.
+       Safe-area padding is still applied by the controller. */
+    padding-top: 14px;
+    padding-bottom: 6px;
 
     background-color: rgb(255, 255, 255);
 }
@@ -168,6 +169,8 @@
     min-width: 0;
 
     justify-content: center;
+    flex-shrink: 1;
+    overflow: hidden;
 }
 
 .teacher-name {
@@ -250,6 +253,7 @@
 
     flex-direction: row;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .header-actions .round-icon-button {
@@ -258,11 +262,6 @@
 
 /* First action does not need an extra leading gap.
    This keeps the visual weight balanced with the back-button side. */
-.header-actions .round-icon-button:first-child {
-    margin-left: 0;
-}
-
-
 /* =========================================================
    COURSE BANNER
    ========================================================= */
@@ -487,6 +486,72 @@
     margin-left: 4px;
 }
 
+
+
+/* =========================================================
+   IMAGE MESSAGES
+   ========================================================= */
+
+.message-image-bubble {
+    width: 230px;
+    height: 180px;
+
+    min-width: 130px;
+    min-height: 130px;
+    max-width: 230px;
+    max-height: 300px;
+
+    overflow: hidden;
+
+    background-color: rgb(232, 237, 246);
+    -unity-background-scale-mode: scale-and-crop;
+
+    align-items: center;
+    justify-content: center;
+}
+
+.outgoing-image-bubble {
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 6px;
+}
+
+.incoming-image-bubble {
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+
+    border-left-color: rgb(220, 226, 238);
+    border-right-color: rgb(220, 226, 238);
+    border-top-color: rgb(220, 226, 238);
+    border-bottom-color: rgb(220, 226, 238);
+
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 18px;
+}
+
+.message-image-loading {
+    padding-left: 10px;
+    padding-right: 10px;
+
+    color: rgb(112, 128, 157);
+    font-size: 10px;
+    -unity-text-align: middle-center;
+
+    white-space: normal;
+}
+
+.message-image-error {
+    color: rgb(190, 50, 50);
+}
+
+.input-side-button.uploading {
+    opacity: 0.55;
+}
 
 /* =========================================================
    AVATARS
@@ -920,4 +985,48 @@
 
 .chat-header > .header-actions {
     margin-right: 0;
+}
+
+
+/* =========================================================
+   CHAT AI SCENE OVERRIDES
+   - No phone/call button
+   - No horizontal suggestion/task bar
+   - No microphone/voice button in composer
+   - Header keeps only the More button on the right
+   ========================================================= */
+
+.chat-header .header-actions {
+    margin-left: 8px;
+    margin-right: 0;
+}
+
+.chat-header .header-actions .round-icon-button {
+    margin-left: 0;
+}
+
+/* AI header title */
+.teacher-name {
+    -unity-font-style: bold;
+}
+
+/* The AI scene intentionally does not render a horizontal task/suggestion bar. */
+.ai-taskbar,
+.voice-button,
+.microphone-button,
+.mic-button {
+    display: none;
+}
+
+
+/* =========================================================
+   CHAT AI - LOCAL PER USER HISTORY
+   ========================================================= */
+
+.ai-empty-chat-title {
+    color: rgb(35, 49, 79);
+}
+
+.ai-assistant-badge {
+    color: rgb(249, 158, 18);
 }

@@ -49,8 +49,8 @@
                     </ui:VisualElement>
 
                     <ui:VisualElement name="empty-chat" class="empty-chat">
-                        <ui:Label text="Start a conversation with AI" class="empty-chat-title ai-empty-chat-title"/>
-                        <ui:Label text="Your AI chat history is private to this signed-in user on this device." class="empty-chat-description"/>
+                        <ui:Label name="empty-chat-title" text="Start a conversation with AI" class="empty-chat-title ai-empty-chat-title"/>
+                        <ui:Label name="empty-chat-description" text="Your AI chat history is private to this signed-in user on this device." class="empty-chat-description"/>
                     </ui:VisualElement>
 
                     <ui:VisualElement name="typing-row" class="typing-row">

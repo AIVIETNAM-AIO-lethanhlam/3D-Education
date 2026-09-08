@@ -350,11 +350,6 @@
         url("project://database/Assets/UI/Images/Icons/headphone.png");
 }
 
-.tutorial-icon {
-    background-image:
-        url("project://database/Assets/UI/Images/Icons/lightbulb.png");
-}
-
 .privacy-icon {
     background-image:
         url("project://database/Assets/UI/Images/Icons/document.png");
@@ -754,3 +749,9 @@
     height: 14px;
     flex-shrink: 0;
 }
+
+
+/* Audio behavior:
+   - First slider: Android system media/video volume.
+   - Second slider: Unity app audio multiplier.
+*/

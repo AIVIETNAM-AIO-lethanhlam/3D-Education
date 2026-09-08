@@ -87,6 +87,9 @@ public class CreateClassPageController : MonoBehaviour
 
     private TextField courseDescriptionField;
     private Button voiceInputButton;
+    private Label voiceStatusLabel;
+    private AndroidSpeechRecognizer speechRecognizer;
+    private string voiceBaseDescription = string.Empty;
     private Label summaryCourseCodeLabel;
     private Label summaryCourseNameLabel;
     private Label summaryVisibilityLabel;
@@ -134,6 +137,10 @@ public class CreateClassPageController : MonoBehaviour
         }
 
         QueryElements();
+        ConfigureSpeechRecognizer();
+
+        AppLanguageManager.LanguageChanged += OnLanguageChanged;
+
         ConfigureVisibilityDropdown();
         ConfigureCategoryDropdown();
         ConfigureCategoryScrollView();
@@ -141,6 +148,7 @@ public class CreateClassPageController : MonoBehaviour
         LoadCategories();
 
         ShowStep(1);
+        ApplyCurrentLanguage();
         SetBrandingPreviewVisible(false);
 
         root.schedule.Execute(UpdateTemplateScrollbar)
@@ -149,7 +157,13 @@ public class CreateClassPageController : MonoBehaviour
 
     private void OnDisable()
     {
+        AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         UnregisterEvents();
+
+        if (speechRecognizer != null && speechRecognizer.IsListening)
+            speechRecognizer.CancelListening();
+
+        SetVoiceListeningUi(false);
     }
 
     private void QueryElements()
@@ -295,6 +309,9 @@ public class CreateClassPageController : MonoBehaviour
         voiceInputButton =
             root.Q<Button>("voice-input-button");
 
+        voiceStatusLabel =
+            root.Q<Label>("voice-status-label");
+
         summaryCourseCodeLabel =
             root.Q<Label>("summary-course-code-label");
 
@@ -320,7 +337,7 @@ public class CreateClassPageController : MonoBehaviour
 
         if (visibilitySelectedLabel != null)
         {
-            visibilitySelectedLabel.text = "Select visibility...";
+            visibilitySelectedLabel.text = T("Select visibility...", "Chọn quyền truy cập...");
             visibilitySelectedLabel.RemoveFromClassList(
                 "custom-visibility-selected-label-active"
             );
@@ -337,14 +354,14 @@ public class CreateClassPageController : MonoBehaviour
 
         if (categorySelectedLabel != null)
         {
-            categorySelectedLabel.text = "Select category...";
+            categorySelectedLabel.text = T("Select category...", "Chọn danh mục...");
             categorySelectedLabel.RemoveFromClassList(
                 "custom-visibility-selected-label-active"
             );
         }
 
         SetCategoryDropdownOpen(false);
-        SetCategoryLoadingState("Loading categories...");
+        SetCategoryLoadingState(T("Loading categories...", "Đang tải danh mục..."));
     }
 
     private void ConfigureCategoryScrollView()
@@ -617,6 +634,247 @@ public class CreateClassPageController : MonoBehaviour
         }
     }
 
+    private void OnLanguageChanged(string language)
+    {
+        ApplyCurrentLanguage();
+    }
+
+    private void ApplyCurrentLanguage()
+    {
+        if (root == null)
+            return;
+
+        LocalizeElementTree(root);
+
+        if (courseCodeField != null)
+            courseCodeField.textEdition.placeholder =
+                T("e.g. CS101, EE301...", "VD: CS101, EE301...");
+
+        if (courseNameField != null)
+            courseNameField.textEdition.placeholder =
+                T("e.g. Introduction to Circuits", "VD: Nhập môn Mạch điện");
+
+        if (courseDescriptionField != null)
+            courseDescriptionField.textEdition.placeholder =
+                T(
+                    "This course introduces students to the fundamentals of...",
+                    "Khóa học này giới thiệu cho sinh viên những kiến thức cơ bản về..."
+                );
+
+        // Keep current selections while changing only their display text.
+        if (visibilitySelectedLabel != null)
+        {
+            if (string.Equals(selectedVisibility, "public", StringComparison.OrdinalIgnoreCase))
+                visibilitySelectedLabel.text = T("Public", "Công khai");
+            else if (string.Equals(selectedVisibility, "private", StringComparison.OrdinalIgnoreCase))
+                visibilitySelectedLabel.text = T("Private", "Riêng tư");
+            else
+                visibilitySelectedLabel.text = T("Select visibility...", "Chọn quyền truy cập...");
+        }
+
+        if (categorySelectedLabel != null)
+        {
+            categorySelectedLabel.text =
+                string.IsNullOrWhiteSpace(selectedCategoryName)
+                    ? T("Select category...", "Chọn danh mục...")
+                    : LocalizeCategoryName(selectedCategoryName);
+        }
+
+        if (voiceInputButton != null)
+        {
+            voiceInputButton.tooltip =
+                speechRecognizer != null && speechRecognizer.IsListening
+                    ? T("Stop voice input", "Dừng nhập bằng giọng nói")
+                    : T("Voice input", "Nhập bằng giọng nói");
+        }
+
+        // Category buttons are generated dynamically.
+        foreach (Button button in categoryButtons)
+        {
+            if (button == null)
+                continue;
+
+            string raw = GetCanonicalCategoryName(button.text);
+            button.text = LocalizeCategoryName(raw);
+        }
+
+        UpdateHeader();
+        UpdateBottomButton();
+        UpdateOverviewSummary();
+        UpdateReviewInformation();
+    }
+
+    private void LocalizeElementTree(VisualElement element)
+    {
+        if (element == null)
+            return;
+
+        if (element is Label label && !string.IsNullOrWhiteSpace(label.text))
+            label.text = TranslateKnownUiText(label.text);
+
+        if (element is Button button && !string.IsNullOrWhiteSpace(button.text))
+            button.text = TranslateKnownUiText(button.text);
+
+        foreach (VisualElement child in element.Children())
+            LocalizeElementTree(child);
+    }
+
+    private static string TranslateKnownUiText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text;
+
+        bool vi = AppLanguageManager.IsVietnamese;
+
+        switch (text.Trim())
+        {
+            case "Cancel":
+            case "Hủy":
+                return vi ? "Hủy" : "Cancel";
+            case "COURSE CODE":
+            case "MÃ LỚP":
+                return vi ? "MÃ LỚP" : "COURSE CODE";
+            case "COURSE NAME":
+            case "TÊN LỚP":
+                return vi ? "TÊN LỚP" : "COURSE NAME";
+            case "VISIBILITY":
+            case "QUYỀN TRUY CẬP":
+                return vi ? "QUYỀN TRUY CẬP" : "VISIBILITY";
+            case "Public":
+            case "Công khai":
+                return vi ? "Công khai" : "Public";
+            case "Anyone can discover and join this class":
+            case "Mọi người có thể tìm thấy và tham gia lớp":
+                return vi ? "Mọi người có thể tìm thấy và tham gia lớp" : "Anyone can discover and join this class";
+            case "Private":
+            case "Riêng tư":
+                return vi ? "Riêng tư" : "Private";
+            case "Only invited students can access this class":
+            case "Chỉ học sinh được mời mới có thể truy cập lớp":
+                return vi ? "Chỉ học sinh được mời mới có thể truy cập lớp" : "Only invited students can access this class";
+            case "CATEGORY":
+            case "DANH MỤC":
+                return vi ? "DANH MỤC" : "CATEGORY";
+            case "COVER IMAGE":
+            case "ẢNH BÌA":
+                return vi ? "ẢNH BÌA" : "COVER IMAGE";
+            case "Upload Cover Image":
+            case "Tải ảnh bìa":
+                return vi ? "Tải ảnh bìa" : "Upload Cover Image";
+            case "Remove":
+            case "Xóa":
+                return vi ? "Xóa" : "Remove";
+            case "OR CHOOSE A TEMPLATE":
+            case "HOẶC CHỌN MỘT MẪU":
+                return vi ? "HOẶC CHỌN MỘT MẪU" : "OR CHOOSE A TEMPLATE";
+            case "PREVIEW":
+            case "XEM TRƯỚC":
+                return vi ? "XEM TRƯỚC" : "PREVIEW";
+            case "COURSE DESCRIPTION":
+            case "MÔ TẢ LỚP HỌC":
+                return vi ? "MÔ TẢ LỚP HỌC" : "COURSE DESCRIPTION";
+            case "Describe what students will learn, course structure, and any prerequisites.":
+            case "Mô tả nội dung học, cấu trúc khóa học và các điều kiện tiên quyết.":
+                return vi
+                    ? "Mô tả nội dung học, cấu trúc khóa học và các điều kiện tiên quyết."
+                    : "Describe what students will learn, course structure, and any prerequisites.";
+            case "CLASS SUMMARY":
+            case "TÓM TẮT LỚP HỌC":
+                return vi ? "TÓM TẮT LỚP HỌC" : "CLASS SUMMARY";
+            case "Course code":
+            case "Mã lớp":
+                return vi ? "Mã lớp" : "Course code";
+            case "Course name":
+            case "Tên lớp":
+                return vi ? "Tên lớp" : "Course name";
+            case "Visibility":
+            case "Quyền truy cập":
+                return vi ? "Quyền truy cập" : "Visibility";
+            case "Next":
+            case "Tiếp theo":
+                return vi ? "Tiếp theo" : "Next";
+            case "Create Class":
+            case "Tạo lớp":
+                return vi ? "Tạo lớp" : T("Create Class", "Tạo lớp");
+        }
+
+        return text;
+    }
+
+    private static string T(string english, string vietnamese)
+    {
+        return AppLanguageManager.IsVietnamese ? vietnamese : english;
+    }
+
+    private static string LocalizeVisibility(string value)
+    {
+        if (string.Equals(value, "public", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "Public", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "Công khai", StringComparison.OrdinalIgnoreCase))
+            return T("Public", "Công khai");
+
+        if (string.Equals(value, "private", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "Private", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "Riêng tư", StringComparison.OrdinalIgnoreCase))
+            return T("Private", "Riêng tư");
+
+        return value;
+    }
+
+    private static string LocalizeCategoryName(string categoryName)
+    {
+        if (string.IsNullOrWhiteSpace(categoryName))
+            return categoryName;
+
+        string normalized = GetCanonicalCategoryName(categoryName);
+
+        if (!AppLanguageManager.IsVietnamese)
+            return normalized;
+
+        switch (normalized.ToLowerInvariant())
+        {
+            case "math":
+            case "mathematics": return "Toán";
+            case "physics": return "Vật lý";
+            case "chemistry": return "Hóa học";
+            case "biology": return "Sinh học";
+            case "english": return "Tiếng Anh";
+            case "foreign language": return "Ngoại ngữ";
+            case "history": return "Lịch sử";
+            case "geography": return "Địa lý";
+            case "technology": return "Công nghệ";
+            case "computer science": return "Khoa học máy tính";
+            case "programming": return "Lập trình";
+            case "university": return "Đại học";
+            case "others": return "Khác";
+            default: return normalized;
+        }
+    }
+
+    private static string GetCanonicalCategoryName(string categoryName)
+    {
+        if (string.IsNullOrWhiteSpace(categoryName))
+            return string.Empty;
+
+        switch (categoryName.Trim().ToLowerInvariant())
+        {
+            case "toán": return "Math";
+            case "vật lý": return "Physics";
+            case "hóa học": return "Chemistry";
+            case "sinh học": return "Biology";
+            case "tiếng anh": return "English";
+            case "ngoại ngữ": return "Foreign Language";
+            case "lịch sử": return "History";
+            case "địa lý": return "Geography";
+            case "công nghệ": return "Technology";
+            case "khoa học máy tính": return "Computer Science";
+            case "lập trình": return "Programming";
+            case "đại học": return "University";
+            case "khác": return "Others";
+            default: return categoryName.Trim();
+        }
+    }
+
     private void HandleVisibilityDropdownClicked()
     {
         bool isOpen =
@@ -633,12 +891,12 @@ public class CreateClassPageController : MonoBehaviour
 
     private void SelectPublicVisibility()
     {
-        SelectVisibility("public", "Public");
+        SelectVisibility("public", T("Public", "Công khai"));
     }
 
     private void SelectPrivateVisibility()
     {
-        SelectVisibility("private", "Private");
+        SelectVisibility("private", T("Private", "Riêng tư"));
     }
 
     private void SelectVisibility(string value, string displayText)
@@ -665,6 +923,16 @@ public class CreateClassPageController : MonoBehaviour
     private void SetVisibilityDropdownOpen(bool isOpen)
     {
         SetElementVisible(visibilityOptionsPanel, isOpen);
+
+        if (isOpen)
+        {
+            root?.schedule.Execute(() =>
+                AlignDropdownPanel(
+                    visibilityDropdownButton,
+                    visibilityOptionsPanel
+                )
+            ).StartingIn(1);
+        }
 
         visibilityDropdownRoot?.EnableInClassList(
             "custom-visibility-dropdown-open",
@@ -725,6 +993,16 @@ public class CreateClassPageController : MonoBehaviour
     {
         SetElementVisible(categoryOptionsPanel, isOpen);
 
+        if (isOpen)
+        {
+            root?.schedule.Execute(() =>
+                AlignDropdownPanel(
+                    categoryDropdownButton,
+                    categoryOptionsPanel
+                )
+            ).StartingIn(1);
+        }
+
         categoryDropdownRoot?.EnableInClassList(
             "custom-visibility-dropdown-open",
             isOpen
@@ -741,6 +1019,29 @@ public class CreateClassPageController : MonoBehaviour
         );
     }
 
+
+    private static void AlignDropdownPanel(
+        Button triggerButton,
+        VisualElement optionsPanel)
+    {
+        if (triggerButton == null || optionsPanel == null)
+            return;
+
+        float triggerWidth =
+            triggerButton.resolvedStyle.width;
+
+        if (triggerWidth <= 0f)
+            return;
+
+        // Match the opened list exactly to the trigger box.
+        optionsPanel.style.width = triggerWidth;
+        optionsPanel.style.minWidth = triggerWidth;
+        optionsPanel.style.maxWidth = triggerWidth;
+
+        optionsPanel.style.marginLeft = 0;
+        optionsPanel.style.marginRight = 0;
+    }
+
     private void LoadCategories()
     {
         StartCoroutine(LoadCategoriesCoroutine(false));
@@ -750,8 +1051,8 @@ public class CreateClassPageController : MonoBehaviour
     {
         SetCategoryLoadingState(
             isRetry
-                ? "Retrying categories..."
-                : "Loading categories..."
+                ? T("Retrying categories...", "Đang thử tải lại danh mục...")
+                : T("Loading categories...", "Đang tải danh mục...")
         );
 
         bool requestCompleted = false;
@@ -775,7 +1076,7 @@ public class CreateClassPageController : MonoBehaviour
         if (!requestCompleted)
         {
             SetCategoryLoadingState(
-                "Unable to load categories."
+                T("Unable to load categories.", "Không thể tải danh mục.")
             );
 
             Debug.LogError(
@@ -788,7 +1089,7 @@ public class CreateClassPageController : MonoBehaviour
         if (!string.IsNullOrWhiteSpace(requestError))
         {
             SetCategoryLoadingState(
-                "Unable to load categories."
+                T("Unable to load categories.", "Không thể tải danh mục.")
             );
 
             Debug.LogError(
@@ -810,7 +1111,7 @@ public class CreateClassPageController : MonoBehaviour
                 out string parseError))
         {
             SetCategoryLoadingState(
-                "Unable to load categories."
+                T("Unable to load categories.", "Không thể tải danh mục.")
             );
 
             Debug.LogError(parseError);
@@ -828,7 +1129,7 @@ public class CreateClassPageController : MonoBehaviour
         if (categories == null || categories.Length == 0)
         {
             SetCategoryLoadingState(
-                "No categories returned. Check the categories SELECT policy."
+                T("No categories returned. Check the categories SELECT policy.", "Không có danh mục nào được trả về.")
             );
 
             Debug.LogWarning(
@@ -850,7 +1151,7 @@ public class CreateClassPageController : MonoBehaviour
 
         if (categories == null || categories.Length == 0)
         {
-            SetCategoryLoadingState("No categories available.");
+            SetCategoryLoadingState(T("No categories available.", "Không có danh mục nào."));
             return;
         }
 
@@ -874,7 +1175,7 @@ public class CreateClassPageController : MonoBehaviour
             }
 
             Button optionButton = new Button();
-            optionButton.text = category.name.Trim();
+            optionButton.text = LocalizeCategoryName(category.name.Trim());
             optionButton.AddToClassList("custom-category-option");
 
             string categoryId = category.id.Trim();
@@ -900,7 +1201,7 @@ public class CreateClassPageController : MonoBehaviour
 
         if (categoryButtons.Count == 0)
         {
-            SetCategoryLoadingState("No categories available.");
+            SetCategoryLoadingState(T("No categories available.", "Không có danh mục nào."));
         }
     }
 
@@ -914,7 +1215,7 @@ public class CreateClassPageController : MonoBehaviour
 
         if (categorySelectedLabel != null)
         {
-            categorySelectedLabel.text = categoryName;
+            categorySelectedLabel.text = LocalizeCategoryName(categoryName);
             categorySelectedLabel.AddToClassList(
                 "custom-visibility-selected-label-active"
             );
@@ -1047,7 +1348,7 @@ public class CreateClassPageController : MonoBehaviour
 
         if (visibilitySelectedLabel != null)
         {
-            visibilitySelectedLabel.text = "Select visibility...";
+            visibilitySelectedLabel.text = T("Select visibility...", "Chọn quyền truy cập...");
             visibilitySelectedLabel.RemoveFromClassList(
                 "custom-visibility-selected-label-active"
             );
@@ -1061,7 +1362,7 @@ public class CreateClassPageController : MonoBehaviour
 
         if (categorySelectedLabel != null)
         {
-            categorySelectedLabel.text = "Select category...";
+            categorySelectedLabel.text = T("Select category...", "Chọn danh mục...");
             categorySelectedLabel.RemoveFromClassList(
                 "custom-visibility-selected-label-active"
             );
@@ -1108,18 +1409,18 @@ public class CreateClassPageController : MonoBehaviour
 
         if (summaryCourseCodeLabel != null)
         {
-            summaryCourseCodeLabel.text = "No code set";
+            summaryCourseCodeLabel.text = T("No code set", "Chưa có mã lớp");
         }
 
         if (summaryCourseNameLabel != null)
         {
-            summaryCourseNameLabel.text = "No name set";
+            summaryCourseNameLabel.text = T("No name set", "Chưa có tên lớp");
         }
 
         if (summaryVisibilityLabel != null)
         {
             summaryVisibilityLabel.text =
-                "No visibility set";
+                T("No visibility set", "Chưa chọn quyền truy cập");
         }
 
         if (basicInfoErrorLabel != null)
@@ -1174,7 +1475,7 @@ public class CreateClassPageController : MonoBehaviour
         if (stepLabel != null)
         {
             stepLabel.text =
-                $"Step {currentStep} of {TotalSteps}";
+                T($"Step {currentStep} of {TotalSteps}", $"Bước {currentStep} / {TotalSteps}");
         }
 
         if (pageTitleLabel == null)
@@ -1184,10 +1485,10 @@ public class CreateClassPageController : MonoBehaviour
 
         pageTitleLabel.text = currentStep switch
         {
-            1 => "Basic Info",
-            2 => "Branding",
-            3 => "Overview",
-            _ => "Create Class"
+            1 => T("Basic Info", "Thông tin cơ bản"),
+            2 => T("Branding", "Hình ảnh"),
+            3 => T("Overview", "Tổng quan"),
+            _ => T("Create Class", "Tạo lớp")
         };
     }
 
@@ -1234,8 +1535,8 @@ public class CreateClassPageController : MonoBehaviour
 
         nextButton.text =
             currentStep == TotalSteps
-                ? "Create Class"
-                : "Next";
+                ? T("Create Class", "Tạo lớp")
+                : T("Next", "Tiếp theo");
     }
 
     private bool ValidateBasicInfo()
@@ -1257,7 +1558,7 @@ public class CreateClassPageController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(courseCode))
         {
             ShowBasicInfoError(
-                "Please enter the course code."
+                T("Please enter the course code.", "Vui lòng nhập mã lớp.")
             );
 
             courseCodeField?.Focus();
@@ -1268,7 +1569,7 @@ public class CreateClassPageController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(courseName))
         {
             ShowBasicInfoError(
-                "Please enter the course name."
+                T("Please enter the course name.", "Vui lòng nhập tên lớp.")
             );
 
             courseNameField?.Focus();
@@ -1279,7 +1580,7 @@ public class CreateClassPageController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(visibility))
         {
             ShowBasicInfoError(
-                "Please select class visibility."
+                T("Please select class visibility.", "Vui lòng chọn quyền truy cập của lớp.")
             );
 
             return false;
@@ -1288,7 +1589,7 @@ public class CreateClassPageController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(selectedCategoryId))
         {
             ShowBasicInfoError(
-                "Please select a category."
+                T("Please select a category.", "Vui lòng chọn danh mục.")
             );
 
             return false;
@@ -1321,7 +1622,7 @@ public class CreateClassPageController : MonoBehaviour
             if (brandingErrorLabel != null)
             {
                 brandingErrorLabel.text =
-                    "Please upload a cover image or choose a template.";
+                    T("Please upload a cover image or choose a template.", "Vui lòng tải ảnh bìa hoặc chọn một mẫu.");
             }
 
             return false;
@@ -1564,7 +1865,7 @@ public class CreateClassPageController : MonoBehaviour
 
         if (reviewVisibility != null)
         {
-            reviewVisibility.text = visibility;
+            reviewVisibility.text = LocalizeVisibility(visibility);
         }
 
         UpdateReviewCover();
@@ -1842,17 +2143,217 @@ public class CreateClassPageController : MonoBehaviour
 
             summaryVisibilityLabel.text =
                 hasVisibility
-                    ? visibility
-                    : "No visibility set";
+                    ? LocalizeVisibility(visibility)
+                    : T("No visibility set", "Chưa chọn quyền truy cập");
         }
+    }
+
+    private void ConfigureSpeechRecognizer()
+    {
+        speechRecognizer = GetComponent<AndroidSpeechRecognizer>();
+
+        if (speechRecognizer == null)
+            speechRecognizer = gameObject.AddComponent<AndroidSpeechRecognizer>();
+
+        speechRecognizer.PartialResultReceived -= HandleVoicePartialResult;
+        speechRecognizer.FinalResultReceived -= HandleVoiceFinalResult;
+        speechRecognizer.ListeningStateChanged -= HandleVoiceListeningStateChanged;
+        speechRecognizer.ErrorReceived -= HandleVoiceRecognitionError;
+
+        speechRecognizer.PartialResultReceived += HandleVoicePartialResult;
+        speechRecognizer.FinalResultReceived += HandleVoiceFinalResult;
+        speechRecognizer.ListeningStateChanged += HandleVoiceListeningStateChanged;
+        speechRecognizer.ErrorReceived += HandleVoiceRecognitionError;
     }
 
     private void HandleVoiceInputClicked()
     {
-        Debug.Log(
-            "Voice input chưa được tích hợp. " +
-            "Sau này có thể kết nối Android Speech Recognizer."
+        if (speechRecognizer == null)
+        {
+            ShowVoiceStatus(
+                T(
+                    "Voice recognition is unavailable.",
+                    "Không thể khởi tạo nhận diện giọng nói."
+                ),
+                true
+            );
+
+            return;
+        }
+
+        if (speechRecognizer.IsListening)
+        {
+            speechRecognizer.StopListening();
+            ShowVoiceStatus(
+                T("Processing speech...", "Đang xử lý giọng nói..."),
+                false
+            );
+            return;
+        }
+
+        voiceBaseDescription =
+            courseDescriptionField?.value?.TrimEnd() ?? string.Empty;
+
+        string languageCode =
+            AppLanguageManager.IsVietnamese
+                ? "vi-VN"
+                : "en-US";
+
+        ShowVoiceStatus(
+            T("Requesting microphone...", "Đang mở microphone..."),
+            false
         );
+
+        speechRecognizer.StartListening(languageCode);
+    }
+
+    private void HandleVoicePartialResult(string transcript)
+    {
+        if (courseDescriptionField == null ||
+            string.IsNullOrWhiteSpace(transcript))
+        {
+            return;
+        }
+
+        courseDescriptionField.SetValueWithoutNotify(
+            CombineVoiceDescription(
+                voiceBaseDescription,
+                transcript
+            )
+        );
+
+        ShowVoiceStatus(
+            T("Listening...", "Đang nghe..."),
+            false,
+            true
+        );
+    }
+
+    private void HandleVoiceFinalResult(string transcript)
+    {
+        if (courseDescriptionField != null &&
+            !string.IsNullOrWhiteSpace(transcript))
+        {
+            string finalText = CombineVoiceDescription(
+                voiceBaseDescription,
+                transcript
+            );
+
+            courseDescriptionField.value = finalText;
+            voiceBaseDescription = finalText;
+        }
+
+        ShowVoiceStatus(
+            T("Voice text added.", "Đã thêm nội dung từ giọng nói."),
+            false
+        );
+
+        root?.schedule.Execute(() =>
+        {
+            if (voiceStatusLabel != null &&
+                !(speechRecognizer?.IsListening ?? false))
+            {
+                SetElementVisible(voiceStatusLabel, false);
+            }
+        }).StartingIn(1800);
+    }
+
+    private void HandleVoiceListeningStateChanged(bool listening)
+    {
+        SetVoiceListeningUi(listening);
+
+        if (listening)
+        {
+            ShowVoiceStatus(
+                T(
+                    "Listening... Tap the microphone again to stop.",
+                    "Đang nghe... Nhấn lại nút micro để dừng."
+                ),
+                false,
+                true
+            );
+        }
+    }
+
+    private void HandleVoiceRecognitionError(string error)
+    {
+        SetVoiceListeningUi(false);
+
+        ShowVoiceStatus(
+            string.IsNullOrWhiteSpace(error)
+                ? T(
+                    "Unable to recognize speech.",
+                    "Không thể nhận diện giọng nói."
+                )
+                : error,
+            true
+        );
+    }
+
+    private void SetVoiceListeningUi(bool listening)
+    {
+        voiceInputButton?.EnableInClassList(
+            "voice-recording",
+            listening
+        );
+
+        if (voiceInputButton != null)
+        {
+            voiceInputButton.tooltip = listening
+                ? T("Stop voice input", "Dừng nhập bằng giọng nói")
+                : T("Voice input", "Nhập bằng giọng nói");
+        }
+    }
+
+    private void ShowVoiceStatus(
+        string message,
+        bool isError,
+        bool isListening = false)
+    {
+        if (voiceStatusLabel == null)
+            return;
+
+        voiceStatusLabel.text = message ?? string.Empty;
+
+        voiceStatusLabel.EnableInClassList(
+            "voice-status-error",
+            isError
+        );
+
+        voiceStatusLabel.EnableInClassList(
+            "voice-status-listening",
+            isListening && !isError
+        );
+
+        SetElementVisible(
+            voiceStatusLabel,
+            !string.IsNullOrWhiteSpace(message)
+        );
+    }
+
+    private static string CombineVoiceDescription(
+        string original,
+        string transcript)
+    {
+        string baseText = original?.TrimEnd() ?? string.Empty;
+        string spokenText = transcript?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(baseText))
+            return spokenText;
+
+        if (string.IsNullOrWhiteSpace(spokenText))
+            return baseText;
+
+        char lastCharacter = baseText[baseText.Length - 1];
+        string separator =
+            lastCharacter == '.' ||
+            lastCharacter == '!' ||
+            lastCharacter == '?' ||
+            lastCharacter == '\n'
+                ? " "
+                : ". ";
+
+        return baseText + separator + spokenText;
     }
 
     private void CreateClass()
@@ -1865,7 +2366,7 @@ public class CreateClassPageController : MonoBehaviour
         if (!SupabaseSession.IsLoggedIn)
         {
             ShowCreateClassError(
-                "Your login session has expired. Please sign in again."
+                T("Your login session has expired. Please sign in again.", "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.")
             );
 
             return;
@@ -1874,7 +2375,7 @@ public class CreateClassPageController : MonoBehaviour
         if (!SupabaseSession.IsTeacher)
         {
             ShowCreateClassError(
-                "Only teacher accounts can create classes."
+                T("Only teacher accounts can create classes.", "Chỉ tài khoản giáo viên mới có thể tạo lớp.")
             );
 
             return;
@@ -1961,7 +2462,7 @@ public class CreateClassPageController : MonoBehaviour
         {
             nextButton.text =
                 loading
-                    ? "Creating Class..."
+                    ? T("Creating Class...", "Đang tạo lớp...")
                     : "Create Class";
         }
     }
@@ -1982,7 +2483,7 @@ public class CreateClassPageController : MonoBehaviour
     {
         if (string.IsNullOrWhiteSpace(error))
         {
-            return "Unable to create the class.";
+            return T("Unable to create the class.", "Không thể tạo lớp.");
         }
 
         string lower =
@@ -1992,28 +2493,28 @@ public class CreateClassPageController : MonoBehaviour
             lower.Contains("permission denied") ||
             lower.Contains("403"))
         {
-            return "You do not have permission to create this class. Check the classes RLS policy.";
+            return T("You do not have permission to create this class. Check the classes RLS policy.", "Bạn không có quyền tạo lớp này.");
         }
 
         if (lower.Contains("duplicate") ||
             lower.Contains("unique") ||
             lower.Contains("409"))
         {
-            return "This course code already exists.";
+            return T("This course code already exists.", "Mã lớp này đã tồn tại.");
         }
 
         if (lower.Contains("access token") ||
             lower.Contains("jwt") ||
             lower.Contains("401"))
         {
-            return "Your login session has expired. Please sign in again.";
+            return T("Your login session has expired. Please sign in again.", "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
         }
 
         if (lower.Contains("network") ||
             lower.Contains("connection") ||
             lower.Contains("resolve host"))
         {
-            return "Cannot connect to Supabase. Please check your Internet connection.";
+            return T("Cannot connect to Supabase. Please check your Internet connection.", "Không thể kết nối đến Supabase. Vui lòng kiểm tra Internet.");
         }
 
         return error;

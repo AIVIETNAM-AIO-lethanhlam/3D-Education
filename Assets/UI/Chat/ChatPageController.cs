@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -40,6 +41,10 @@ public class ChatPageController : MonoBehaviour
     [Header("Safe Area")]
     [SerializeField] private float minimumTopSafePadding = 20f;
 
+    [Header("Chat Images")]
+    [SerializeField] private string chatImageBucket = "chat-images";
+    [SerializeField, Min(1)] private int maxImageSizeMb = 10;
+
     private UIDocument uiDocument;
     private VisualElement root;
     private VisualElement safeArea;
@@ -61,6 +66,10 @@ public class ChatPageController : MonoBehaviour
     private Label partnerAvatarLabel;
     private Label typingAvatarLabel;
     private Label typingLabel;
+    private Label courseLabel;
+    private Label dateLabel;
+    private Label emptyChatTitleLabel;
+    private Label emptyChatDescriptionLabel;
     private VisualElement headerOnlineDot;
     private VisualElement statusDot;
 
@@ -76,6 +85,10 @@ public class ChatPageController : MonoBehaviour
     private bool localTypingState;
     private float lastInputTime;
     private int currentTypingDotIndex;
+    private bool imageUploadInProgress;
+
+    private readonly Dictionary<string, Texture2D> imageTextureCache =
+        new Dictionary<string, Texture2D>();
 
     private Coroutine messagePollingCoroutine;
     private Coroutine presencePollingCoroutine;
@@ -84,7 +97,14 @@ public class ChatPageController : MonoBehaviour
     private Coroutine typingTimeoutCoroutine;
 
     [Serializable] private class ConversationRpcBody { public string p_other_user_id; public string p_class_id; }
-    [Serializable] private class MessageInsertBody { public string conversation_id; public string sender_id; public string receiver_id; public string content; public string message_type = "text"; }
+    [Serializable] private class MessageInsertBody
+    {
+        public string conversation_id;
+        public string sender_id;
+        public string receiver_id;
+        public string content;
+        public string message_type = "text";
+    }
     [Serializable] private class PresenceBody { public string user_id; public bool is_online; public string last_seen_at; public string updated_at; }
     [Serializable] private class TypingBody { public string conversation_id; public string user_id; public bool is_typing; public string updated_at; }
     [Serializable] private class SeenPatchBody { public string seen_at; }
@@ -125,6 +145,10 @@ public class ChatPageController : MonoBehaviour
         root = uiDocument.rootVisualElement;
         FindVisualElements();
         RegisterCallbacks();
+
+        AppLanguageManager.LanguageChanged += OnLanguageChanged;
+        ApplyCurrentLanguage();
+
         ApplySafeArea();
         root.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
         StartCoroutine(InitializeChat());
@@ -132,9 +156,18 @@ public class ChatPageController : MonoBehaviour
 
     private void OnDisable()
     {
+        AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         UnregisterCallbacks();
         if (root != null) root.UnregisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
         StopAllRunningCoroutines();
+
+        foreach (Texture2D texture in imageTextureCache.Values)
+        {
+            if (texture != null)
+                Destroy(texture);
+        }
+        imageTextureCache.Clear();
+
         if (initialized)
         {
             StartCoroutine(SetTypingState(false));
@@ -165,6 +198,7 @@ public class ChatPageController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(conversationId)) yield break;
 
         initialized = true;
+        UpdateAttachmentButtonState();
         yield return SetPresence(true);
         yield return LoadMessages(true);
         yield return PollPartnerPresenceAndTyping();
@@ -228,7 +262,7 @@ public class ChatPageController : MonoBehaviour
                 "[ChatPageController] Self-chat was blocked before calling " +
                 "get_or_create_direct_conversation."
             );
-            ShowError("You cannot start a direct chat with yourself.");
+            ShowError(T("You cannot start a direct chat with yourself.", "Bạn không thể nhắn tin trực tiếp với chính mình."));
             return false;
         }
 
@@ -263,7 +297,7 @@ public class ChatPageController : MonoBehaviour
 
         if (string.IsNullOrWhiteSpace(response))
         {
-            ShowError("Could not create or load the chat conversation.");
+            ShowError(T("Could not create or load the chat conversation.", "Không thể tạo hoặc tải cuộc trò chuyện."));
             yield break;
         }
 
@@ -275,7 +309,7 @@ public class ChatPageController : MonoBehaviour
         {
             Debug.LogError("[ChatPageController] Unexpected RPC result: " + response);
             conversationId = string.Empty;
-            ShowError("Invalid conversation ID returned by Supabase.");
+            ShowError(T("Invalid conversation ID returned by Supabase.", "Supabase trả về mã cuộc trò chuyện không hợp lệ."));
             yield break;
         }
 
@@ -454,7 +488,8 @@ public class ChatPageController : MonoBehaviour
             conversation_id = conversationId,
             sender_id = currentUserId,
             receiver_id = partnerUserId,
-            content = text
+            content = text,
+            message_type = "text"
         };
 
         bool success = false;
@@ -552,15 +587,62 @@ public class ChatPageController : MonoBehaviour
         VisualElement group = new VisualElement();
         group.AddToClassList(outgoing ? "outgoing-message-group" : "incoming-message-group");
 
-        VisualElement bubble = new VisualElement();
-        bubble.AddToClassList("message-bubble");
-        bubble.AddToClassList(outgoing ? "outgoing-bubble" : "incoming-bubble");
+        bool isImageMessage =
+            string.Equals(
+                message.message_type,
+                "image",
+                StringComparison.OrdinalIgnoreCase
+            );
 
-        Label content = new Label(message.content ?? string.Empty);
-        content.AddToClassList("message-text");
-        content.AddToClassList(outgoing ? "outgoing-message-text" : "incoming-message-text");
-        bubble.Add(content);
-        group.Add(bubble);
+        if (isImageMessage)
+        {
+            VisualElement imageBubble = new VisualElement();
+            imageBubble.AddToClassList("message-image-bubble");
+            imageBubble.AddToClassList(
+                outgoing
+                    ? "outgoing-image-bubble"
+                    : "incoming-image-bubble"
+            );
+
+            Label loadingLabel = new Label(
+                T("Loading image...", "Đang tải ảnh...")
+            );
+            loadingLabel.AddToClassList("message-image-loading");
+            imageBubble.Add(loadingLabel);
+
+            group.Add(imageBubble);
+
+            StartCoroutine(
+                LoadChatImageIntoElement(
+                    message.content,
+                    imageBubble,
+                    loadingLabel
+                )
+            );
+        }
+        else
+        {
+            VisualElement bubble = new VisualElement();
+            bubble.AddToClassList("message-bubble");
+            bubble.AddToClassList(
+                outgoing
+                    ? "outgoing-bubble"
+                    : "incoming-bubble"
+            );
+
+            Label content =
+                new Label(message.content ?? string.Empty);
+
+            content.AddToClassList("message-text");
+            content.AddToClassList(
+                outgoing
+                    ? "outgoing-message-text"
+                    : "incoming-message-text"
+            );
+
+            bubble.Add(content);
+            group.Add(bubble);
+        }
 
         VisualElement meta = new VisualElement();
         meta.AddToClassList("message-meta-row");
@@ -589,8 +671,8 @@ public class ChatPageController : MonoBehaviour
             {
                 Label state = new Label(
                     string.IsNullOrWhiteSpace(message.delivered_at)
-                        ? "Sent"
-                        : "Delivered");
+                        ? T("Sent", "Đã gửi")
+                        : T("Delivered", "Đã nhận"));
                 state.AddToClassList("message-delivered-status");
                 meta.Add(state);
             }
@@ -654,7 +736,11 @@ public class ChatPageController : MonoBehaviour
     {
         if (typingRow == null) return;
         typingRow.style.display = typing ? DisplayStyle.Flex : DisplayStyle.None;
-        if (typingLabel != null) typingLabel.text = partnerName + " is typing...";
+        if (typingLabel != null)
+            typingLabel.text = T(
+                partnerName + " is typing...",
+                partnerName + " đang nhập..."
+            );
 
         if (typing)
         {
@@ -682,17 +768,28 @@ public class ChatPageController : MonoBehaviour
 
     private void SetPartnerInformation(string displayName, string role, bool online, string lastSeenIso)
     {
-        partnerName = string.IsNullOrWhiteSpace(displayName) ? "Chat user" : displayName;
-        partnerRole = string.IsNullOrWhiteSpace(role) ? "User" : role;
+        partnerName =
+            string.IsNullOrWhiteSpace(displayName)
+                ? T("Chat user", "Người dùng")
+                : displayName;
+
+        partnerRole =
+            string.IsNullOrWhiteSpace(role)
+                ? "User"
+                : role;
         if (teacherNameLabel != null) teacherNameLabel.text = partnerName;
-        if (teacherPositionLabel != null) teacherPositionLabel.text = Capitalize(partnerRole);
+        if (teacherPositionLabel != null)
+            teacherPositionLabel.text = LocalizeRole(partnerRole);
         string initials = GetInitials(partnerName);
         if (partnerAvatarLabel != null) partnerAvatarLabel.text = initials;
         if (typingAvatarLabel != null) typingAvatarLabel.text = initials;
 
         if (teacherStatusLabel != null)
         {
-            teacherStatusLabel.text = online ? "Active now" : FormatLastSeen(lastSeenIso);
+            teacherStatusLabel.text =
+                online
+                    ? T("Active now", "Đang hoạt động")
+                    : FormatLastSeen(lastSeenIso);
             teacherStatusLabel.EnableInClassList("offline", !online);
         }
         if (headerOnlineDot != null) headerOnlineDot.EnableInClassList("offline", !online);
@@ -778,8 +875,99 @@ public class ChatPageController : MonoBehaviour
         partnerAvatarLabel = root.Q<Label>("partner-avatar-text");
         typingAvatarLabel = root.Q<Label>("typing-avatar-text");
         typingLabel = root.Q<Label>("typing-label");
+        courseLabel = root.Q<Label>("course-label");
+        dateLabel = root.Q<Label>("date-label");
+        emptyChatTitleLabel = root.Q<Label>("empty-chat-title");
+        emptyChatDescriptionLabel = root.Q<Label>("empty-chat-description");
         headerOnlineDot = root.Q<VisualElement>("header-online-dot");
         statusDot = root.Q<VisualElement>("status-dot");
+    }
+
+
+    private static string T(string english, string vietnamese)
+    {
+        return AppLanguageManager.IsVietnamese
+            ? vietnamese
+            : english;
+    }
+
+    private void OnLanguageChanged(string language)
+    {
+        ApplyCurrentLanguage();
+
+        // Re-render dynamic labels such as Sent/Delivered and presence text.
+        if (initialized && !string.IsNullOrWhiteSpace(conversationId))
+        {
+            StartCoroutine(LoadMessages(true));
+            StartCoroutine(PollPartnerPresenceAndTyping());
+        }
+    }
+
+    private void ApplyCurrentLanguage()
+    {
+        if (courseLabel != null)
+            courseLabel.text = T("Direct message", "Tin nhắn trực tiếp");
+
+        if (dateLabel != null)
+            dateLabel.text = T("Today", "Hôm nay");
+
+        if (emptyChatTitleLabel != null)
+            emptyChatTitleLabel.text = T("No messages yet", "Chưa có tin nhắn");
+
+        if (emptyChatDescriptionLabel != null)
+        {
+            emptyChatDescriptionLabel.text = T(
+                "Send a message to start the conversation.",
+                "Gửi tin nhắn để bắt đầu cuộc trò chuyện."
+            );
+        }
+
+        if (inputPlaceholder != null)
+            inputPlaceholder.text = T("Type a message...", "Nhập tin nhắn...");
+
+        UpdateAttachmentButtonState();
+
+        if (typingLabel != null &&
+            typingRow != null &&
+            typingRow.resolvedStyle.display != DisplayStyle.None)
+        {
+            typingLabel.text = T(
+                partnerName + " is typing...",
+                partnerName + " đang nhập..."
+            );
+        }
+
+        if (teacherPositionLabel != null)
+            teacherPositionLabel.text = LocalizeRole(partnerRole);
+
+        if (teacherStatusLabel != null && !initialized)
+            teacherStatusLabel.text = T("Offline", "Ngoại tuyến");
+    }
+
+    private static string LocalizeRole(string role)
+    {
+        string normalized =
+            string.IsNullOrWhiteSpace(role)
+                ? "user"
+                : role.Trim().ToLowerInvariant();
+
+        return normalized switch
+        {
+            "teacher" => T("Teacher", "Giáo viên"),
+            "giáo viên" => T("Teacher", "Giáo viên"),
+
+            "student" => T("Student", "Sinh viên"),
+            "học sinh" => T("Student", "Sinh viên"),
+            "sinh viên" => T("Student", "Sinh viên"),
+
+            "admin" => T("Admin", "Quản trị"),
+            "quản trị viên" => T("Admin", "Quản trị"),
+
+            "user" => T("User", "Người dùng"),
+            "người dùng" => T("User", "Người dùng"),
+
+            _ => role
+        };
     }
 
     private void RegisterCallbacks()
@@ -815,6 +1003,7 @@ public class ChatPageController : MonoBehaviour
         if (messageInput != null) { messageInput.value = string.Empty; messageInput.isDelayed = false; }
         if (typingRow != null) typingRow.style.display = DisplayStyle.None;
         UpdateInputState();
+        UpdateAttachmentButtonState();
     }
 
     private void UpdateInputState()
@@ -855,7 +1044,538 @@ public class ChatPageController : MonoBehaviour
 
     private void HandleCallClicked() => Debug.Log("[ChatPageController] Call feature is not connected yet.");
     private void HandleMoreClicked() => Debug.Log("[ChatPageController] More button clicked.");
-    private void HandleAttachmentClicked() => Debug.Log("[ChatPageController] Connect attachment button to the mobile file picker.");
+    private void HandleAttachmentClicked()
+    {
+        if (!initialized || imageUploadInProgress)
+            return;
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            using AndroidJavaClass unityPlayer =
+                new AndroidJavaClass(
+                    "com.unity3d.player.UnityPlayer"
+                );
+
+            AndroidJavaObject activity =
+                unityPlayer.GetStatic<AndroidJavaObject>(
+                    "currentActivity"
+                );
+
+            if (activity == null)
+            {
+                ShowError(
+                    T(
+                        "Could not open the Android photo picker.",
+                        "Không thể mở trình chọn ảnh trên Android."
+                    )
+                );
+                return;
+            }
+
+            using AndroidJavaClass pickerClass =
+                new AndroidJavaClass(
+                    "com.virtualeducation.chat.ChatImagePicker"
+                );
+
+            pickerClass.CallStatic(
+                "openImagePicker",
+                activity,
+                gameObject.name,
+                "OnChatImagePicked",
+                "OnChatImagePickCancelled"
+            );
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError(
+                "[ChatPageController] Could not launch image picker: " +
+                exception
+            );
+
+            ShowError(
+                T(
+                    "Could not open the photo picker.",
+                    "Không thể mở trình chọn ảnh."
+                )
+            );
+        }
+#else
+        ShowError(
+            T(
+                "Photo picking is available in the Android build.",
+                "Chức năng chọn ảnh hoạt động trên bản Android."
+            )
+        );
+#endif
+    }
+
+    /// <summary>
+    /// Called by the Android Java picker through UnitySendMessage.
+    /// The picker copies the selected image into this app's cache,
+    /// so Unity can safely read the file bytes.
+    /// </summary>
+    public void OnChatImagePicked(string localPath)
+    {
+        if (string.IsNullOrWhiteSpace(localPath))
+        {
+            OnChatImagePickCancelled(string.Empty);
+            return;
+        }
+
+        StartCoroutine(
+            UploadAndSendImageRoutine(localPath)
+        );
+    }
+
+    public void OnChatImagePickCancelled(string unused)
+    {
+        imageUploadInProgress = false;
+        UpdateAttachmentButtonState();
+    }
+
+    private IEnumerator UploadAndSendImageRoutine(
+        string localPath)
+    {
+        if (!initialized ||
+            imageUploadInProgress ||
+            string.IsNullOrWhiteSpace(localPath))
+        {
+            yield break;
+        }
+
+        imageUploadInProgress = true;
+        UpdateAttachmentButtonState();
+
+        byte[] imageBytes = null;
+
+        try
+        {
+            if (!File.Exists(localPath))
+            {
+                ShowError(
+                    T(
+                        "The selected image could not be read.",
+                        "Không thể đọc ảnh đã chọn."
+                    )
+                );
+                yield break;
+            }
+
+            FileInfo fileInfo =
+                new FileInfo(localPath);
+
+            long maxBytes =
+                (long)maxImageSizeMb *
+                1024L *
+                1024L;
+
+            if (fileInfo.Length > maxBytes)
+            {
+                ShowError(
+                    T(
+                        $"Image is larger than {maxImageSizeMb} MB.",
+                        $"Ảnh lớn hơn {maxImageSizeMb} MB."
+                    )
+                );
+                yield break;
+            }
+
+            imageBytes =
+                File.ReadAllBytes(localPath);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError(
+                "[ChatPageController] Could not read selected image: " +
+                exception
+            );
+
+            ShowError(
+                T(
+                    "Could not read the selected image.",
+                    "Không thể đọc ảnh đã chọn."
+                )
+            );
+            yield break;
+        }
+
+        if (imageBytes == null ||
+            imageBytes.Length == 0)
+        {
+            ShowError(
+                T(
+                    "The selected image is empty.",
+                    "Ảnh đã chọn không có dữ liệu."
+                )
+            );
+            yield break;
+        }
+
+        string extension =
+            GetSafeImageExtension(localPath);
+
+        string storagePath =
+            currentUserId + "/" +
+            conversationId + "/" +
+            Guid.NewGuid().ToString("N") +
+            extension;
+
+        string mimeType =
+            GetImageMimeType(extension);
+
+        bool uploadSuccess = false;
+
+        yield return UploadImageToSupabaseStorage(
+            storagePath,
+            imageBytes,
+            mimeType,
+            success => uploadSuccess = success
+        );
+
+        if (!uploadSuccess)
+            yield break;
+
+        MessageInsertBody body =
+            new MessageInsertBody
+            {
+                conversation_id = conversationId,
+                sender_id = currentUserId,
+                receiver_id = partnerUserId,
+
+                // For image messages, content stores the permanent
+                // object path in the private chat-images bucket.
+                content = storagePath,
+                message_type = "image"
+            };
+
+        bool messageSaved = false;
+
+        yield return SendRequest(
+            "POST",
+            "/rest/v1/chat_messages",
+            JsonUtility.ToJson(body),
+            _ => messageSaved = true,
+            "return=representation"
+        );
+
+        if (!messageSaved)
+        {
+            ShowError(
+                T(
+                    "The image uploaded, but the chat message could not be saved.",
+                    "Ảnh đã tải lên nhưng không thể lưu tin nhắn."
+                )
+            );
+            yield break;
+        }
+
+        yield return LoadMessages(true);
+
+        try
+        {
+            File.Delete(localPath);
+        }
+        catch
+        {
+            // Cache cleanup is best effort only.
+        }
+
+        imageUploadInProgress = false;
+        UpdateAttachmentButtonState();
+    }
+
+    private IEnumerator UploadImageToSupabaseStorage(
+        string storagePath,
+        byte[] imageBytes,
+        string mimeType,
+        Action<bool> onComplete)
+    {
+        string encodedPath =
+            EncodeStoragePath(storagePath);
+
+        string url =
+            supabaseUrl.TrimEnd('/') +
+            "/storage/v1/object/" +
+            UnityWebRequest.EscapeURL(chatImageBucket) +
+            "/" +
+            encodedPath;
+
+        using UnityWebRequest request =
+            new UnityWebRequest(
+                url,
+                UnityWebRequest.kHttpVerbPOST
+            );
+
+        request.uploadHandler =
+            new UploadHandlerRaw(imageBytes);
+
+        request.downloadHandler =
+            new DownloadHandlerBuffer();
+
+        request.SetRequestHeader(
+            "Content-Type",
+            mimeType
+        );
+
+        request.SetRequestHeader(
+            "apikey",
+            supabaseAnonKey
+        );
+
+        request.SetRequestHeader(
+            "Authorization",
+            "Bearer " + accessToken
+        );
+
+        request.SetRequestHeader(
+            "x-upsert",
+            "false"
+        );
+
+        yield return request.SendWebRequest();
+
+        bool success =
+            request.result ==
+            UnityWebRequest.Result.Success;
+
+        if (!success)
+        {
+            Debug.LogError(
+                "[ChatPageController] Image upload failed " +
+                $"({request.responseCode}): " +
+                request.downloadHandler.text
+            );
+
+            ShowError(
+                T(
+                    "Could not upload the image.",
+                    "Không thể tải ảnh lên."
+                )
+            );
+        }
+
+        onComplete?.Invoke(success);
+
+        if (!success)
+        {
+            imageUploadInProgress = false;
+            UpdateAttachmentButtonState();
+        }
+    }
+
+    private IEnumerator LoadChatImageIntoElement(
+        string storagePath,
+        VisualElement imageElement,
+        Label loadingLabel)
+    {
+        if (imageElement == null ||
+            string.IsNullOrWhiteSpace(storagePath))
+        {
+            yield break;
+        }
+
+        if (imageTextureCache.TryGetValue(
+                storagePath,
+                out Texture2D cachedTexture) &&
+            cachedTexture != null)
+        {
+            ApplyChatImageTexture(
+                imageElement,
+                loadingLabel,
+                cachedTexture
+            );
+            yield break;
+        }
+
+        string encodedPath =
+            EncodeStoragePath(storagePath);
+
+        string url =
+            supabaseUrl.TrimEnd('/') +
+            "/storage/v1/object/authenticated/" +
+            UnityWebRequest.EscapeURL(chatImageBucket) +
+            "/" +
+            encodedPath;
+
+        using UnityWebRequest request =
+            UnityWebRequestTexture.GetTexture(
+                url,
+                true
+            );
+
+        request.SetRequestHeader(
+            "apikey",
+            supabaseAnonKey
+        );
+
+        request.SetRequestHeader(
+            "Authorization",
+            "Bearer " + accessToken
+        );
+
+        yield return request.SendWebRequest();
+
+        if (request.result !=
+            UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning(
+                "[ChatPageController] Could not load chat image " +
+                storagePath +
+                ": " +
+                request.error
+            );
+
+            if (loadingLabel != null)
+            {
+                loadingLabel.text =
+                    T(
+                        "Image unavailable",
+                        "Không thể tải ảnh"
+                    );
+
+                loadingLabel.AddToClassList(
+                    "message-image-error"
+                );
+            }
+
+            yield break;
+        }
+
+        Texture2D texture =
+            DownloadHandlerTexture.GetContent(
+                request
+            );
+
+        if (texture == null)
+            yield break;
+
+        imageTextureCache[storagePath] = texture;
+
+        ApplyChatImageTexture(
+            imageElement,
+            loadingLabel,
+            texture
+        );
+    }
+
+    private static void ApplyChatImageTexture(
+        VisualElement imageElement,
+        Label loadingLabel,
+        Texture2D texture)
+    {
+        if (imageElement == null ||
+            texture == null)
+        {
+            return;
+        }
+
+        imageElement.style.backgroundImage =
+            new StyleBackground(texture);
+
+        float aspect =
+            texture.height > 0
+                ? (float)texture.width /
+                  texture.height
+                : 1f;
+
+        const float targetWidth = 230f;
+
+        float targetHeight =
+            Mathf.Clamp(
+                targetWidth /
+                Mathf.Max(aspect, 0.1f),
+                130f,
+                300f
+            );
+
+        imageElement.style.width =
+            targetWidth;
+
+        imageElement.style.height =
+            targetHeight;
+
+        if (loadingLabel != null)
+            loadingLabel.style.display =
+                DisplayStyle.None;
+    }
+
+    private void UpdateAttachmentButtonState()
+    {
+        if (attachmentButton == null)
+            return;
+
+        attachmentButton.SetEnabled(
+            initialized &&
+            !imageUploadInProgress
+        );
+
+        attachmentButton.EnableInClassList(
+            "uploading",
+            imageUploadInProgress
+        );
+
+        attachmentButton.tooltip =
+            imageUploadInProgress
+                ? T(
+                    "Uploading image...",
+                    "Đang tải ảnh..."
+                )
+                : T(
+                    "Send photo",
+                    "Gửi ảnh"
+                );
+    }
+
+    private static string GetSafeImageExtension(
+        string filePath)
+    {
+        string extension =
+            Path.GetExtension(filePath)?
+                .ToLowerInvariant();
+
+        return extension switch
+        {
+            ".png" => ".png",
+            ".webp" => ".webp",
+            ".gif" => ".gif",
+            ".jpeg" => ".jpg",
+            ".jpg" => ".jpg",
+            _ => ".jpg"
+        };
+    }
+
+    private static string GetImageMimeType(
+        string extension)
+    {
+        return extension switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            _ => "image/jpeg"
+        };
+    }
+
+    private static string EncodeStoragePath(
+        string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        string[] segments =
+            path.Split('/');
+
+        for (int i = 0; i < segments.Length; i++)
+        {
+            segments[i] =
+                UnityWebRequest.EscapeURL(
+                    segments[i]
+                );
+        }
+
+        return string.Join("/", segments);
+    }
 
     private void StopAllRunningCoroutines()
     {
@@ -923,6 +1643,10 @@ public class ChatPageController : MonoBehaviour
             signature.Append('|')
                      .Append(message.id)
                      .Append(':')
+                     .Append(message.message_type)
+                     .Append(':')
+                     .Append(message.content)
+                     .Append(':')
                      .Append(message.delivered_at)
                      .Append(':')
                      .Append(message.seen_at);
@@ -944,12 +1668,49 @@ public class ChatPageController : MonoBehaviour
 
     private static string FormatLastSeen(string iso)
     {
-        if (!DateTime.TryParse(iso, out DateTime time)) return "Offline";
-        TimeSpan gap = DateTime.Now - time.ToLocalTime();
-        if (gap.TotalMinutes < 1) return "Active just now";
-        if (gap.TotalMinutes < 60) return "Active " + Mathf.FloorToInt((float)gap.TotalMinutes) + "m ago";
-        if (gap.TotalHours < 24) return "Active " + Mathf.FloorToInt((float)gap.TotalHours) + "h ago";
-        return "Active " + time.ToLocalTime().ToString("dd/MM/yyyy");
+        if (!DateTime.TryParse(iso, out DateTime time))
+            return T("Offline", "Ngoại tuyến");
+
+        TimeSpan gap =
+            DateTime.Now - time.ToLocalTime();
+
+        if (gap.TotalMinutes < 1)
+            return T("Active just now", "Vừa hoạt động");
+
+        if (gap.TotalMinutes < 60)
+        {
+            int minutes =
+                Mathf.FloorToInt(
+                    (float)gap.TotalMinutes);
+
+            return T(
+                $"Active {minutes}m ago",
+                $"Hoạt động {minutes} phút trước"
+            );
+        }
+
+        if (gap.TotalHours < 24)
+        {
+            int hours =
+                Mathf.FloorToInt(
+                    (float)gap.TotalHours);
+
+            return T(
+                $"Active {hours}h ago",
+                $"Hoạt động {hours} giờ trước"
+            );
+        }
+
+        string date =
+            time.ToLocalTime().ToString("dd/MM/yyyy");
+
+        // On the compact mobile chat header, the Vietnamese phrase
+        // "Hoạt động dd/MM/yyyy" + role is too wide. For older activity,
+        // showing the date alone is clearer and keeps the action buttons safe.
+        return T(
+            "Active " + date,
+            date
+        );
     }
 
     private static string GetInitials(string name)

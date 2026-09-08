@@ -32,24 +32,6 @@
                     <ui:VisualElement name="category-row" class="category-row" />
                 </ui:ScrollView>
 
-                <!-- Custom scrollbar giống thiết kế Figma -->
-                <ui:VisualElement name="category-scrollbar"
-                                  class="category-custom-scrollbar">
-
-                    <ui:Button name="category-scroll-left-button"
-                               class="category-scroll-arrow category-scroll-arrow-left" />
-
-                    <ui:VisualElement name="category-scroll-track"
-                                      class="category-scroll-track">
-
-                        <ui:VisualElement name="category-scroll-thumb"
-                                          class="category-scroll-thumb" />
-                    </ui:VisualElement>
-
-                    <ui:Button name="category-scroll-right-button"
-                               class="category-scroll-arrow category-scroll-arrow-right" />
-                </ui:VisualElement>
-
             </ui:VisualElement>
 
         </ui:VisualElement>

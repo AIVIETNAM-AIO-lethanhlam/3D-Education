@@ -34,6 +34,9 @@ public class MainHomePageController : MonoBehaviour
     private Label emptyStateDescription;
     private Label seeAllRecentText;
 
+    private Label headerWelcomeLabel;
+    private TextField courseSearchField;
+
     private VisualElement recentCourseList;
     private VisualElement recentEmptyState;
 
@@ -75,12 +78,16 @@ public class MainHomePageController : MonoBehaviour
         InitializeBottomNavigation();
         RegisterPageEvents();
 
+        AppLanguageManager.LanguageChanged += OnLanguageChanged;
+        ApplyCurrentLanguage();
+
         SelectCategory("All", categoryAllButton, reload: false);
         StartCoroutine(LoadHomeClassData());
     }
 
     private void OnDisable()
     {
+        AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         UnregisterPageEvents();
         DisposeHeader();
         DisposeBottomNavigation();
@@ -141,6 +148,12 @@ public class MainHomePageController : MonoBehaviour
 
         seeAllRecentText =
             seeAllRecentButton?.Q<Label>(className: "see-all-text");
+
+        headerWelcomeLabel =
+            root.Q<Label>("header-welcome-label");
+
+        courseSearchField =
+            root.Q<TextField>("course-search-field");
     }
 
     private void InitializeRole()
@@ -650,17 +663,29 @@ public class MainHomePageController : MonoBehaviour
 
         if (activeClassCountLabel != null)
         {
-            activeClassCountLabel.text =
-                total == 1
-                    ? "1 Active Class"
-                    : $"{total} Active Classes";
+            if (AppLanguageManager.IsVietnamese)
+            {
+                activeClassCountLabel.text =
+                    total <= 0
+                        ? "Chưa có lớp hoạt động"
+                        : $"{total} lớp hoạt động";
+            }
+            else
+            {
+                activeClassCountLabel.text =
+                    total == 1
+                        ? "1 Active Class"
+                        : $"{total} Active Classes";
+            }
         }
 
         if (publicClassCountLabel != null)
-            publicClassCountLabel.text = $"{publicCount} Public";
+            publicClassCountLabel.text =
+                T($"{publicCount} Public", $"{publicCount} Công khai");
 
         if (privateClassCountLabel != null)
-            privateClassCountLabel.text = $"{privateCount} Private";
+            privateClassCountLabel.text =
+                T($"{privateCount} Private", $"{privateCount} Riêng tư");
     }
 
     private void RenderRecentClasses()
@@ -693,13 +718,18 @@ public class MainHomePageController : MonoBehaviour
         if (!hasClasses)
         {
             if (emptyStateTitle != null)
-                emptyStateTitle.text = "No classes yet";
+                emptyStateTitle.text =
+                    T("No classes yet", "Chưa có lớp học");
 
             if (emptyStateDescription != null)
             {
                 emptyStateDescription.text = IsTeacher()
-                    ? "You have not created or updated any classes in this category yet."
-                    : "You have not enrolled in or viewed any classes in this category yet.";
+                    ? T(
+                        "You have not created or updated any classes in this category yet.",
+                        "Bạn chưa tạo hoặc cập nhật lớp học nào trong danh mục này.")
+                    : T(
+                        "You have not enrolled in or viewed any classes in this category yet.",
+                        "Bạn chưa đăng ký hoặc xem lớp học nào trong danh mục này.");
             }
         }
 
@@ -711,7 +741,9 @@ public class MainHomePageController : MonoBehaviour
 
         if (seeAllRecentText != null)
             seeAllRecentText.text =
-                showAllRecentClasses ? "Show less" : "See all";
+                showAllRecentClasses
+                    ? T("Show less", "Thu gọn")
+                    : T("See all", "Xem tất cả");
 
         if (recentFilterLabel != null)
         {
@@ -725,7 +757,11 @@ public class MainHomePageController : MonoBehaviour
                 isAll ? DisplayStyle.None : DisplayStyle.Flex;
 
             recentFilterLabel.text =
-                isAll ? string.Empty : $"Filtered: {selectedCategoryName}";
+                isAll
+                    ? string.Empty
+                    : T(
+                        $"Filtered: {LocalizeCategoryName(selectedCategoryName)}",
+                        $"Đang lọc: {LocalizeCategoryName(selectedCategoryName)}");
         }
     }
 
@@ -751,7 +787,7 @@ public class MainHomePageController : MonoBehaviour
 
         string displayName =
             string.IsNullOrWhiteSpace(item.ClassName)
-                ? "Untitled Class"
+                ? T("Untitled Class", "Lớp chưa đặt tên")
                 : item.ClassName.Trim();
 
         if (!string.IsNullOrWhiteSpace(item.ClassCode))
@@ -768,8 +804,8 @@ public class MainHomePageController : MonoBehaviour
 
         Label category = new(
             string.IsNullOrWhiteSpace(item.CategoryName)
-                ? "Others"
-                : item.CategoryName
+                ? LocalizeCategoryName("Others")
+                : LocalizeCategoryName(item.CategoryName)
         );
         category.AddToClassList("recent-class-category");
 
@@ -781,8 +817,8 @@ public class MainHomePageController : MonoBehaviour
                 item.Visibility,
                 "private",
                 StringComparison.OrdinalIgnoreCase)
-                ? "Private"
-                : "Public"
+                ? T("Private", "Riêng tư")
+                : T("Public", "Công khai")
         );
         visibility.AddToClassList("recent-class-visibility");
 
@@ -936,15 +972,15 @@ public class MainHomePageController : MonoBehaviour
         if (recentSectionTitle != null)
         {
             recentSectionTitle.text = IsTeacher()
-                ? "Recently Updated"
-                : "Recently Viewed";
+                ? T("Recently Updated", "Cập nhật gần đây")
+                : T("Recently Viewed", "Đã xem gần đây");
         }
 
         if (emptyStateActionButton != null)
         {
             emptyStateActionButton.text = IsTeacher()
-                ? "Create Class"
-                : "Enroll Class";
+                ? T("Create Class", "Tạo lớp")
+                : T("Enroll Class", "Đăng ký lớp");
         }
     }
 
@@ -953,19 +989,23 @@ public class MainHomePageController : MonoBehaviour
         allClasses.Clear();
 
         if (activeClassCountLabel != null)
-            activeClassCountLabel.text = "Loading classes...";
+            activeClassCountLabel.text =
+                T("Loading classes...", "Đang tải lớp học...");
 
         if (publicClassCountLabel != null)
-            publicClassCountLabel.text = "0 Public";
+            publicClassCountLabel.text =
+                T("0 Public", "0 Công khai");
 
         if (privateClassCountLabel != null)
-            privateClassCountLabel.text = "0 Private";
+            privateClassCountLabel.text =
+                T("0 Private", "0 Riêng tư");
 
         if (recentCourseList != null)
         {
             recentCourseList.Clear();
 
-            Label loading = new("Loading recent classes...");
+            Label loading = new(
+                T("Loading recent classes...", "Đang tải lớp gần đây..."));
             loading.AddToClassList("recent-loading-label");
             recentCourseList.Add(loading);
         }
@@ -984,14 +1024,17 @@ public class MainHomePageController : MonoBehaviour
         );
 
         if (activeClassCountLabel != null)
-            activeClassCountLabel.text = "0 Active Classes";
+            activeClassCountLabel.text =
+                T("0 Active Classes", "Chưa có lớp hoạt động");
 
         if (recentCourseList != null)
         {
             recentCourseList.Clear();
 
             Label message = new(
-                "Unable to load classes. Please try again."
+                T(
+                    "Unable to load classes. Please try again.",
+                    "Không thể tải lớp học. Vui lòng thử lại.")
             );
             message.AddToClassList("recent-empty-label");
             recentCourseList.Add(message);
@@ -1004,13 +1047,13 @@ public class MainHomePageController : MonoBehaviour
     private string ResolveCategoryName(string categoryId)
     {
         if (string.IsNullOrWhiteSpace(categoryId))
-            return "Others";
+            return LocalizeCategoryName("Others");
 
         return categoryNamesById.TryGetValue(
             categoryId,
             out string categoryName)
             ? categoryName
-            : "Others";
+            : LocalizeCategoryName("Others");
     }
 
     private static string NormalizeVisibility(
@@ -1039,28 +1082,269 @@ public class MainHomePageController : MonoBehaviour
             : DateTime.MinValue;
     }
 
-    private static string GetRelativeInteractionText(
+    private string GetRelativeInteractionText(
         DateTime timestamp)
     {
         if (timestamp == DateTime.MinValue)
-            return "No activity";
+            return T("No activity", "Chưa có hoạt động");
 
         TimeSpan difference =
             DateTime.UtcNow - timestamp.ToUniversalTime();
 
         if (difference.TotalMinutes < 1)
-            return "Just now";
+            return T("Just now", "Vừa xong");
 
         if (difference.TotalHours < 1)
-            return $"{Mathf.Max(1, (int)difference.TotalMinutes)}m ago";
+            return AppLanguageManager.IsVietnamese
+                ? $"{Mathf.Max(1, (int)difference.TotalMinutes)} phút trước"
+                : $"{Mathf.Max(1, (int)difference.TotalMinutes)}m ago";
 
         if (difference.TotalDays < 1)
-            return $"{Mathf.Max(1, (int)difference.TotalHours)}h ago";
+            return AppLanguageManager.IsVietnamese
+                ? $"{Mathf.Max(1, (int)difference.TotalHours)} giờ trước"
+                : $"{Mathf.Max(1, (int)difference.TotalHours)}h ago";
 
         if (difference.TotalDays < 7)
-            return $"{Mathf.Max(1, (int)difference.TotalDays)}d ago";
+            return AppLanguageManager.IsVietnamese
+                ? $"{Mathf.Max(1, (int)difference.TotalDays)} ngày trước"
+                : $"{Mathf.Max(1, (int)difference.TotalDays)}d ago";
 
         return timestamp.ToLocalTime().ToString("dd/MM/yyyy");
+    }
+
+    private void OnLanguageChanged(string language)
+    {
+        ApplyCurrentLanguage();
+
+        UpdateRecentSectionForRole();
+
+        if (!isLoading)
+        {
+            UpdateBannerCounts();
+            RenderRecentClasses();
+        }
+    }
+
+    private void ApplyCurrentLanguage()
+    {
+        if (root == null)
+            return;
+
+        bool vi = AppLanguageManager.IsVietnamese;
+
+        LocalizeElementTree(root);
+
+        // Home header is configured by GeneralHeaderController after the UXML
+        // template is instantiated, so localize its welcome label explicitly.
+        if (headerWelcomeLabel != null)
+        {
+            if (vi)
+            {
+                headerWelcomeLabel.text =
+                    IsTeacher()
+                        ? "Xin chào, Giáo viên!"
+                        : "Xin chào, Học sinh!";
+            }
+            else
+            {
+                headerWelcomeLabel.text =
+                    IsTeacher()
+                        ? "Hello, Teacher!"
+                        : "Hello, Student!";
+            }
+        }
+
+        // TextField placeholder is not a normal Label, so it must be updated
+        // separately from LocalizeElementTree().
+        if (courseSearchField != null)
+        {
+            courseSearchField.textEdition.placeholder =
+                vi
+                    ? "Tìm kiếm khóa học, môn học..."
+                    : "Search courses, subjects...";
+        }
+
+        UpdateRecentSectionForRole();
+
+        // These category buttons contain their own child Label. Do NOT assign
+        // Button.text, otherwise UI Toolkit creates an additional text element
+        // above the existing category label.
+        SetCategoryButtonLabel(
+            categoryAllButton,
+            "All");
+
+        SetCategoryButtonLabel(
+            categoryPhysicsButton,
+            "Physics");
+
+        SetCategoryButtonLabel(
+            categoryChemistryButton,
+            "Chemistry");
+
+        SetCategoryButtonLabel(
+            categoryMathButton,
+            "Math");
+
+        SetCategoryButtonLabel(
+            categoryProgrammingButton,
+            "Programming");
+
+        // Keep dynamic data text synchronized with the selected language.
+        if (!isLoading)
+        {
+            UpdateBannerCounts();
+            RenderRecentClasses();
+        }
+    }
+
+    private static void SetCategoryButtonLabel(
+        Button button,
+        string categoryName)
+    {
+        if (button == null)
+            return;
+
+        // Clear any text that may have been injected into Button.text by an
+        // older localization version.
+        button.text = string.Empty;
+
+        Label label =
+            button.Q<Label>(className: "category-name");
+
+        if (label != null)
+            label.text = LocalizeCategoryName(categoryName);
+    }
+
+    private void LocalizeElementTree(VisualElement element)
+    {
+        if (element == null)
+            return;
+
+        if (element is Label label)
+            label.text = TranslateKnownUiText(label.text);
+
+        if (element is Button button &&
+            !string.IsNullOrWhiteSpace(button.text))
+        {
+            button.text = TranslateKnownUiText(button.text);
+        }
+
+        foreach (VisualElement child in element.Children())
+            LocalizeElementTree(child);
+    }
+
+    private string TranslateKnownUiText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text;
+
+        bool vi = AppLanguageManager.IsVietnamese;
+
+        switch (text.Trim())
+        {
+            case "Search courses, subjects...":
+            case "Tìm kiếm khóa học, môn học...":
+                return vi
+                    ? "Tìm kiếm khóa học, môn học..."
+                    : "Search courses, subjects...";
+
+            case "My Classes":
+            case "Lớp học của tôi":
+            case "Lớp của tôi":
+                return vi ? "Lớp của tôi" : "My Classes";
+
+            case "Categories":
+            case "Danh mục":
+                return vi ? "Danh mục" : "Categories";
+
+            case "See all":
+            case "Xem tất cả":
+                return vi ? "Xem tất cả" : "See all";
+
+            case "Recently Viewed":
+            case "Đã xem gần đây":
+                return vi ? "Đã xem gần đây" : "Recently Viewed";
+
+            case "Recently Updated":
+            case "Cập nhật gần đây":
+                return vi ? "Cập nhật gần đây" : "Recently Updated";
+
+            case "No classes yet":
+            case "Chưa có lớp học":
+                return vi ? "Chưa có lớp học" : "No classes yet";
+
+            case "Enroll Class":
+            case "Đăng ký lớp":
+                return vi ? "Đăng ký lớp" : "Enroll Class";
+
+            case "Create Class":
+            case "Tạo lớp":
+                return vi ? "Tạo lớp" : "Create Class";
+
+            case "Home":
+            case "Trang chủ":
+                return vi ? "Trang chủ" : "Home";
+
+            case "My":
+            case "Của tôi":
+                return vi ? "Của tôi" : "My";
+
+            case "Settings":
+            case "Cài đặt":
+                return vi ? "Cài đặt" : "Settings";
+
+            case "Hello, Student":
+            case "Hello, Student!":
+            case "Xin chào, Học sinh":
+            case "Xin chào, Học sinh!":
+                return vi ? "Xin chào, Học sinh!" : "Hello, Student!";
+
+            case "Hello, Teacher":
+            case "Hello, Teacher!":
+            case "Xin chào, Giáo viên":
+            case "Xin chào, Giáo viên!":
+                return vi ? "Xin chào, Giáo viên!" : "Hello, Teacher!";
+        }
+
+        return text;
+    }
+
+    private static string T(string english, string vietnamese)
+    {
+        return AppLanguageManager.IsVietnamese
+            ? vietnamese
+            : english;
+    }
+
+    private static string LocalizeCategoryName(string categoryName)
+    {
+        if (string.IsNullOrWhiteSpace(categoryName))
+            return AppLanguageManager.IsVietnamese ? "Khác" : "Others";
+
+        string normalized = categoryName.Trim();
+
+        if (!AppLanguageManager.IsVietnamese)
+            return normalized;
+
+        switch (normalized.ToLowerInvariant())
+        {
+            case "all": return "Tất cả";
+            case "physics": return "Vật lý";
+            case "chemistry": return "Hóa học";
+            case "math":
+            case "mathematics": return "Toán";
+            case "programming": return "Lập trình";
+            case "technology": return "Công nghệ";
+            case "computer science": return "Khoa học máy tính";
+            case "biology": return "Sinh học";
+            case "english": return "Tiếng Anh";
+            case "foreign language": return "Ngoại ngữ";
+            case "history": return "Lịch sử";
+            case "geography": return "Địa lý";
+            case "university": return "Đại học";
+            case "others": return "Khác";
+            default: return normalized;
+        }
     }
 
     private void OpenClass(HomeClassItem item)

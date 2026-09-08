@@ -16,6 +16,9 @@ public class MyClassesPageController : MonoBehaviour
     private VisualElement studentQuizzesSection;
     private VisualElement studentQuizzesContainer;
     private ScrollView myClassesScrollView;
+    private Label studentEmptyTitleLabel;
+    private Label studentEmptyDescriptionLabel;
+    private Label studentQuizzesTitleLabel;
 
     private GeneralHeaderController headerController;
     private BottomNavigationController bottomNavigationController;
@@ -47,9 +50,12 @@ public class MyClassesPageController : MonoBehaviour
         }
 
         QueryElements();
+        AppLanguageManager.LanguageChanged += OnLanguageChanged;
+
         InitializeRole();
         InitializeHeader();
         InitializeBottomNavigation();
+        ApplyCurrentLanguage();
         UpdateRoleLayout();
 
         if (IsTeacher())
@@ -64,6 +70,7 @@ public class MyClassesPageController : MonoBehaviour
 
     private void OnDisable()
     {
+        AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         DisposeHeader();
         DisposeBottomNavigation();
     }
@@ -81,6 +88,9 @@ public class MyClassesPageController : MonoBehaviour
         studentQuizzesContainer =
             root.Q<VisualElement>("student-quizzes-container");
         myClassesScrollView = root.Q<ScrollView>("my-classes-scroll-view");
+        studentEmptyTitleLabel = root.Q<Label>("student-empty-title");
+        studentEmptyDescriptionLabel = root.Q<Label>("student-empty-description");
+        studentQuizzesTitleLabel = root.Q<Label>("student-quizzes-title");
 
         if (myClassesScrollView != null)
         {
@@ -104,9 +114,13 @@ public class MyClassesPageController : MonoBehaviour
         headerController = new GeneralHeaderController(root);
 
         headerController.ConfigurePageWithTextAction(
-            title: "My Classes",
-            subtitle: IsTeacher() ? "Loading classes..." : "0 active courses",
-            actionText: IsTeacher() ? "Create Class" : "Enroll New Class",
+            title: T("My Classes", "Lớp học của tôi"),
+            subtitle: IsTeacher()
+                ? T("Loading classes...", "Đang tải lớp học...")
+                : T("0 active courses", "Chưa có lớp đang học"),
+            actionText: IsTeacher()
+                ? T("Create Class", "Tạo lớp")
+                : T("Enroll New Class", "Đăng ký lớp mới"),
             actionPrefix: "+",
             actionStyleClass: IsTeacher()
                 ? "header-action-create-class"
@@ -144,7 +158,7 @@ public class MyClassesPageController : MonoBehaviour
             return;
         }
 
-        ShowTeacherMessage("Loading classes...");
+        ShowTeacherMessage(T("Loading classes...", "Đang tải lớp học..."));
 
         StartCoroutine(
             SupabaseClassService.GetTeacherClasses(
@@ -161,7 +175,7 @@ public class MyClassesPageController : MonoBehaviour
                     );
 
                     ShowTeacherMessage(
-                        "Unable to load your classes."
+                        T("Unable to load your classes.", "Không thể tải danh sách lớp của bạn.")
                     );
 
                     UpdateHeaderCount(0);
@@ -182,7 +196,7 @@ public class MyClassesPageController : MonoBehaviour
 
         if (loadedClassCount == 0)
         {
-            ShowTeacherMessage("You have not created any classes yet.");
+            ShowTeacherMessage(T("You have not created any classes yet.", "Bạn chưa tạo lớp học nào."));
             return;
         }
 
@@ -242,7 +256,7 @@ public class MyClassesPageController : MonoBehaviour
         metaRow.Add(visibilityDot);
 
         Label visibilityLabel = new Label(
-            isPublic ? "Public" : "Private");
+            isPublic ? T("Public", "Công khai") : T("Private", "Riêng tư"));
         visibilityLabel.AddToClassList("status-label");
         visibilityLabel.AddToClassList(
             isPublic ? "status-public" : "status-private");
@@ -250,7 +264,7 @@ public class MyClassesPageController : MonoBehaviour
 
         info.Add(metaRow);
 
-        Label title = new Label(data.class_name ?? "Untitled Class");
+        Label title = new Label(data.class_name ?? T("Untitled Class", "Lớp chưa đặt tên"));
         title.AddToClassList("course-title");
         info.Add(title);
         header.Add(info);
@@ -270,7 +284,7 @@ public class MyClassesPageController : MonoBehaviour
         VisualElement deleteIcon = new VisualElement();
         deleteIcon.AddToClassList("delete-icon");
         deleteButton.Add(deleteIcon);
-        Label deleteLabel = new Label("Delete");
+        Label deleteLabel = new Label(T("Delete", "Xóa"));
         deleteLabel.AddToClassList("delete-label");
         deleteButton.Add(deleteLabel);
         actions.Add(deleteButton);
@@ -280,9 +294,9 @@ public class MyClassesPageController : MonoBehaviour
 
         VisualElement stats = new VisualElement();
         stats.AddToClassList("teacher-stats-row");
-        stats.Add(CreateStatBox("icon-stat-students", "0", "Students"));
-        stats.Add(CreateStatBox("icon-stat-modules", "0", "Active Modules"));
-        stats.Add(CreateStatBox("icon-stat-score", "0%", "Avg Score"));
+        stats.Add(CreateStatBox("icon-stat-students", "0", T("Students", "Học sinh")));
+        stats.Add(CreateStatBox("icon-stat-modules", "0", T("Active Modules", "Học phần")));
+        stats.Add(CreateStatBox("icon-stat-score", "0%", T("Avg Score", "Điểm TB")));
         card.Add(stats);
 
         VisualElement divider = new VisualElement();
@@ -296,7 +310,7 @@ public class MyClassesPageController : MonoBehaviour
         manageIcon.AddToClassList("manage-icon");
         manageIcon.AddToClassList("manage-image-icon");
         manageButton.Add(manageIcon);
-        Label manageLabel = new Label("Manage");
+        Label manageLabel = new Label(T("Manage", "Quản lý"));
         manageLabel.AddToClassList("manage-label");
         manageButton.Add(manageLabel);
         card.Add(manageButton);
@@ -388,9 +402,20 @@ public class MyClassesPageController : MonoBehaviour
     private void UpdateHeaderCount(int count)
     {
         loadedClassCount = count;
-        string subtitle = count == 1
-            ? "1 class managed"
-            : $"{count} classes managed";
+        string subtitle;
+
+        if (AppLanguageManager.IsVietnamese)
+        {
+            subtitle = count == 0
+                ? "Chưa có lớp được quản lý"
+                : $"{count} lớp đang quản lý";
+        }
+        else
+        {
+            subtitle = count == 1
+                ? "1 class managed"
+                : $"{count} classes managed";
+        }
 
         Label subtitleLabel =
             root?.Q<Label>("header-subtitle-label") ??
@@ -426,7 +451,7 @@ public class MyClassesPageController : MonoBehaviour
             studentClassesContainer.Clear();
 
             Label loadingLabel =
-                new Label("Loading your classes...");
+                new Label(T("Loading your classes...", "Đang tải lớp học của bạn..."));
 
             loadingLabel.AddToClassList(
                 "classes-state-message"
@@ -544,7 +569,7 @@ public class MyClassesPageController : MonoBehaviour
             if (classRecord == null)
                 continue;
 
-            string teacherName = "Unknown Teacher";
+            string teacherName = T("Unknown Teacher", "Giảng viên chưa xác định");
             string teacherAvatarUrl = string.Empty;
 
             if (Guid.TryParse(classRecord.teacher_id, out _))
@@ -662,7 +687,7 @@ public class MyClassesPageController : MonoBehaviour
             );
 
             onLoaded?.Invoke(
-                "Unknown Teacher",
+                T("Unknown Teacher", "Giảng viên chưa xác định"),
                 string.Empty
             );
 
@@ -676,7 +701,7 @@ public class MyClassesPageController : MonoBehaviour
             || profiles.Length == 0)
         {
             onLoaded?.Invoke(
-                "Unknown Teacher",
+                T("Unknown Teacher", "Giảng viên chưa xác định"),
                 string.Empty
             );
 
@@ -687,7 +712,7 @@ public class MyClassesPageController : MonoBehaviour
 
         onLoaded?.Invoke(
             string.IsNullOrWhiteSpace(profile.full_name)
-                ? "Unknown Teacher"
+                ? T("Unknown Teacher", "Giảng viên chưa xác định")
                 : profile.full_name.Trim(),
             profile.avatar_url ?? string.Empty
         );
@@ -809,7 +834,7 @@ public class MyClassesPageController : MonoBehaviour
 
         Label title = new Label(
             string.IsNullOrWhiteSpace(data.class_name)
-                ? "Untitled Class"
+                ? T("Untitled Class", "Lớp chưa đặt tên")
                 : data.class_name);
         title.AddToClassList("course-title");
         info.Add(title);
@@ -823,7 +848,7 @@ public class MyClassesPageController : MonoBehaviour
 
         Label teacherName = new Label(
             string.IsNullOrWhiteSpace(data.teacher_name)
-                ? "Unknown Teacher"
+                ? T("Unknown Teacher", "Giảng viên chưa xác định")
                 : data.teacher_name);
         teacherName.AddToClassList("teacher-name");
         teacherRow.Add(teacherName);
@@ -840,7 +865,7 @@ public class MyClassesPageController : MonoBehaviour
         progressHeader.AddToClassList(
             "progress-header-row");
 
-        Label progressTitle = new Label("Progress");
+        Label progressTitle = new Label(T("Progress", "Tiến độ"));
         progressTitle.AddToClassList("progress-title");
         progressHeader.Add(progressTitle);
 
@@ -892,7 +917,7 @@ public class MyClassesPageController : MonoBehaviour
         continueButton.Add(bookIcon);
 
         Label continueLabel =
-            new Label("Continue Learning");
+            new Label(T("Continue Learning", "Tiếp tục học"));
         continueLabel.AddToClassList("continue-label");
         continueButton.Add(continueLabel);
         actions.Add(continueButton);
@@ -905,7 +930,7 @@ public class MyClassesPageController : MonoBehaviour
         unenrollIcon.AddToClassList("unenroll-icon");
         unenrollButton.Add(unenrollIcon);
 
-        Label unenrollLabel = new Label("Unenroll");
+        Label unenrollLabel = new Label(T("Unenroll", "Rời lớp"));
         unenrollLabel.AddToClassList("unenroll-label");
         unenrollButton.Add(unenrollLabel);
         actions.Add(unenrollButton);
@@ -995,7 +1020,7 @@ public class MyClassesPageController : MonoBehaviour
             Label title = new Label(
                 string.IsNullOrWhiteSpace(
                     quiz.quiz_title)
-                    ? "Quiz"
+                    ? T("Quiz", "Bài kiểm tra")
                     : quiz.quiz_title);
             title.AddToClassList("quiz-title");
             info.Add(title);
@@ -1004,7 +1029,7 @@ public class MyClassesPageController : MonoBehaviour
                 string.IsNullOrWhiteSpace(
                     quiz.closes_at)
                     ? quiz.class_name
-                    : $"Due: {quiz.closes_at}";
+                    : T($"Due: {quiz.closes_at}", $"Hạn: {quiz.closes_at}");
 
             Label subtitle =
                 new Label(subtitleText);
@@ -1013,7 +1038,7 @@ public class MyClassesPageController : MonoBehaviour
             info.Add(subtitle);
             card.Add(info);
 
-            Label badge = new Label("Open");
+            Label badge = new Label(T("Open", "Đang mở"));
             badge.AddToClassList(
                 "quiz-open-badge");
             card.Add(badge);
@@ -1099,9 +1124,20 @@ public class MyClassesPageController : MonoBehaviour
 
     private void UpdateStudentHeaderCount(int count)
     {
-        string subtitle = count == 1
-            ? "1 active course"
-            : $"{count} active courses";
+        string subtitle;
+
+        if (AppLanguageManager.IsVietnamese)
+        {
+            subtitle = count == 0
+                ? "Chưa có lớp đang học"
+                : $"{count} lớp đang học";
+        }
+        else
+        {
+            subtitle = count == 1
+                ? "1 active course"
+                : $"{count} active courses";
+        }
 
         if (headerController != null)
         {
@@ -1302,6 +1338,72 @@ public class MyClassesPageController : MonoBehaviour
     {
         public string full_name;
         public string avatar_url;
+    }
+
+    private void OnLanguageChanged(string language)
+    {
+        ApplyCurrentLanguage();
+
+        // Các card được tạo động, vì vậy render lại dữ liệu hiện tại
+        // để toàn bộ text động dùng đúng ngôn ngữ mới.
+        if (IsTeacher())
+            LoadTeacherClasses();
+        else
+            LoadStudentClasses();
+    }
+
+    private void ApplyCurrentLanguage()
+    {
+        if (studentEmptyTitleLabel != null)
+        {
+            studentEmptyTitleLabel.text =
+                T("No classes enrolled yet", "Bạn chưa tham gia lớp học nào");
+        }
+
+        if (studentEmptyDescriptionLabel != null)
+        {
+            studentEmptyDescriptionLabel.text =
+                T(
+                    "You haven't enrolled in any classes yet. Use the Enroll New Class button above to join your first class.",
+                    "Bạn chưa đăng ký lớp học nào. Nhấn Đăng ký lớp mới ở phía trên để tham gia lớp đầu tiên."
+                );
+        }
+
+        if (studentQuizzesTitleLabel != null)
+        {
+            studentQuizzesTitleLabel.text =
+                T("Active Quizzes", "Bài kiểm tra đang mở");
+        }
+
+        // Header đã tồn tại thì cấu hình lại text nhưng giữ nguyên event/action.
+        if (headerController != null)
+        {
+            headerController.ConfigurePageWithTextAction(
+                title: T("My Classes", "Lớp học của tôi"),
+                subtitle: IsTeacher()
+                    ? T("Loading classes...", "Đang tải lớp học...")
+                    : T("0 active courses", "Chưa có lớp đang học"),
+                actionText: IsTeacher()
+                    ? T("Create Class", "Tạo lớp")
+                    : T("Enroll New Class", "Đăng ký lớp mới"),
+                actionPrefix: "+",
+                actionStyleClass: IsTeacher()
+                    ? "header-action-create-class"
+                    : "header-action-enroll-class",
+                showBackButton: true
+            );
+
+            headerController.SetCustomClass("my-classes-header");
+            headerController.SetCompact(false);
+            headerController.SetBottomBorderVisible(true);
+        }
+    }
+
+    private static string T(string english, string vietnamese)
+    {
+        return AppLanguageManager.IsVietnamese
+            ? vietnamese
+            : english;
     }
 
     private static void SetVisible(VisualElement element, bool visible)

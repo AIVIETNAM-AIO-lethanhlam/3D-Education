@@ -1560,3 +1560,33 @@
     -unity-text-align: middle-center;
 }
 
+
+
+/* =========================================================
+   LOCALIZATION SAFETY (EN / VI)
+   ========================================================= */
+.classes-state-title,
+.classes-state-description,
+.section-title,
+.stat-caption {
+    white-space: normal;
+}
+
+.continue-button {
+    min-width: 0;
+    flex-grow: 1;
+}
+
+.continue-label {
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.unenroll-button {
+    min-width: 88px;
+    width: auto;
+}
+
+.unenroll-label {
+    white-space: nowrap;
+}

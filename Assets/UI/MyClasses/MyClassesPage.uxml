@@ -233,10 +233,12 @@
                             class="classes-state-icon"/>
 
                         <ui:Label
+                            name="student-empty-title"
                             text="No classes enrolled yet"
                             class="classes-state-title"/>
 
                         <ui:Label
+                            name="student-empty-description"
                             text="You haven't enrolled in any classes yet. Use the Enroll New Class button above to join your first class."
                             class="classes-state-description"/>
                     </ui:VisualElement>
@@ -252,6 +254,7 @@
                     class="student-quizzes-section">
 
                     <ui:Label
+                        name="student-quizzes-title"
                         text="Active Quizzes"
                         class="section-title"/>
 

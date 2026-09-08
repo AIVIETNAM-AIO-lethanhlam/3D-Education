@@ -14,7 +14,7 @@
    ========================================================= */
 
 .general-header-page.enroll-class-header {
-    padding-top: 40px;
+    padding-top: 52px;
     padding-right: 20px;
     padding-bottom: 12px;
     padding-left: 20px;
@@ -166,8 +166,8 @@
 
 .category-section {
     width: 100%;
-    height: 60px;
-    margin-top: 4px;
+    height: 48px;
+    margin-top: 10px;
     flex-grow: 0;
     flex-shrink: 0;
     flex-direction: column;
@@ -178,6 +178,7 @@
     height: 40px;
     flex-grow: 0;
     flex-shrink: 0;
+    margin-bottom: 8px;
 }
 
 .category-scroll .unity-scroll-view__content-container {
@@ -190,6 +191,13 @@
     flex-direction: row;
     align-items: center;
     padding-right: 8px;
+}
+
+
+/* Custom horizontal scrollbar removed: keep native scroller hidden and
+   allow touch/drag scrolling through the category ScrollView itself. */
+.category-custom-scrollbar {
+    display: none;
 }
 
 /* =========================================================
@@ -772,4 +780,30 @@
 .enrolling-button:disabled .unity-button__text {
     color: rgb(255, 255, 255);
     opacity: 1;
+}
+
+
+/* =========================================================
+   LOCALIZATION SAFETY (EN / VI)
+   ========================================================= */
+.enroll-class-header .header-page-title-label,
+.enroll-class-header .header-page-subtitle-label,
+.database-empty-title,
+.database-empty-description,
+.error-title,
+.error-description,
+.loading-title,
+.loading-description {
+    white-space: normal;
+}
+
+.meta-label {
+    white-space: normal;
+}
+
+.enroll-button {
+    width: auto;
+    min-width: 78px;
+    padding-right: 12px;
+    padding-left: 12px;
 }
