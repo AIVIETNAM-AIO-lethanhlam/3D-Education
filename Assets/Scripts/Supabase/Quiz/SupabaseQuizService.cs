@@ -49,6 +49,28 @@ public class SupabaseQuizService : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// Creates a quiz and stores its deadline atomically in the Edge Function.
+    /// closesAtUtcIso must be an ISO-8601 UTC value.
+    /// </summary>
+    public IEnumerator CallParseQuizFunctionDetailed(
+        string lessonId,
+        string quizTitle,
+        string localPdfPath,
+        string closesAtUtcIso,
+        Action<ParseQuizPdfResponse> onSuccess,
+        Action<string> onError)
+    {
+        yield return ParseLocalQuizPdf(
+            lessonId,
+            quizTitle,
+            localPdfPath,
+            closesAtUtcIso,
+            onSuccess,
+            onError
+        );
+    }
+
     public IEnumerator CallParseQuizFunction(
         string lessonId,
         string teacherId,
@@ -99,6 +121,26 @@ public class SupabaseQuizService : MonoBehaviour
         Action<ParseQuizPdfResponse> onSuccess,
         Action<string> onError)
     {
+        yield return ParseLocalQuizPdf(
+            lessonId,
+            quizTitle,
+            localPdfPath,
+            null,
+            onSuccess,
+            onError
+        );
+    }
+
+    public IEnumerator ParseLocalQuizPdf(
+        string lessonId,
+        string quizTitle,
+        string localPdfPath,
+        string closesAtUtcIso,
+        Action<ParseQuizPdfResponse> onSuccess,
+        Action<string> onError)
+    {
+        localPdfPath = NormalizeLocalFilePath(localPdfPath);
+
         if (!SupabaseConfig.TryValidate(out string configError))
         {
             onError?.Invoke(configError);
@@ -200,6 +242,23 @@ public class SupabaseQuizService : MonoBehaviour
                     lessonId.Trim()
                 )
             );
+        }
+
+        if (!string.IsNullOrWhiteSpace(closesAtUtcIso))
+        {
+            if (!DateTimeOffset.TryParse(closesAtUtcIso, out DateTimeOffset deadline))
+            {
+                onError?.Invoke("Deadline của quiz không đúng định dạng ISO-8601.");
+                yield break;
+            }
+
+            if (deadline <= DateTimeOffset.UtcNow)
+            {
+                onError?.Invoke("Deadline của quiz phải ở trong tương lai.");
+                yield break;
+            }
+
+            form.Add(new MultipartFormDataSection("closes_at", deadline.UtcDateTime.ToString("O")));
         }
 
         Debug.Log(
@@ -359,6 +418,101 @@ public class SupabaseQuizService : MonoBehaviour
     /// Legacy-compatible loader. anonKey is ignored now.
     /// Authentication uses PublishableKey + current user access token.
     /// </summary>
+    public IEnumerator UpdateQuizDeadline(
+        string quizId,
+        string closesAtUtcIso,
+        Action<string> onSuccess,
+        Action<string> onError)
+    {
+        if (!SupabaseConfig.TryValidate(out string configError))
+        {
+            onError?.Invoke(configError);
+            yield break;
+        }
+
+        if (!SupabaseSession.IsLoggedIn ||
+            string.IsNullOrWhiteSpace(SupabaseSession.AccessToken))
+        {
+            onError?.Invoke("Không có phiên đăng nhập Supabase hợp lệ.");
+            yield break;
+        }
+
+        if (string.IsNullOrWhiteSpace(quizId))
+        {
+            onError?.Invoke("Quiz ID đang trống.");
+            yield break;
+        }
+
+        if (!DateTimeOffset.TryParse(closesAtUtcIso, out DateTimeOffset deadline))
+        {
+            onError?.Invoke("Deadline của quiz không đúng định dạng ISO-8601.");
+            yield break;
+        }
+
+        if (deadline <= DateTimeOffset.UtcNow)
+        {
+            onError?.Invoke("Deadline của quiz phải ở trong tương lai.");
+            yield break;
+        }
+
+        QuizDeadlineEdgePayload payload = new QuizDeadlineEdgePayload
+        {
+            action = "update_deadline",
+            quiz_id = quizId.Trim(),
+            closes_at = deadline.UtcDateTime.ToString("O")
+        };
+
+        byte[] body = System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(payload));
+        using UnityWebRequest request = new UnityWebRequest(
+            ParseQuizPdfFunctionUrl,
+            UnityWebRequest.kHttpVerbPOST
+        );
+
+        request.uploadHandler = new UploadHandlerRaw(body);
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.timeout = SupabaseConfig.RequestTimeoutSeconds;
+        request.SetRequestHeader("Content-Type", "application/json");
+        request.SetRequestHeader("Accept", "application/json");
+        request.SetRequestHeader("apikey", SupabaseConfig.PublishableKey);
+        request.SetRequestHeader(
+            "Authorization",
+            $"Bearer {SupabaseSession.AccessToken}"
+        );
+
+        yield return request.SendWebRequest();
+
+        string responseText = request.downloadHandler?.text ?? string.Empty;
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            onError?.Invoke(ExtractEdgeFunctionError(
+                responseText,
+                request.error,
+                request.responseCode
+            ));
+            yield break;
+        }
+
+        QuizDeadlineEdgeResponse response = null;
+        try
+        {
+            response = JsonUtility.FromJson<QuizDeadlineEdgeResponse>(responseText);
+        }
+        catch (Exception exception)
+        {
+            onError?.Invoke("Không đọc được kết quả cập nhật deadline: " + exception.Message);
+            yield break;
+        }
+
+        if (response == null || !response.success ||
+            string.IsNullOrWhiteSpace(response.closes_at))
+        {
+            onError?.Invoke(response?.error ?? "Supabase không xác nhận deadline đã được lưu.");
+            yield break;
+        }
+
+        onSuccess?.Invoke(response.closes_at);
+    }
+
     public IEnumerator LoadQuizQuestions(
         string quizId,
         string anonKey,
@@ -625,6 +779,29 @@ public class SupabaseQuizService : MonoBehaviour
             ? $"Supabase request thất bại ({responseCode})."
             : unityError;
     }
+
+    /// <summary>
+    /// Makes file-picker results readable by System.IO on both Editor and
+    /// Android. NativeFilePicker copies Android content URIs to a local cache
+    /// path; this additionally handles file:// paths returned by some devices.
+    /// </summary>
+    private static string NormalizeLocalFilePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+
+        string trimmed = path.Trim();
+        if (!trimmed.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+            return trimmed;
+
+        try
+        {
+            return new Uri(trimmed).LocalPath;
+        }
+        catch
+        {
+            return trimmed.Replace("file://", string.Empty);
+        }
+    }
 }
 
 [Serializable]
@@ -638,6 +815,7 @@ public class ParseQuizPdfResponse
     // Created by parse-quiz-pdf backend.
     public string quiz_id;
     public string lesson_asset_id;
+    public string closes_at;
 
     public string original_file_name;
     public long original_file_size;
@@ -650,6 +828,23 @@ public class ParseQuizPdfResponse
 
     public ParseQuizStorage storage;
     public ParseQuizResult quiz;
+}
+
+[Serializable]
+public class QuizDeadlineEdgePayload
+{
+    public string action;
+    public string quiz_id;
+    public string closes_at;
+}
+
+[Serializable]
+public class QuizDeadlineEdgeResponse
+{
+    public bool success;
+    public string quiz_id;
+    public string closes_at;
+    public string error;
 }
 
 [Serializable]

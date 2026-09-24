@@ -61,6 +61,19 @@ public class VRModelDetailService : MonoBehaviour
     [SerializeField]
     private bool printPartsToConsole = true;
 
+    [Header("Runtime Hierarchy Fallback")]
+    [SerializeField]
+    private bool useRuntimeHierarchyFallback = true;
+
+    [SerializeField]
+    private string runtimeModelAnchorName = "VRRuntimeModelAnchor";
+
+    [SerializeField]
+    private float runtimeModelWaitTimeout = 15f;
+
+    [SerializeField]
+    private int maximumFallbackParts = 32;
+
 
     // =========================================================
     // STATE
@@ -124,13 +137,21 @@ public class VRModelDetailService : MonoBehaviour
 
         public string part_name;
 
+        public string part_name_vi;
+
         public string node_name;
 
         public string description;
 
+        public string description_vi;
+
         public string structure_description;
 
+        public string structure_description_vi;
+
         public string function_description;
+
+        public string function_description_vi;
 
 
         // -----------------------------------------------------
@@ -481,6 +502,18 @@ public class VRModelDetailService : MonoBehaviour
                 message
             );
 
+            if (useRuntimeHierarchyFallback)
+            {
+                CurrentParts.Clear();
+                yield return BuildRuntimeHierarchyFallbackParts();
+
+                if (CurrentParts.Count > 0)
+                {
+                    OnModelPartsLoaded?.Invoke(CurrentParts);
+                    yield break;
+                }
+            }
+
 
             OnModelPartsLoadFailed
                 ?.Invoke(
@@ -712,18 +745,19 @@ public class VRModelDetailService : MonoBehaviour
                 targetAssetId
             )
             + "&is_active=eq.true"
-            + "&anchor_x=not.is.null"
-            + "&anchor_y=not.is.null"
-            + "&anchor_z=not.is.null"
             + "&select="
             + "id,"
             + "asset_id,"
             + "part_key,"
             + "part_name,"
+            + "part_name_vi,"
             + "node_name,"
             + "description,"
+            + "description_vi,"
             + "structure_description,"
+            + "structure_description_vi,"
             + "function_description,"
+            + "function_description_vi,"
             + "anchor_x,"
             + "anchor_y,"
             + "anchor_z,"
@@ -824,6 +858,14 @@ public class VRModelDetailService : MonoBehaviour
             );
         }
 
+        // AI metadata may still be processing or may have failed temporarily.
+        // The GLB itself is already loaded in the scene, so use its real
+        // renderer/node hierarchy instead of leaving Detail Mode empty.
+        if (CurrentParts.Count == 0 && useRuntimeHierarchyFallback)
+        {
+            yield return BuildRuntimeHierarchyFallbackParts();
+        }
+
 
         Debug.Log(
             "[VRModelDetailService] "
@@ -843,6 +885,147 @@ public class VRModelDetailService : MonoBehaviour
             ?.Invoke(
                 CurrentParts
             );
+    }
+
+    private void OnDisable()
+    {
+        // Network requests and runtime hierarchy polling must not continue
+        // after VRClassroomScene has been closed or scripts are reloaded.
+        StopAllCoroutines();
+        IsLoading = false;
+    }
+
+
+    private IEnumerator BuildRuntimeHierarchyFallbackParts()
+    {
+        float elapsed = 0f;
+        Transform runtimeModel = null;
+
+        while (elapsed < Mathf.Max(1f, runtimeModelWaitTimeout))
+        {
+            GameObject anchor = GameObject.Find(runtimeModelAnchorName);
+            if (anchor != null && anchor.transform.childCount > 0)
+            {
+                for (int i = 0; i < anchor.transform.childCount; i++)
+                {
+                    Transform child = anchor.transform.GetChild(i);
+                    if (child != null &&
+                        child.GetComponentsInChildren<Renderer>(true).Length > 0)
+                    {
+                        runtimeModel = child;
+                        break;
+                    }
+                }
+            }
+
+            if (runtimeModel != null)
+                break;
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (runtimeModel == null)
+        {
+            Debug.LogWarning(
+                "[VRModelDetailService] Runtime fallback could not find a loaded GLB model."
+            );
+            yield break;
+        }
+
+        Renderer[] renderers =
+            runtimeModel.GetComponentsInChildren<Renderer>(true);
+
+        HashSet<string> usedKeys = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        int limit = Mathf.Max(1, maximumFallbackParts);
+        int order = 0;
+
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer == null || renderer.transform == runtimeModel)
+                continue;
+
+            string nodeName = renderer.transform.name;
+            if (string.IsNullOrWhiteSpace(nodeName))
+                continue;
+
+            string baseKey = MakePartKey(nodeName);
+            string key = baseKey;
+            int suffix = 2;
+            while (!usedKeys.Add(key))
+            {
+                key = baseKey + "_" + suffix;
+                suffix++;
+            }
+
+            CurrentParts.Add(new ModelPartData
+            {
+                asset_id = assetId,
+                part_key = key,
+                part_name = MakeDisplayName(nodeName),
+                node_name = nodeName,
+                description =
+                    "Chi tiết được nhận diện trực tiếp từ cấu trúc mô hình 3D.",
+                structure_description =
+                    "Node/mesh: " + nodeName,
+                function_description =
+                    "Thông tin chức năng đang chờ hệ thống AI bổ sung.",
+                display_order = order,
+                source = "runtime_glb_hierarchy",
+                is_verified = false,
+                is_active = true,
+                anchor_source = "glb_node",
+                anchor_confidence = 0.5f
+            });
+
+            order++;
+            if (order >= limit)
+                break;
+        }
+
+        Debug.Log(
+            "[VRModelDetailService] Built " + CurrentParts.Count +
+            " fallback part(s) from runtime GLB hierarchy."
+        );
+    }
+
+
+    private static string MakePartKey(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "model_part";
+
+        System.Text.StringBuilder builder = new System.Text.StringBuilder();
+        bool previousUnderscore = false;
+
+        foreach (char character in value.Trim().ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(character);
+                previousUnderscore = false;
+            }
+            else if (!previousUnderscore)
+            {
+                builder.Append('_');
+                previousUnderscore = true;
+            }
+        }
+
+        string result = builder.ToString().Trim('_');
+        return string.IsNullOrWhiteSpace(result) ? "model_part" : result;
+    }
+
+
+    private static string MakeDisplayName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Model part";
+
+        return value.Replace('_', ' ').Trim();
     }
 
 
@@ -908,8 +1091,20 @@ public class VRModelDetailService : MonoBehaviour
         }
 
 
+        if (!part.is_active)
+            return false;
+
+        // New uploads are mapped to an actual GLB node. Unity derives the
+        // final anchor from that node's Renderer bounds, so database XYZ
+        // coordinates are no longer required for these rows.
+        if (!string.IsNullOrWhiteSpace(part.node_name))
+            return true;
+
+        // Legacy/manual anchors remain supported. anchor_source/is_verified
+        // distinguishes a real (possibly zero-valued) coordinate from a NULL
+        // database value deserialized by JsonUtility as 0.
         return
-            part.is_active &&
+            (part.is_verified || !string.IsNullOrWhiteSpace(part.anchor_source)) &&
             IsFinite(part.anchor_x) &&
             IsFinite(part.anchor_y) &&
             IsFinite(part.anchor_z);

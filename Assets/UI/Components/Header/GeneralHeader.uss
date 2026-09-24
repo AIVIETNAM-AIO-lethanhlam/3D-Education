@@ -49,8 +49,8 @@
     flex-grow: 0;
     flex-shrink: 0;
 
-    padding-right: 20px;
-    padding-left: 20px;
+    padding-right: 24px;
+    padding-left: 24px;
 
     background-color: rgb(255, 255, 255);
 
@@ -59,14 +59,15 @@
 }
 
 /*
-   Dùng cùng một safe-area phía trên cho tất cả header.
-   Nhờ đó MainHomeScene, SettingsScene và PrivacyScene
-   bắt đầu tại cùng một vị trí theo chiều dọc.
+   Shared visual baseline with ChatAIScene:
+   54px top fallback, 24px symmetric horizontal inset.
+   GeneralHeaderController additionally accounts for Screen.safeArea
+   at runtime; these USS values apply before geometry is available.
 */
 
 .general-header-home,
 .general-header-page {
-    padding-top: 40px;
+    padding-top: 54px;
 }
 
 /*
@@ -221,8 +222,10 @@
 }
 
 .header-back-button {
-    width: 38px;
-    height: 38px;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
 
     flex-grow: 0;
     flex-shrink: 0;
@@ -238,12 +241,12 @@
     background-color: rgb(239, 244, 253);
 
     border-width: 0;
-    border-radius: 19px;
+    border-radius: 21px;
 }
 
 .header-back-icon {
-    width: 17px;
-    height: 17px;
+    width: 20px;
+    height: 20px;
 
     -unity-background-image-tint-color: rgb(17, 40, 82);
 }
@@ -422,18 +425,16 @@
     border-bottom-width: 0;
 }
 
-/*
-   Compact chỉ giảm khoảng cách phía dưới.
-   Không thay đổi padding-top để các Scene luôn thẳng hàng.
-*/
+/* Compact only changes bottom spacing; top remains on the
+   shared baseline (including the later template-safety rules). */
 
 .general-header-home.header-compact {
-    padding-top: 40px;
+    padding-top: 54px;
     padding-bottom: 13px;
 }
 
 .general-header-page.header-compact {
-    padding-top: 40px;
+    padding-top: 54px;
     padding-bottom: 13px;
 }
 
@@ -444,7 +445,7 @@
 
 .general-header-page.header-large-safe-area,
 .general-header-home.header-large-safe-area {
-    padding-top: 48px;
+    padding-top: 62px;
 }
 
 
@@ -496,17 +497,17 @@
 }
 
 .general-header-page.header-compact {
-    padding-top: 18px;
+    padding-top: 54px;
     padding-bottom: 14px;
 }
 
 .general-header-home.header-compact {
-    padding-top: 22px;
+    padding-top: 54px;
     padding-bottom: 13px;
 }
 
 .general-header-page.header-large-safe-area {
-    padding-top: 40px;
+    padding-top: 62px;
 }
 
 .header-back-button:hover {
@@ -532,10 +533,10 @@
    ========================================================= */
 
 .general-header-page.my-classes-header {
-    padding-top: 40px;
-    padding-right: 18px;
+    padding-top: 54px;
+    padding-right: 24px;
     padding-bottom: 14px;
-    padding-left: 18px;
+    padding-left: 24px;
 }
 
 .my-classes-header .page-header-layout {
@@ -543,12 +544,15 @@
 }
 
 .my-classes-header .header-back-button {
-    width: 38px;
-    height: 38px;
+    /* Same circle size as Settings and ChatAI; keep the narrower text gap. */
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
 
     margin-right: 10px;
 
-    border-radius: 19px;
+    border-radius: 21px;
 }
 
 .my-classes-header .page-header-information {

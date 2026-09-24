@@ -366,18 +366,18 @@
     border-width: 0;
     border-radius: 17px;
 
-    background-color: rgb(255, 159, 17);
+    background-color: rgb(32, 96, 214);
 }
 
 .ai-chat-fab:hover {
-    background-color: rgb(237, 140, 0);
+    background-color: rgb(20, 76, 180);
 }
 
 .ai-chat-fab-icon {
     width: 26px;
     height: 26px;
 
-    background-image: url('project://database/Assets/UI/Images/Icons/ai-sparkle.png');
+    background-image: url('project://database/Assets/UI/Images/Icons/ai-white.png');
     -unity-background-scale-mode: scale-to-fit;
 }
 

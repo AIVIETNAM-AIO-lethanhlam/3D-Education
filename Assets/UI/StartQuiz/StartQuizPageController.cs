@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -38,7 +39,7 @@ public class StartQuizPageController : MonoBehaviour
     [SerializeField] private float maximumGrade = 10f;
 
     [Header("Quiz Availability")]
-    [SerializeField] private bool checkAvailabilityByDate;
+    [SerializeField] private bool checkAvailabilityByDate = true;
     [SerializeField] private string openDateIso = "2026-10-25T08:00:00";
     [SerializeField] private string closeDateIso = "2026-10-27T23:59:00";
 
@@ -60,6 +61,16 @@ public class StartQuizPageController : MonoBehaviour
     private Label closeTimeLabel;
     private Label questionCountLabel;
     private Label maximumGradeLabel;
+    private Label quizTypeLabel;
+    private Label opensLabel;
+    private Label closesLabel;
+    private Label questionsLabel;
+    private Label maximumGradeTitleLabel;
+    private Label attemptHistoryTitleLabel;
+    private Label noticeTitleLabel;
+    private Label noticeDescriptionLabel;
+    private Label confirmationTitleLabel;
+    private Label confirmationMessageLabel;
 
     private VisualElement statusBadge;
     private VisualElement confirmationOverlay;
@@ -69,6 +80,7 @@ public class StartQuizPageController : MonoBehaviour
 
     private bool isStartingQuiz;
     private QuizAttemptView[] loadedAttempts = Array.Empty<QuizAttemptView>();
+    private Coroutine availabilityMonitor;
 
     private void Awake()
     {
@@ -97,13 +109,24 @@ public class StartQuizPageController : MonoBehaviour
         FindElements();
         HideScrollbars();
         RegisterEvents();
+        AppLanguageManager.LanguageChanged += OnLanguageChanged;
         LoadQuizData();
+        ApplyCurrentLanguage();
         RefreshAvailability();
+        availabilityMonitor = StartCoroutine(MonitorQuizAvailability());
+        StartCoroutine(RefreshQuizMetadataRoutine());
         StartCoroutine(LoadAttemptHistoryRoutine());
     }
 
     private void OnDisable()
     {
+        if (availabilityMonitor != null)
+        {
+            StopCoroutine(availabilityMonitor);
+            availabilityMonitor = null;
+        }
+
+        AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         UnregisterEvents();
     }
 
@@ -132,6 +155,17 @@ public class StartQuizPageController : MonoBehaviour
         maximumGradeLabel = root.Q<Label>(
             "maximum-grade-label"
         );
+
+        quizTypeLabel = root.Q<Label>("quiz-type-label");
+        opensLabel = root.Q<Label>("opens-label");
+        closesLabel = root.Q<Label>("closes-label");
+        questionsLabel = root.Q<Label>("questions-label");
+        maximumGradeTitleLabel = root.Q<Label>("maximum-grade-title-label");
+        attemptHistoryTitleLabel = root.Q<Label>("attempt-history-title-label");
+        noticeTitleLabel = root.Q<Label>("notice-title-label");
+        noticeDescriptionLabel = root.Q<Label>("notice-description");
+        confirmationTitleLabel = root.Q<Label>("confirmation-title-label");
+        confirmationMessageLabel = root.Q<Label>("confirmation-message-label");
 
         statusBadge = root.Q<VisualElement>("status-badge");
 
@@ -207,6 +241,133 @@ public class StartQuizPageController : MonoBehaviour
         }
     }
 
+    private static string T(string english, string vietnamese) =>
+        AppLanguageManager.IsVietnamese ? vietnamese : english;
+
+    private static readonly Dictionary<string, string> StaticVietnameseText = new()
+    {
+        { "MULTIPLE CHOICE QUIZ", "BÀI KIỂM TRA TRẮC NGHIỆM" },
+        { "Opens", "Mở lúc" },
+        { "Closes", "Đóng lúc" },
+        { "Questions", "Số câu hỏi" },
+        { "Maximum Grade", "Điểm tối đa" },
+        { "ATTEMPT HISTORY", "LỊCH SỬ LÀM BÀI" },
+        { "Before you begin", "Trước khi bắt đầu" },
+        { "Once started, the quiz must be completed in one session. Make sure you have a stable internet connection before clicking “Start Quiz”.", "Sau khi bắt đầu, bạn cần hoàn thành bài kiểm tra trong một lần. Hãy bảo đảm kết nối Internet ổn định trước khi nhấn “Bắt đầu”." },
+        { "Start Quiz?", "Bắt đầu bài kiểm tra?" },
+        { "The quiz timer will begin immediately after you start.", "Thời gian làm bài sẽ bắt đầu ngay khi bạn xác nhận." },
+        { "Cancel", "Hủy" },
+        { "Start", "Bắt đầu" }
+    };
+
+    private static void SetText(Label label, string english, string vietnamese)
+    {
+        if (label != null)
+            label.text = T(english, vietnamese);
+    }
+
+    private void OnLanguageChanged(string language)
+    {
+        ApplyCurrentLanguage();
+    }
+
+    private void ApplyCurrentLanguage()
+    {
+        ApplyStaticTranslationsRecursive(root);
+
+        SetText(quizTypeLabel, "MULTIPLE CHOICE QUIZ", "BÀI KIỂM TRA TRẮC NGHIỆM");
+        SetText(opensLabel, "Opens", "Mở lúc");
+        SetText(closesLabel, "Closes", "Đóng lúc");
+        SetText(questionsLabel, "Questions", "Số câu hỏi");
+        SetText(maximumGradeTitleLabel, "Maximum Grade", "Điểm tối đa");
+        SetText(attemptHistoryTitleLabel, "ATTEMPT HISTORY", "LỊCH SỬ LÀM BÀI");
+        SetText(noticeTitleLabel, "Before you begin", "Trước khi bắt đầu");
+        SetText(
+            noticeDescriptionLabel,
+            "Once started, the quiz must be completed in one session. Make sure you have a stable internet connection before clicking “Start Quiz”.",
+            "Sau khi bắt đầu, bạn cần hoàn thành bài kiểm tra trong một lần. Hãy bảo đảm kết nối Internet ổn định trước khi nhấn “Bắt đầu”."
+        );
+        SetText(confirmationTitleLabel, "Start Quiz?", "Bắt đầu bài kiểm tra?");
+        SetText(
+            confirmationMessageLabel,
+            "The quiz timer will begin immediately after you start.",
+            "Thời gian làm bài sẽ bắt đầu ngay khi bạn xác nhận."
+        );
+
+        if (backButton != null)
+            backButton.tooltip = T("Back", "Quay lại");
+        if (cancelStartButton != null)
+            cancelStartButton.text = T("Cancel", "Hủy");
+        if (confirmStartButton != null)
+            confirmStartButton.text = T("Start", "Bắt đầu");
+
+        if (openTimeLabel != null)
+            openTimeLabel.text = FormatQuizDate(
+                openDateIso,
+                T("Available now", "Có thể làm ngay")
+            );
+        if (closeTimeLabel != null)
+            closeTimeLabel.text = FormatQuizDate(
+                closeDateIso,
+                T("No deadline", "Không có thời hạn")
+            );
+
+        int count = PlayerPrefs.GetInt("selected_quiz_questions", totalQuestions);
+        if (questionCountLabel != null)
+            questionCountLabel.text = FormatQuestionCount(count);
+
+        float grade = PlayerPrefs.HasKey("selected_quiz_max_score")
+            ? PlayerPrefs.GetFloat("selected_quiz_max_score", maximumGrade)
+            : PlayerPrefs.GetFloat("selected_quiz_maximum_grade", maximumGrade);
+        if (maximumGradeLabel != null)
+            maximumGradeLabel.text = FormatPoints(grade);
+
+        RenderAttemptHistory();
+        RefreshAvailability();
+        ApplyAttemptedQuizState();
+    }
+
+    private static void ApplyStaticTranslationsRecursive(VisualElement element)
+    {
+        if (element == null) return;
+
+        if (element is Label label)
+            label.text = TranslateKnownStaticText(label.text);
+        else if (element is Button button)
+            button.text = TranslateKnownStaticText(button.text);
+
+        foreach (VisualElement child in element.Children())
+            ApplyStaticTranslationsRecursive(child);
+    }
+
+    private static string TranslateKnownStaticText(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+
+        foreach (KeyValuePair<string, string> pair in StaticVietnameseText)
+        {
+            if (value == pair.Key || value == pair.Value)
+                return AppLanguageManager.IsVietnamese ? pair.Value : pair.Key;
+        }
+
+        return value;
+    }
+
+    private static string FormatQuestionCount(int count)
+    {
+        if (AppLanguageManager.IsVietnamese)
+            return $"{count} câu hỏi";
+
+        return count == 1 ? "1 question" : $"{count} questions";
+    }
+
+    private static string FormatPoints(float points)
+    {
+        return AppLanguageManager.IsVietnamese
+            ? $"{points:0.##} điểm"
+            : $"{points:0.##} points";
+    }
+
     private void LoadQuizData()
     {
         /*
@@ -237,14 +398,16 @@ public class StartQuizPageController : MonoBehaviour
             quizSubtitle
         );
 
-        string savedOpenTime = PlayerPrefs.GetString(
-            "quiz_open_time",
-            openTime
-        );
+        openDateIso = PlayerPrefs.GetString("selected_quiz_open_at", string.Empty);
+        closeDateIso = PlayerPrefs.GetString("selected_quiz_close_at", string.Empty);
 
-        string savedCloseTime = PlayerPrefs.GetString(
-            "quiz_close_time",
-            closeTime
+        string savedOpenTime = FormatQuizDate(
+            openDateIso,
+            T("Available now", "Có thể làm ngay")
+        );
+        string savedCloseTime = FormatQuizDate(
+            closeDateIso,
+            T("No deadline", "Không có thời hạn")
         );
 
         int savedQuestionCount = PlayerPrefs.GetInt(
@@ -252,10 +415,9 @@ public class StartQuizPageController : MonoBehaviour
             totalQuestions
         );
 
-        float savedMaximumGrade = PlayerPrefs.GetFloat(
-            "selected_quiz_maximum_grade",
-            maximumGrade
-        );
+        float savedMaximumGrade = PlayerPrefs.HasKey("selected_quiz_max_score")
+            ? PlayerPrefs.GetFloat("selected_quiz_max_score", maximumGrade)
+            : PlayerPrefs.GetFloat("selected_quiz_maximum_grade", maximumGrade);
 
         if (lessonLabel != null)
         {
@@ -289,20 +451,80 @@ public class StartQuizPageController : MonoBehaviour
 
         if (questionCountLabel != null)
         {
-            string questionText = savedQuestionCount == 1
-                ? "1 question"
-                : $"{savedQuestionCount} questions";
-
-            questionCountLabel.text = questionText;
+            questionCountLabel.text = FormatQuestionCount(savedQuestionCount);
         }
 
         if (maximumGradeLabel != null)
         {
-            maximumGradeLabel.text =
-                $"{savedMaximumGrade:0.##} points";
+            maximumGradeLabel.text = FormatPoints(savedMaximumGrade);
         }
     }
 
+
+    private IEnumerator RefreshQuizMetadataRoutine()
+    {
+        if (restService == null) yield break;
+
+        string quizId = PlayerPrefs.GetString("selected_quiz_id", string.Empty);
+        if (!Guid.TryParse(quizId, out _)) yield break;
+
+        string response = null;
+        string error = null;
+        string path =
+            "rest/v1/quizzes" +
+            "?select=id,title,opens_at,closes_at,total_questions,max_score" +
+            "&id=eq." + UnityEngine.Networking.UnityWebRequest.EscapeURL(quizId) +
+            "&limit=1";
+
+        yield return restService.SendJson(
+            UnityEngine.Networking.UnityWebRequest.kHttpVerbGET,
+            path,
+            null,
+            null,
+            value => response = value,
+            message => error = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            Debug.LogWarning(
+                "[StartQuizPageController] Cannot refresh quiz metadata: " + error
+            );
+            yield break;
+        }
+
+        StartQuizMetadataList wrapper = ParseList<StartQuizMetadataList>(response);
+        if (wrapper?.items == null || wrapper.items.Length == 0) yield break;
+
+        StartQuizMetadataRow quiz = wrapper.items[0];
+        openDateIso = quiz.opens_at ?? string.Empty;
+        closeDateIso = quiz.closes_at ?? string.Empty;
+
+        PlayerPrefs.SetString("selected_quiz_open_at", openDateIso);
+        PlayerPrefs.SetString("selected_quiz_close_at", closeDateIso);
+        PlayerPrefs.SetInt("selected_quiz_questions", quiz.total_questions);
+        PlayerPrefs.SetFloat("selected_quiz_max_score", quiz.max_score);
+        PlayerPrefs.Save();
+
+        if (quizTitleLabel != null && !string.IsNullOrWhiteSpace(quiz.title))
+            quizTitleLabel.text = quiz.title;
+        if (openTimeLabel != null)
+            openTimeLabel.text = FormatQuizDate(
+                openDateIso,
+                T("Available now", "Có thể làm ngay")
+            );
+        if (closeTimeLabel != null)
+            closeTimeLabel.text = FormatQuizDate(
+                closeDateIso,
+                T("No deadline", "Không có thời hạn")
+            );
+        if (questionCountLabel != null)
+            questionCountLabel.text = FormatQuestionCount(quiz.total_questions);
+        if (maximumGradeLabel != null)
+            maximumGradeLabel.text = FormatPoints(quiz.max_score);
+
+        RefreshAvailability();
+    }
 
     private IEnumerator LoadAttemptHistoryRoutine()
     {
@@ -507,13 +729,13 @@ public class StartQuizPageController : MonoBehaviour
         Label number = new(displayAttemptNumber.ToString());
         number.AddToClassList("attempt-number");
 
-        Label title = new("Attempt");
+        Label title = new(T("Attempt", "Lần làm"));
         title.AddToClassList("attempt-title");
 
         Label submittedStatus = new(
             string.IsNullOrWhiteSpace(attempt.submitted_at)
-                ? "In Progress"
-                : "Submitted"
+                ? T("In Progress", "Đang làm")
+                : T("Submitted", "Đã nộp")
         );
         submittedStatus.AddToClassList("attempt-status");
 
@@ -527,7 +749,7 @@ public class StartQuizPageController : MonoBehaviour
 
         AddAttemptRow(
             body,
-            "Started On",
+            T("Started On", "Bắt đầu lúc"),
             FormatAttemptDate(attempt.started_at)
         );
 
@@ -535,7 +757,7 @@ public class StartQuizPageController : MonoBehaviour
 
         AddAttemptRow(
             body,
-            "Submitted On",
+            T("Submitted On", "Nộp lúc"),
             string.IsNullOrWhiteSpace(attempt.submitted_at)
                 ? "—"
                 : FormatAttemptDate(attempt.submitted_at)
@@ -545,26 +767,25 @@ public class StartQuizPageController : MonoBehaviour
 
         AddAttemptRow(
             body,
-            "Time Taken",
+            T("Time Taken", "Thời gian làm"),
             FormatDuration(attempt.duration_seconds)
         );
 
         AddAttemptDivider(body);
 
-        float maxGrade = PlayerPrefs.GetFloat(
-            "selected_quiz_maximum_grade",
-            maximumGrade
-        );
+        float maxGrade = PlayerPrefs.HasKey("selected_quiz_max_score")
+            ? PlayerPrefs.GetFloat("selected_quiz_max_score", maximumGrade)
+            : PlayerPrefs.GetFloat("selected_quiz_maximum_grade", maximumGrade);
 
         Label scoreValue = AddAttemptRow(
             body,
-            "Grade / Score",
+            T("Grade / Score", "Điểm số"),
             $"{attempt.score:0.##} / {maxGrade:0.##}"
         );
         scoreValue?.AddToClassList("attempt-score");
 
         Button review = new();
-        review.text = "Review Attempt";
+        review.text = T("Review Attempt", "Xem lại bài làm");
         review.AddToClassList("review-attempt-button");
 
         string capturedAttemptId = attempt.attempt_id;
@@ -665,11 +886,21 @@ public class StartQuizPageController : MonoBehaviour
             return;
         }
 
-        SetStatus("COMPLETED", "status-completed");
+        // The deadline has priority over the completed/retake state.
+        if (IsQuizClosed())
+        {
+            SetQuizUnavailable(
+                T("CLOSED", "ĐÃ ĐÓNG"),
+                T("Quiz Closed", "Đã hết hạn")
+            );
+            return;
+        }
+
+        SetStatus(T("COMPLETED", "HOÀN THÀNH"), "status-completed");
 
         if (startQuizButton != null)
         {
-            startQuizButton.text = "Start New Attempt";
+            startQuizButton.text = T("Start New Attempt", "Làm lại bài");
         }
 
         if (noticeCard != null)
@@ -692,9 +923,9 @@ public class StartQuizPageController : MonoBehaviour
                 System.Globalization.DateTimeStyles.RoundtripKind,
                 out DateTime date))
         {
-            return date.ToLocalTime().ToString(
-                "MMM d, yyyy · hh:mm tt"
-            );
+            return AppLanguageManager.IsVietnamese
+                ? date.ToLocalTime().ToString("dd/MM/yyyy · HH:mm")
+                : date.ToLocalTime().ToString("MMM d, yyyy · hh:mm tt");
         }
 
         return string.IsNullOrWhiteSpace(iso) ? "—" : iso;
@@ -710,15 +941,21 @@ public class StartQuizPageController : MonoBehaviour
 
         if (hours > 0)
         {
-            return $"{hours}h {minutes}m {secs}s";
+            return AppLanguageManager.IsVietnamese
+                ? $"{hours} giờ {minutes} phút {secs} giây"
+                : $"{hours}h {minutes}m {secs}s";
         }
 
         if (minutes > 0)
         {
-            return $"{minutes} mins {secs} secs";
+            return AppLanguageManager.IsVietnamese
+                ? $"{minutes} phút {secs} giây"
+                : $"{minutes} mins {secs} secs";
         }
 
-        return $"{secs} secs";
+        return AppLanguageManager.IsVietnamese
+            ? $"{secs} giây"
+            : $"{secs} secs";
     }
 
     private static T ParseList<T>(string json)
@@ -753,36 +990,41 @@ public class StartQuizPageController : MonoBehaviour
             return;
         }
 
-        if (!TryParseQuizDates(
-                out DateTime openDate,
-                out DateTime closeDate))
+        bool hasOpenDate = TryParseUtcDate(openDateIso, out DateTimeOffset openDate);
+        bool hasCloseDate = TryParseUtcDate(closeDateIso, out DateTimeOffset closeDate);
+
+        if ((!string.IsNullOrWhiteSpace(openDateIso) && !hasOpenDate) ||
+            (!string.IsNullOrWhiteSpace(closeDateIso) && !hasCloseDate))
         {
             Debug.LogWarning(
                 "[StartQuizPageController] Invalid quiz date format. " +
-                "The Start Quiz button will remain enabled."
+                "The Start Quiz button will be disabled."
             );
 
-            SetQuizAvailable();
+            SetQuizUnavailable(
+                T("UNAVAILABLE", "KHÔNG KHẢ DỤNG"),
+                T("Invalid quiz schedule", "Lịch bài kiểm tra không hợp lệ")
+            );
             return;
         }
 
-        DateTime now = DateTime.Now;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
 
-        if (now < openDate)
+        if (hasOpenDate && now < openDate)
         {
             SetQuizUnavailable(
-                "NOT OPEN YET",
-                $"Available from {openDate:MMM dd, yyyy · hh:mm tt}"
+                T("NOT OPEN YET", "CHƯA MỞ"),
+                T("Available from ", "Mở từ ") + FormatLocalDate(openDate)
             );
 
             return;
         }
 
-        if (now > closeDate)
+        if (hasCloseDate && now >= closeDate)
         {
             SetQuizUnavailable(
-                "CLOSED",
-                "This quiz is no longer available."
+                T("CLOSED", "ĐÃ ĐÓNG"),
+                T("Quiz Closed", "Đã hết hạn")
             );
 
             return;
@@ -791,21 +1033,68 @@ public class StartQuizPageController : MonoBehaviour
         SetQuizAvailable();
     }
 
-    private bool TryParseQuizDates(
-        out DateTime openDate,
-        out DateTime closeDate)
+    private bool IsQuizCurrentlyAvailable()
     {
-        bool openValid = DateTime.TryParse(
-            openDateIso,
-            out openDate
-        );
+        bool hasOpenDate = TryParseUtcDate(openDateIso, out DateTimeOffset openDate);
+        bool hasCloseDate = TryParseUtcDate(closeDateIso, out DateTimeOffset closeDate);
 
-        bool closeValid = DateTime.TryParse(
-            closeDateIso,
-            out closeDate
-        );
+        if ((!string.IsNullOrWhiteSpace(openDateIso) && !hasOpenDate) ||
+            (!string.IsNullOrWhiteSpace(closeDateIso) && !hasCloseDate))
+            return false;
 
-        return openValid && closeValid;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        if (hasOpenDate && now < openDate) return false;
+        if (hasCloseDate && now >= closeDate) return false;
+        return true;
+    }
+
+    private bool IsQuizClosed()
+    {
+        return TryParseUtcDate(closeDateIso, out DateTimeOffset closeDate) &&
+               DateTimeOffset.UtcNow >= closeDate;
+    }
+
+    private IEnumerator MonitorQuizAvailability()
+    {
+        WaitForSecondsRealtime wait = new WaitForSecondsRealtime(1f);
+
+        while (true)
+        {
+            if (IsQuizClosed())
+            {
+                SetQuizUnavailable(
+                    T("CLOSED", "ĐÃ ĐÓNG"),
+                    T("Quiz Closed", "Đã hết hạn")
+                );
+                HideConfirmation();
+            }
+
+            yield return wait;
+        }
+    }
+
+    private static bool TryParseUtcDate(string value, out DateTimeOffset date)
+    {
+        return DateTimeOffset.TryParse(
+            value,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind,
+            out date
+        );
+    }
+
+    private static string FormatQuizDate(string iso, string fallback)
+    {
+        return TryParseUtcDate(iso, out DateTimeOffset value)
+            ? FormatLocalDate(value)
+            : fallback;
+    }
+
+    private static string FormatLocalDate(DateTimeOffset value)
+    {
+        return AppLanguageManager.IsVietnamese
+            ? value.ToLocalTime().ToString("dd/MM/yyyy · HH:mm")
+            : value.ToLocalTime().ToString("MMM dd, yyyy · hh:mm tt");
     }
 
     private void SetQuizAvailable()
@@ -813,10 +1102,10 @@ public class StartQuizPageController : MonoBehaviour
         if (startQuizButton != null)
         {
             startQuizButton.SetEnabled(true);
-            startQuizButton.text = "Start Quiz";
+            startQuizButton.text = T("Start Quiz", "Bắt đầu");
         }
 
-        SetStatus("NOT ATTEMPTED", "status-not-attempted");
+        SetStatus(T("NOT ATTEMPTED", "CHƯA LÀM"), "status-not-attempted");
     }
 
     private void SetQuizUnavailable(
@@ -1000,6 +1289,10 @@ public class StartQuizPageController : MonoBehaviour
             return;
         }
 
+        RefreshAvailability();
+        if (!IsQuizCurrentlyAvailable())
+            return;
+
         ShowConfirmation();
     }
 
@@ -1028,6 +1321,14 @@ public class StartQuizPageController : MonoBehaviour
     {
         if (isStartingQuiz)
         {
+            return;
+        }
+
+
+        RefreshAvailability();
+        if (!IsQuizCurrentlyAvailable())
+        {
+            HideConfirmation();
             return;
         }
 
@@ -1067,7 +1368,7 @@ public class StartQuizPageController : MonoBehaviour
         if (startQuizButton != null)
         {
             startQuizButton.SetEnabled(false);
-            startQuizButton.text = "Loading...";
+            startQuizButton.text = T("Loading...", "Đang tải...");
         }
 
         yield return null;
@@ -1084,7 +1385,7 @@ public class StartQuizPageController : MonoBehaviour
             if (startQuizButton != null)
             {
                 startQuizButton.SetEnabled(true);
-                startQuizButton.text = "Start Quiz";
+                startQuizButton.text = T("Start Quiz", "Bắt đầu");
             }
 
             yield break;
@@ -1120,6 +1421,23 @@ public class QuizAttemptDbRow
     public float score;
     public string started_at;
     public string submitted_at;
+}
+
+[Serializable]
+public class StartQuizMetadataRow
+{
+    public string id;
+    public string title;
+    public string opens_at;
+    public string closes_at;
+    public int total_questions;
+    public float max_score;
+}
+
+[Serializable]
+public class StartQuizMetadataList
+{
+    public StartQuizMetadataRow[] items;
 }
 
 [Serializable]

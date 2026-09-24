@@ -23,11 +23,11 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
 
     [Header("YouTube")]
     // IMPORTANT:
-    // YouTube controls are rendered inside a cross-origin iframe. On a narrow
-    // mobile-sized player YouTube may move its native fullscreen button upward,
-    // and Unity/USS cannot reposition that button. Disable native controls and
-    // use ShowLessonScene's own replay / volume / fullscreen row instead.
-    private const bool UseNativeYouTubeControls = true;
+    // YouTube controls are rendered inside a cross-origin iframe and cannot be
+    // selectively hidden with Unity USS. Disable the native control overlay so
+    // the large pause and fullscreen buttons don't cover the lesson video on
+    // narrow Android screens. Playback is still controlled through this bridge.
+    private const bool UseNativeYouTubeControls = false;
 
     [SerializeField] private float statePollingInterval = 0.4f;
 
@@ -168,9 +168,13 @@ public sealed class UnityWebViewYouTubeBridge : MonoBehaviour, IYouTubePlayerBri
             "&controls=" + (UseNativeYouTubeControls ? "1" : "0") +
             "&origin=" + Uri.EscapeDataString(origin) +
             "&widget_referrer=" + Uri.EscapeDataString(hostedPlayerPageUrl.Trim()) +
+            "&player_ui=clean-v2" +
             "&cache=" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        Debug.Log("[UnityWebViewYouTubeBridge] Native YouTube controls enabled.");
+        Debug.Log(
+            "[UnityWebViewYouTubeBridge] Native YouTube controls " +
+            (UseNativeYouTubeControls ? "enabled." : "disabled.")
+        );
         Debug.Log("[UnityWebViewYouTubeBridge] Loading HTTPS player: " + playerUrl);
 
         // Loading while hidden is safe. We only reveal the native WebView after

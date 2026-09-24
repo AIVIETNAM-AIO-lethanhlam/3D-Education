@@ -240,10 +240,12 @@ public class VRPageController : MonoBehaviour
     private Label detailPopupDescription;
     private Label detailPopupStructure;
     private Label detailPopupFunction;
+    private Label detailDescriptionHeading;
     private Label detailStructureHeading;
     private Label detailFunctionHeading;
 
     private bool detailModeEnabled;
+    private VRModelDetailService.ModelPartData currentDetailPart;
 
     // True while a modal UI surface should own pointer/drag input.
     // Runtime 3D interaction scripts can read this to avoid reacting
@@ -333,6 +335,9 @@ public class VRPageController : MonoBehaviour
         RegisterEvents();
         RegisterCatalogEvents();
         RegisterDetailEvents();
+        AppLanguageManager.LanguageChanged += OnVrLanguageChanged;
+        OnVrLanguageChanged(
+            AppLanguageManager.IsVietnamese ? "vi" : "en");
 
         SetMenuOpen(false);
         CloseBrowser();
@@ -426,6 +431,7 @@ public class VRPageController : MonoBehaviour
         UnregisterEvents();
         UnregisterCatalogEvents();
         UnregisterDetailEvents();
+        AppLanguageManager.LanguageChanged -= OnVrLanguageChanged;
 
         if (detailConnectorLayer != null)
         {
@@ -604,6 +610,9 @@ public class VRPageController : MonoBehaviour
 
         detailPopupFunction =
             root.Q<Label>("DetailPopupFunction");
+
+        detailDescriptionHeading =
+            root.Q<Label>("DetailDescriptionHeading");
 
         detailStructureHeading =
             root.Q<Label>("DetailStructureHeading");
@@ -2651,7 +2660,10 @@ public class VRPageController : MonoBehaviour
 
     private IEnumerator RefreshDetailLabelsWhenAnchorsReady()
     {
-        const float timeout = 4f;
+        // Runtime GLB import and fallback hierarchy scanning can take several
+        // seconds on Android. Four seconds was too short and caused Detail
+        // Mode to stop before node-based anchors were ready.
+        const float timeout = 18f;
         float elapsed = 0f;
 
         while (elapsed < timeout)
@@ -2673,7 +2685,8 @@ public class VRPageController : MonoBehaviour
         }
 
         Debug.LogWarning(
-            "[VRPageController] Detail labels timed out waiting for automatic AI anchors.");
+            "[VRPageController] Detail labels timed out waiting for model anchors. " +
+            "Check whether the runtime GLB contains renderer/mesh nodes.");
     }
 
 
@@ -2748,10 +2761,7 @@ public class VRPageController : MonoBehaviour
             UIToolkitButton label =
                 new UIToolkitButton();
 
-            label.text =
-                string.IsNullOrWhiteSpace(part.part_name)
-                    ? key
-                    : part.part_name.Trim();
+            label.text = GetLocalizedPartName(part, key);
 
             label.name =
                 "DetailLabel_" + key;
@@ -3391,12 +3401,15 @@ public class VRPageController : MonoBehaviour
             return;
         }
 
+        currentDetailPart = part;
+
         if (detailPopupTitle != null)
         {
-            detailPopupTitle.text =
-                string.IsNullOrWhiteSpace(part.part_name)
-                    ? "Model part"
-                    : part.part_name.Trim();
+            detailPopupTitle.text = GetLocalizedPartName(
+                part,
+                AppLanguageManager.IsVietnamese
+                    ? "Bộ phận mô hình"
+                    : "Model part");
         }
 
         if (detailPopupConfidence != null)
@@ -3404,7 +3417,9 @@ public class VRPageController : MonoBehaviour
             if (part.ai_confidence.HasValue)
             {
                 detailPopupConfidence.text =
-                    "AI confidence: " +
+                    (AppLanguageManager.IsVietnamese
+                        ? "Độ tin cậy AI: "
+                        : "AI confidence: ") +
                     Mathf.RoundToInt(
                         Mathf.Clamp01(
                             part.ai_confidence.Value) *
@@ -3420,12 +3435,16 @@ public class VRPageController : MonoBehaviour
 
         SetDetailText(
             detailPopupDescription,
-            part.description,
-            "No description is available yet.");
+            GetLocalizedText(part.description, part.description_vi),
+            AppLanguageManager.IsVietnamese
+                ? "Chưa có mô tả cho cấu trúc này."
+                : "No description is available yet.");
 
         bool hasStructure =
             !string.IsNullOrWhiteSpace(
-                part.structure_description);
+                GetLocalizedText(
+                    part.structure_description,
+                    part.structure_description_vi));
 
         SetVisible(
             detailStructureHeading,
@@ -3438,12 +3457,16 @@ public class VRPageController : MonoBehaviour
         if (hasStructure)
         {
             detailPopupStructure.text =
-                part.structure_description.Trim();
+                GetLocalizedText(
+                    part.structure_description,
+                    part.structure_description_vi).Trim();
         }
 
         bool hasFunction =
             !string.IsNullOrWhiteSpace(
-                part.function_description);
+                GetLocalizedText(
+                    part.function_description,
+                    part.function_description_vi));
 
         SetVisible(
             detailFunctionHeading,
@@ -3456,7 +3479,9 @@ public class VRPageController : MonoBehaviour
         if (hasFunction)
         {
             detailPopupFunction.text =
-                part.function_description.Trim();
+                GetLocalizedText(
+                    part.function_description,
+                    part.function_description_vi).Trim();
         }
 
         detailPopupOverlay.RemoveFromClassList(
@@ -3500,8 +3525,70 @@ public class VRPageController : MonoBehaviour
     }
 
 
+    private void OnVrLanguageChanged(string language)
+    {
+        if (detailDescriptionHeading != null)
+            detailDescriptionHeading.text =
+                AppLanguageManager.IsVietnamese ? "Mô tả" : "Description";
+
+        if (detailStructureHeading != null)
+            detailStructureHeading.text =
+                AppLanguageManager.IsVietnamese ? "Cấu tạo" : "Structure";
+
+        if (detailFunctionHeading != null)
+            detailFunctionHeading.text =
+                AppLanguageManager.IsVietnamese ? "Chức năng" : "Function";
+
+        if (detailModeEnabled)
+            BuildDetailLabels();
+
+        if (currentDetailPart != null &&
+            detailPopupOverlay != null &&
+            !detailPopupOverlay.ClassListContains(HiddenClass))
+        {
+            OpenDetailPopup(currentDetailPart);
+        }
+    }
+
+
+    private static string GetLocalizedPartName(
+        VRModelDetailService.ModelPartData part,
+        string fallback)
+    {
+        if (part == null)
+            return fallback;
+
+        string value = AppLanguageManager.IsVietnamese
+            ? part.part_name_vi
+            : part.part_name;
+
+        if (string.IsNullOrWhiteSpace(value))
+            value = part.part_name;
+
+        return string.IsNullOrWhiteSpace(value)
+            ? fallback
+            : value.Trim();
+    }
+
+
+    private static string GetLocalizedText(
+        string english,
+        string vietnamese)
+    {
+        string value = AppLanguageManager.IsVietnamese
+            ? vietnamese
+            : english;
+
+        if (string.IsNullOrWhiteSpace(value))
+            value = english;
+
+        return value ?? string.Empty;
+    }
+
+
     private void CloseDetailPopup()
     {
+        currentDetailPart = null;
         if (detailPopupOverlay != null &&
             !detailPopupOverlay.ClassListContains(
                 HiddenClass))

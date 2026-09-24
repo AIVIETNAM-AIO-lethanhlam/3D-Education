@@ -16,10 +16,10 @@
 /* HEADER */
 .wizard-header {
     width: 100%;
-    height: 142px;
+    height: 152px;
     padding-left: 18px;
     padding-right: 18px;
-    padding-top: 32px;
+    padding-top: 42px;
     padding-bottom: 16px;
     flex-shrink: 0;
     background-color: white;
@@ -93,7 +93,7 @@
 .chapter-dropdown {
     width: 100%;
     height: 54px;
-    margin-bottom: 22px;
+    margin-bottom: 0;
     background-color: white;
     border-width: 1px;
     border-color: rgb(205, 216, 233);
@@ -261,9 +261,250 @@
     flex-grow: 0;
     flex-shrink: 0;
 }
+
+.quiz-deadline-container {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.quiz-deadline-label {
+    margin-bottom: 7px;
+    font-size: 11px;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+    color: rgb(112, 77, 32);
+}
+
+.quiz-deadline-fields {
+    width: 100%;
+    flex-direction: row;
+}
+
+.quiz-picker-button {
+    height: 42px;
+    padding-left: 13px;
+    padding-right: 11px;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(238, 137, 35);
+    border-radius: 11px;
+    color: rgb(30, 52, 92);
+    font-size: 12px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.quiz-picker-button:hover,
+.quiz-picker-button:focus {
+    background-color: white;
+    border-color: rgb(238, 137, 35);
+}
+
+.quiz-picker-button > .unity-button__text {
+    display: none;
+}
+
+.quiz-picker-value {
+    color: rgb(30, 52, 92);
+    font-size: 12px;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Medium.ttf");
+}
+
+.quiz-picker-placeholder {
+    color: rgb(126, 132, 145);
+}
+
+.quiz-calendar-icon {
+    width: 18px;
+    height: 18px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    background-image: url("project://database/Assets/UI/Images/Icons/icon-calendar.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.quiz-deadline-date {
+    flex-grow: 1;
+    margin-right: 8px;
+}
+
+.quiz-deadline-time {
+    width: 96px;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.quiz-picker-popup {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(223, 228, 238);
+    border-radius: 12px;
+}
+
+.quiz-calendar-header {
+    height: 34px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.quiz-calendar-nav {
+    width: 34px;
+    height: 30px;
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+    color: rgb(31, 79, 160);
+    font-size: 22px;
+}
+
+.quiz-calendar-month {
+    color: rgb(20, 43, 82);
+    font-size: 12px;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+}
+
+.quiz-calendar-weekdays,
+.quiz-calendar-days {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.quiz-calendar-cell {
+    width: 14.2857%;
+    height: 30px;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.quiz-calendar-weekday {
+    width: 100%;
+    -unity-text-align: middle-center;
+    color: rgb(126, 132, 145);
+    font-size: 9px;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+}
+
+.quiz-calendar-day {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    max-width: 30px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 15px;
+    color: rgb(30, 52, 92);
+    font-size: 11px;
+}
+
+.quiz-calendar-day-selected {
+    background-color: rgb(238, 137, 35);
+    color: white;
+}
+
+.quiz-calendar-day-today {
+    border-width: 1px;
+    border-color: rgb(238, 137, 35);
+}
+
+.quiz-time-title {
+    margin-bottom: 8px;
+    color: rgb(20, 43, 82);
+    font-size: 12px;
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+}
+
+.quiz-time-columns {
+    height: 132px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.quiz-time-scroll {
+    width: 88px;
+    height: 132px;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(223, 228, 238);
+    border-radius: 10px;
+}
+
+.quiz-time-scroll .unity-scroller--vertical,
+.quiz-time-scroll .unity-scroller--horizontal,
+.quiz-time-scroll .unity-scroll-view__vertical-scroller,
+.quiz-time-scroll .unity-scroll-view__horizontal-scroller {
+    display: none;
+}
+
+.quiz-time-scroll .unity-scroll-view__content-viewport {
+    padding-right: 0;
+}
+
+.quiz-time-option {
+    min-height: 36px;
+    background-color: transparent;
+    border-width: 0;
+    color: rgb(30, 52, 92);
+    font-size: 13px;
+}
+
+.quiz-time-option-selected {
+    background-color: rgb(255, 239, 220);
+    color: rgb(211, 104, 10);
+    -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
+}
+
+.quiz-time-separator {
+    margin-left: 9px;
+    margin-right: 9px;
+    color: rgb(30, 52, 92);
+    font-size: 20px;
+}
+
+.quiz-time-done-button {
+    height: 36px;
+    margin-top: 9px;
+    background-color: rgb(238, 137, 35);
+    border-width: 0;
+    border-radius: 10px;
+    color: white;
+    font-size: 12px;
+}
+
+.quiz-deadline-hint {
+    margin-top: 6px;
+    font-size: 10px;
+    color: rgb(142, 112, 75);
+    white-space: normal;
+}
+
 .upload-action-button {
     width: 100%;
     height: 49px;
+    padding-left: 10px;
+    padding-right: 10px;
     flex-direction: row;
     align-items: center;
     justify-content: center;
@@ -271,9 +512,20 @@
     border-radius: 18px;
     color: white;
 }
+/* Center the icon + caption together, independent of Button padding/label widths. */
+.centered-button-content {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
 .button-icon {
     width: 18px;
+    min-width: 18px;
     height: 18px;
+    flex-shrink: 0;
     margin-right: 8px;
     background-repeat: no-repeat;
     background-position: center;
@@ -283,6 +535,10 @@
     background-image: url("project://database/Assets/UI/Images/Icons/upload.png");
 }
 .upload-button-label {
+    flex-shrink: 1;
+    min-width: 0;
+    white-space: normal;
+    -unity-text-align: middle-center;
     font-size: 15px;
     -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf");
     color: white;
@@ -320,14 +576,22 @@
     font-size: 11px;
     color: rgb(17, 137, 160);
 }
+.document-picker-status {
+    width: 100%;
+    margin-top: 8px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    font-size: 11px;
+    color: rgb(17, 137, 160);
+}
 
 /* STEP 3 */
 .details-content { padding-top: 24px; }
 .form-input { width: 100%; height: 54px; background-color: white; border-width: 1px; border-color: rgb(205, 216, 233); border-radius: 17px; }
 .form-input .unity-base-field__input, .form-input .unity-text-input { height: 52px; padding-left: 17px; padding-right: 17px; background-color: transparent; border-width: 0; font-size: 15px; color: rgb(22, 43, 82); }
-.generate-ai-button { width: 100%; height: 54px; margin-top: 16px; margin-bottom: 16px; padding-left: 18px; flex-direction: row; align-items: center; justify-content: center; background-color: white; border-width: 2px; border-color: rgb(0, 76, 181); border-radius: 17px; }
-.ai-icon { width: 20px; height: 20px; margin-right: 9px; background-image: url("project://database/Assets/UI/Images/Icons/magic.png"); background-repeat: no-repeat; background-position: center; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: rgb(0, 76, 181); }
-.generate-ai-label { font-size: 14px; -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(0, 65, 158); }
+.generate-ai-button { width: 100%; min-height: 54px; margin-top: 16px; margin-bottom: 16px; padding-left: 10px; padding-right: 10px; flex-direction: row; align-items: center; justify-content: center; background-color: white; border-width: 2px; border-color: rgb(0, 76, 181); border-radius: 17px; }
+.ai-icon { width: 20px; min-width: 20px; height: 20px; flex-shrink: 0; margin-right: 9px; background-image: url("project://database/Assets/UI/Images/Icons/magic.png"); background-repeat: no-repeat; background-position: center; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: rgb(0, 76, 181); }
+.generate-ai-label { flex-shrink: 1; min-width: 0; white-space: normal; -unity-text-align: middle-center; font-size: 14px; -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(0, 65, 158); }
 .details-card { width: 100%; margin-bottom: 16px; background-color: white; border-width: 1px; border-color: rgb(205, 216, 233); border-radius: 17px; overflow: hidden; }
 .details-card-header { height: 51px; padding-left: 16px; flex-direction: row; align-items: center; border-bottom-width: 1px; border-bottom-color: rgb(232, 236, 244); }
 .details-header-icon { width: 18px; height: 18px; margin-right: 9px; background-repeat: no-repeat; background-position: center; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: rgb(0, 80, 185); }
@@ -449,7 +713,6 @@
     background-position: center;
     -unity-background-scale-mode: scale-to-fit;
 }
-.secondary-button { width: 100%; height: 50px; margin-top: 9px; background-color: white; border-width: 1px; border-color: rgb(199, 211, 229); border-radius: 17px; font-size: 15px; -unity-font: url("project://database/Assets/UI/Fonts/PlusJakartaSans-Bold.ttf"); color: rgb(78, 96, 130); }
 
 
 /* =========================================================
@@ -570,8 +833,8 @@
 /* STEP 1 - LESSON NAME */
 .lesson-name-section {
     width: 100%;
-    margin-top: 18px;
-    margin-bottom: 22px;
+    margin-top: 0;
+    margin-bottom: 24px;
 }
 
 .lesson-name-section .form-label {
@@ -608,3 +871,8 @@
 .update-mode-finish {
     background-color: rgb(26, 91, 207);
 }
+
+/* Equal section rhythm: chapter, lesson name and format. */
+.chapter-section { width: 100%; margin-bottom: 24px; }
+.lesson-name-section { width: 100%; margin-top: 0; margin-bottom: 24px; }
+.section-title-row { min-height: 26px; }

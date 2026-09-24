@@ -28,11 +28,13 @@
             <!-- STEP 1 -->
             <ui:ScrollView name="format-step" class="step-panel clean-scroll" mode="Vertical" vertical-scroller-visibility="Hidden" horizontal-scroller-visibility="Hidden">
                 <ui:VisualElement class="form-content">
-                    <ui:Label text="CHAPTER" class="form-label" />
+                    <ui:VisualElement class="chapter-section">
+                        <ui:Label text="CHAPTER" class="form-label" />
 
                     <ui:DropdownField name="chapter-dropdown"
                                       class="chapter-dropdown"
                                       value="Chapter 1 – Introduction" />
+                    </ui:VisualElement>
 
                     <ui:VisualElement class="lesson-name-section">
                         <ui:Label text="CLASS NAME" class="form-label" />
@@ -106,8 +108,10 @@
 
                         <ui:Button name="confirm-video-link-button"
                                    class="upload-action-button upload-action-video">
-                            <ui:VisualElement class="button-icon link-icon" />
-                            <ui:Label text="Confirm YouTube Link" class="upload-button-label" />
+                            <ui:VisualElement class="centered-button-content">
+                                <ui:VisualElement class="button-icon link-icon" />
+                                <ui:Label text="Confirm YouTube Link" class="upload-button-label" />
+                            </ui:VisualElement>
                         </ui:Button>
 
                         <ui:Label name="video-link-status-label"
@@ -127,9 +131,14 @@
                         </ui:VisualElement>
                         <ui:VisualElement name="document-chip-container" class="document-chip-container" />
                         <ui:Button name="upload-documents-button" class="upload-action-button upload-action-document">
-                            <ui:VisualElement class="button-icon upload-icon" />
-                            <ui:Label text="Select PDF Documents" class="upload-button-label" />
+                            <ui:VisualElement class="centered-button-content">
+                                <ui:VisualElement class="button-icon upload-icon" />
+                                <ui:Label text="Select PDF Documents" class="upload-button-label" />
+                            </ui:VisualElement>
                         </ui:Button>
+                        <ui:Label name="document-picker-status-label"
+                                  text=""
+                                  class="document-picker-status hidden" />
                     </ui:VisualElement>
 
                     <ui:VisualElement name="exercise-upload-card" class="upload-card upload-card-exercise hidden">
@@ -153,10 +162,49 @@
                                        class="remove-file-button single-file-remove" />
                         </ui:VisualElement>
 
+                        <ui:VisualElement name="quiz-deadline-container" class="quiz-deadline-container">
+                            <ui:Label text="QUIZ DEADLINE" class="quiz-deadline-label" />
+                            <ui:VisualElement class="quiz-deadline-fields">
+                                <ui:Button name="quiz-deadline-date-button"
+                                           class="quiz-picker-button quiz-deadline-date">
+                                    <ui:Label name="quiz-deadline-date-label" text="YYYY-MM-DD" class="quiz-picker-value quiz-picker-placeholder" />
+                                    <ui:VisualElement class="quiz-calendar-icon" />
+                                </ui:Button>
+                                <ui:Button name="quiz-deadline-time-button"
+                                           class="quiz-picker-button quiz-deadline-time">
+                                    <ui:Label name="quiz-deadline-time-label" text="HH:mm" class="quiz-picker-value quiz-picker-placeholder" />
+                                </ui:Button>
+                            </ui:VisualElement>
+
+                            <ui:VisualElement name="quiz-calendar-popup" class="quiz-picker-popup hidden">
+                                <ui:VisualElement class="quiz-calendar-header">
+                                    <ui:Button name="quiz-calendar-previous-button" text="‹" class="quiz-calendar-nav" />
+                                    <ui:Label name="quiz-calendar-month-label" text="Month 2026" class="quiz-calendar-month" />
+                                    <ui:Button name="quiz-calendar-next-button" text="›" class="quiz-calendar-nav" />
+                                </ui:VisualElement>
+                                <ui:VisualElement name="quiz-calendar-weekdays" class="quiz-calendar-weekdays" />
+                                <ui:VisualElement name="quiz-calendar-days" class="quiz-calendar-days" />
+                            </ui:VisualElement>
+
+                            <ui:VisualElement name="quiz-time-popup" class="quiz-picker-popup quiz-time-popup hidden">
+                                <ui:Label text="Choose time" class="quiz-time-title" />
+                                <ui:VisualElement class="quiz-time-columns">
+                                    <ui:ScrollView name="quiz-hour-scroll" class="quiz-time-scroll clean-scroll" mode="Vertical" vertical-scroller-visibility="Hidden" horizontal-scroller-visibility="Hidden" touch-scroll-type="Elastic" />
+                                    <ui:Label text=":" class="quiz-time-separator" />
+                                    <ui:ScrollView name="quiz-minute-scroll" class="quiz-time-scroll clean-scroll" mode="Vertical" vertical-scroller-visibility="Hidden" horizontal-scroller-visibility="Hidden" touch-scroll-type="Elastic" />
+                                </ui:VisualElement>
+                                <ui:Button name="quiz-time-done-button" text="Done" class="quiz-time-done-button" />
+                            </ui:VisualElement>
+                            <ui:Label text="Use local time. Example: 2026-10-30 at 23:59"
+                                      class="quiz-deadline-hint" />
+                        </ui:VisualElement>
+
                         <ui:Button name="upload-exercise-button"
                                    class="upload-action-button upload-action-exercise">
-                            <ui:VisualElement class="button-icon upload-icon" />
-                            <ui:Label text="Select Exercise PDF" class="upload-button-label" />
+                            <ui:VisualElement class="centered-button-content">
+                                <ui:VisualElement class="button-icon upload-icon" />
+                                <ui:Label text="Select Exercise PDF" class="upload-button-label" />
+                            </ui:VisualElement>
                         </ui:Button>
                     </ui:VisualElement>
 
@@ -180,8 +228,10 @@
                                        class="remove-file-button single-file-remove" />
                         </ui:VisualElement>
                         <ui:Button name="upload-model-button" class="upload-action-button upload-action-model">
-                            <ui:VisualElement class="button-icon upload-icon" />
-                            <ui:Label text="Select GLB Model" class="upload-button-label" />
+                            <ui:VisualElement class="centered-button-content">
+                                <ui:VisualElement class="button-icon upload-icon" />
+                                <ui:Label text="Select GLB Model" class="upload-button-label" />
+                            </ui:VisualElement>
                         </ui:Button>
                     </ui:VisualElement>
 
@@ -193,8 +243,10 @@
             <ui:ScrollView name="details-step" class="step-panel clean-scroll hidden" mode="Vertical" vertical-scroller-visibility="Hidden" horizontal-scroller-visibility="Hidden">
                 <ui:VisualElement class="form-content details-content">
                     <ui:Button name="generate-ai-button" class="generate-ai-button">
-                        <ui:VisualElement class="ai-icon" />
-                        <ui:Label text="Generate Description &amp; Objectives with AI" class="generate-ai-label" />
+                        <ui:VisualElement class="centered-button-content">
+                            <ui:VisualElement class="ai-icon" />
+                            <ui:Label text="Generate Description &amp; Objectives with AI" class="generate-ai-label" />
+                        </ui:VisualElement>
                     </ui:Button>
 
                     <ui:VisualElement class="details-card">
@@ -243,7 +295,6 @@
                 <ui:Label name="next-button-label" text="Next" class="primary-button-label" />
                 <ui:VisualElement name="next-button-icon" class="next-button-icon" />
             </ui:Button>
-            <ui:Button name="save-draft-button" text="Save Draft" class="secondary-button hidden" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

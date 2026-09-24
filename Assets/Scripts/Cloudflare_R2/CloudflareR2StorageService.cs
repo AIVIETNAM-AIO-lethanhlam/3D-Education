@@ -40,6 +40,8 @@ public class CloudflareR2StorageService : MonoBehaviour
         Action<string> onSuccess,
         Action<string> onError)
     {
+        localFilePath = NormalizeLocalFilePath(localFilePath);
+
         if (string.IsNullOrWhiteSpace(bucketName))
         {
             onError?.Invoke("R2 bucket name is empty.");
@@ -99,7 +101,9 @@ public class CloudflareR2StorageService : MonoBehaviour
         www.downloadHandler = new DownloadHandlerBuffer();
 
         www.SetRequestHeader("Content-Type", contentType);
-        www.SetRequestHeader("Host", host);
+        // Do not set Host manually. UnityWebRequest/Android's HTTP stack adds
+        // it from the request URL. It is still part of the AWS canonical
+        // headers above, but setting this restricted header can fail on device.
         www.SetRequestHeader("x-amz-date", amzDate);
         www.SetRequestHeader("x-amz-content-sha256", payloadHash);
 
@@ -222,6 +226,29 @@ public class CloudflareR2StorageService : MonoBehaviour
         }
 
         return string.Join("/", segments);
+    }
+
+    /// <summary>
+    /// Native file pickers normally return a regular cache path on Android.
+    /// Also accept file:// URIs in case a picker/platform version returns one.
+    /// content:// URIs must be copied to a local cache path by the picker first.
+    /// </summary>
+    private static string NormalizeLocalFilePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+
+        string trimmed = path.Trim();
+        if (!trimmed.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+            return trimmed;
+
+        try
+        {
+            return new Uri(trimmed).LocalPath;
+        }
+        catch
+        {
+            return trimmed.Replace("file://", string.Empty);
+        }
     }
 
     private static string ComputeSHA256Hex(byte[] data)

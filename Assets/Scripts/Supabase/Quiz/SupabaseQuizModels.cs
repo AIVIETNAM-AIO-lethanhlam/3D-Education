@@ -9,6 +9,22 @@ public class ParseQuizPayload
     public string teacher_id;
     public string title;
     public string pdf_url;
+    // ISO-8601 UTC value, for example: 2026-10-27T16:59:00.000Z
+    public string closes_at;
+}
+
+[Serializable]
+public class QuizMetadata
+{
+    public string id;
+    public string lesson_id;
+    public string teacher_id;
+    public string title;
+    public string opens_at;
+    public string closes_at;
+    public bool is_published;
+    public int total_questions;
+    public float max_score;
 }
 
 // Model lựa chọn A, B, C, D (Phía Học sinh)

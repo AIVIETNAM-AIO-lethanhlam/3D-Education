@@ -9,6 +9,12 @@ public class SupabaseLessonService : MonoBehaviour
 {
     private SupabaseRuntimeRestService rest;
 
+    [Serializable]
+    private class JsonArrayWrapper<T>
+    {
+        public T[] items;
+    }
+
     private void Awake()
     {
         ResolveRestService();
@@ -282,6 +288,120 @@ public class SupabaseLessonService : MonoBehaviour
             onSuccess,
             onError
         );
+    }
+
+    /// <summary>
+    /// Inserts an asset and returns the authoritative lesson_assets row. The
+    /// returned id is required when queueing GLB analysis; guessing it from a
+    /// lesson id or storage path can process the wrong model.
+    /// </summary>
+    public IEnumerator CreateLessonAsset(
+        LessonAssetInsert asset,
+        Action<LessonAssetRecord> onSuccess,
+        Action<string> onError)
+    {
+        if (!ResolveRestService())
+        {
+            onError?.Invoke("SupabaseRuntimeRestService is missing.");
+            yield break;
+        }
+
+        string response = null;
+        string error = null;
+        yield return rest.SendJson(
+            UnityWebRequest.kHttpVerbPOST,
+            "rest/v1/lesson_assets?select=id,lesson_id,uploaded_by,asset_type,file_name,storage_bucket,storage_path,mime_type,file_extension,file_size_bytes,display_order,created_at",
+            JsonUtility.ToJson(asset),
+            "return=representation",
+            value => response = value,
+            value => error = value
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            onError?.Invoke(error);
+            yield break;
+        }
+
+        try
+        {
+            JsonArrayWrapper<LessonAssetRecord> wrapper =
+                JsonUtility.FromJson<JsonArrayWrapper<LessonAssetRecord>>(
+                    "{\"items\":" + response + "}");
+            LessonAssetRecord created =
+                wrapper?.items != null && wrapper.items.Length > 0
+                    ? wrapper.items[0]
+                    : null;
+            if (created == null || string.IsNullOrWhiteSpace(created.id))
+            {
+                onError?.Invoke("Supabase created the model asset but returned no id.");
+                yield break;
+            }
+            onSuccess?.Invoke(created);
+        }
+        catch (Exception exception)
+        {
+            onError?.Invoke("Cannot parse created lesson asset: " + exception.Message);
+        }
+    }
+
+    /// <summary>Runs GLB structure analysis immediately after the R2 upload.</summary>
+    public IEnumerator GenerateModelDetails(
+        string assetId,
+        Action onSuccess,
+        Action<string> onError)
+    {
+        if (!ResolveRestService())
+        {
+            onError?.Invoke("SupabaseRuntimeRestService is missing.");
+            yield break;
+        }
+
+        if (string.IsNullOrWhiteSpace(assetId))
+        {
+            onError?.Invoke("assetId is empty.");
+            yield break;
+        }
+
+        string error = null;
+        yield return rest.SendJson(
+            UnityWebRequest.kHttpVerbPOST,
+            "functions/v1/generate-model-details",
+            // `action` makes this request self-describing in Edge Function logs.
+            // The generate-model-details function accepts it, while asset_id
+            // remains the authoritative input.
+            "{\"action\":\"generate_model_details\",\"asset_id\":\"" +
+                EscapeJson(assetId.Trim()) + "\"}",
+            null,
+            _ => { },
+            value => error = value
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            if (error.IndexOf("Unsupported action", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                onError?.Invoke(
+                    "Edge Function 'generate-model-details' đang chạy nhầm mã nguồn " +
+                    "(mã quiz/update_deadline). Hãy deploy file index.ts của pipeline " +
+                    "phân tích GLB vào đúng function 'generate-model-details', sau đó thử lại."
+                );
+            }
+            else
+            {
+                onError?.Invoke(error);
+            }
+            yield break;
+        }
+
+        onSuccess?.Invoke();
+    }
+
+    private static string EscapeJson(string value)
+    {
+        return (value ?? string.Empty)
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"");
     }
 
     public IEnumerator CreateLessonObjective(

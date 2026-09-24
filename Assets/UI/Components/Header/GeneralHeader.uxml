@@ -7,7 +7,7 @@
 
     <ui:VisualElement
         name="general-header"
-        class="general-header general-header-home">
+        class="general-header general-header-home unified-header-spacing">
 
         <!-- =====================================================
              HOME HEADER

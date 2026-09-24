@@ -59,8 +59,7 @@
                 <ui:Label name="quiz-empty-label" text="No quiz available." class="empty-section-label hidden"/>
 
                 <ui:VisualElement name="interactive-model-card" class="interactive-model-card hidden">
-                    <ui:VisualElement class="interactive-grid-background"/>
-                    <ui:Label text="•  INTERACTIVE" class="interactive-badge"/>
+                    <ui:Label text="INTERACTIVE" class="interactive-badge"/>
                     <ui:VisualElement class="model-preview-area">
                         <ui:VisualElement class="model-icon-box"><ui:VisualElement class="model-main-icon icon-physics-white"/></ui:VisualElement>
                         <ui:Label name="model-preview-label" text="3D Model" class="model-preview-label"/>
@@ -79,11 +78,13 @@
                         <ui:Button name="ar-mode-button" class="model-mode-button"><ui:VisualElement class="mode-icon icon-camera-white"/><ui:Label text="AR Mode" class="mode-text"/></ui:Button>
                     </ui:VisualElement>
                 </ui:VisualElement>
+
+                <ui:Button name="ai-assistant-button" class="ai-assistant-button" tooltip="AI Assistant">
+                    <ui:VisualElement class="ai-button-icon"/>
+                </ui:Button>
                 <ui:VisualElement class="bottom-space"/>
             </ui:VisualElement>
         </ui:ScrollView>
-
-        <ui:Button name="ai-assistant-button" class="ai-assistant-button"><ui:VisualElement class="ai-button-icon icon-ai-sparkle-white"/></ui:Button>
 
 
         <ui:VisualElement name="pdf-viewer-overlay" class="pdf-viewer-overlay hidden">

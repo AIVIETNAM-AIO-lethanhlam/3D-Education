@@ -6,7 +6,7 @@
     flex-grow: 1;
     width: 100%;
     height: 100%;
-    background-color: rgb(247, 249, 253);
+    background-color: rgb(255, 255, 255);
 
     /* Assets/Resources/Fonts/PlusJakartaSans.* */
     -unity-font-definition: resource("Fonts/PlusJakartaSans-Regular");
@@ -35,8 +35,8 @@
     padding-right: 18px;
     /* Smaller top spacing for ChatAIScene.
        Safe-area padding is still applied by the controller. */
-    padding-top: 14px;
-    padding-bottom: 6px;
+    padding-top: 10px;
+    padding-bottom: 10px;
 
     background-color: rgb(255, 255, 255);
 }
@@ -93,7 +93,7 @@
     width: 18px;
     height: 18px;
 
-    background-image: url("project://database/Assets/UI/Images/Icons/menu.png");
+    background-image: url("project://database/Assets/UI/Images/Icons/menu-white.png");
 }
 
 .phone-icon {
@@ -263,10 +263,10 @@
 /* First action does not need an extra leading gap.
    This keeps the visual weight balanced with the back-button side. */
 /* =========================================================
-   COURSE BANNER
+   MESSAGE SEARCH BAR
    ========================================================= */
 
-.course-banner {
+.message-search-bar {
     height: 44px;
     min-height: 44px;
 
@@ -298,29 +298,137 @@
     background-color: rgb(248, 251, 255);
 }
 
-.course-icon {
+.message-search-button {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    margin-left: 0;
+    margin-right: 10px;
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+}
+
+.message-search-button:hover {
+    background-color: rgb(239, 245, 255);
+}
+
+.message-search-icon {
     width: 17px;
     height: 17px;
-
     min-width: 17px;
     min-height: 17px;
-
-    margin-right: 8px;
-
-    background-image: url("project://database/Assets/UI/Images/Icons/course.png");
+    background-image: url("project://database/Assets/UI/Images/Icons/search.png");
     -unity-background-scale-mode: scale-to-fit;
 }
 
-.course-label {
+.message-search-input {
     flex-grow: 1;
+    height: 38px;
+    min-width: 0;
 
-    color: rgb(28, 94, 194);
-    font-size: 10px;
-    -unity-font-style: bold;
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 0;
 
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    background-color: rgba(0, 0, 0, 0);
+    color: rgb(38, 53, 78);
+    font-size: 13px;
+}
+
+.message-search-input > .unity-text-input,
+.message-search-input > .unity-base-text-field__input,
+.message-search-input .unity-text-field__input,
+.message-search-input .unity-base-text-field__input {
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    border-left-color: rgba(0, 0, 0, 0);
+    border-right-color: rgba(0, 0, 0, 0);
+    border-top-color: rgba(0, 0, 0, 0);
+    border-bottom-color: rgba(0, 0, 0, 0);
+
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+
+    background-color: rgba(0, 0, 0, 0);
+    color: rgb(38, 53, 78);
+    font-size: 13px;
+}
+
+/* Unity applies its default TextField frame again while focused/hovered.
+   Override those states so only the outer rounded search bar is visible. */
+.message-search-input:hover,
+.message-search-input:focus,
+.message-search-input > .unity-text-input:hover,
+.message-search-input > .unity-text-input:focus,
+.message-search-input > .unity-base-text-field__input:hover,
+.message-search-input > .unity-base-text-field__input:focus,
+.message-search-input .unity-text-field__input:hover,
+.message-search-input .unity-text-field__input:focus,
+.message-search-input .unity-base-text-field__input:hover,
+.message-search-input .unity-base-text-field__input:focus {
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    border-left-color: rgba(0, 0, 0, 0);
+    border-right-color: rgba(0, 0, 0, 0);
+    border-top-color: rgba(0, 0, 0, 0);
+    border-bottom-color: rgba(0, 0, 0, 0);
+
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.message-search-placeholder {
+    position: absolute;
+    left: 44px;
+    right: 12px;
+    top: 0;
+    bottom: 0;
+
+    color: rgb(135, 148, 171);
+    font-size: 13px;
+    -unity-text-align: middle-left;
 }
 
 
@@ -329,6 +437,7 @@
    ========================================================= */
 
 .message-scroll-view {
+    background-color: rgb(247, 249, 253);
     flex-grow: 1;
 
     border-top-width: 1px;
@@ -491,6 +600,139 @@
 /* =========================================================
    IMAGE MESSAGES
    ========================================================= */
+
+.image-gallery-panel {
+    display: none;
+    height: 285px;
+    min-height: 285px;
+    flex-shrink: 0;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    border-top-width: 1px;
+    border-top-color: rgb(222, 230, 243);
+    background-color: rgb(255, 255, 255);
+}
+
+.image-gallery-panel.visible { display: flex; }
+
+.image-gallery-header {
+    height: 36px;
+    min-height: 36px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.image-gallery-title {
+    flex-grow: 1;
+    color: rgb(25, 37, 61);
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.close-image-gallery-button {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 2px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+    color: rgb(61, 76, 105);
+    background-color: rgb(241, 246, 255);
+    font-size: 20px;
+}
+
+.image-gallery-status {
+    flex-grow: 1;
+    color: rgb(119, 134, 160);
+    font-size: 11px;
+    -unity-text-align: middle-center;
+}
+
+.image-gallery-scroll { flex-grow: 1; min-height: 0; }
+
+.image-gallery-grid {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+}
+
+.image-gallery-item {
+    position: relative;
+    width: 23%;
+    height: 74px;
+    margin-left: 1%;
+    margin-right: 1%;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background-color: rgb(242, 246, 252);
+    -unity-background-image-tint-color: white;
+    background-position: center;
+    background-repeat: no-repeat;
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.image-gallery-thumbnail {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.image-gallery-item.selected {
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(28, 94, 207);
+    border-right-color: rgb(28, 94, 207);
+    border-top-color: rgb(28, 94, 207);
+    border-bottom-color: rgb(28, 94, 207);
+}
+
+.image-selection-badge {
+    display: none;
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    width: 20px;
+    height: 20px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    background-color: rgb(28, 94, 207);
+}
+
+.image-gallery-item.selected .image-selection-badge { display: flex; }
 
 .message-image-bubble {
     width: 230px;
@@ -825,7 +1067,8 @@
    ========================================================= */
 
 @media (max-width: 390px) {
-    .chat-header {
+    .chat-header,
+    .file-manager-header {
         padding-left: 10px;
         padding-right: 10px;
     }
@@ -1029,4 +1272,1142 @@
 
 .ai-assistant-badge {
     color: rgb(249, 158, 18);
+}
+
+/* =========================================================
+   FIGMA MORE MENU
+   ========================================================= */
+
+/* Figma uses a strong blue circular More button. */
+.more-button {
+    background-color: rgb(20, 86, 177);
+}
+
+.more-button:hover {
+    background-color: rgb(17, 74, 155);
+}
+
+.more-button:active {
+    background-color: rgb(14, 63, 133);
+}
+
+.more-button .menu-icon,
+.more-button:hover .menu-icon,
+.more-button:active .menu-icon {
+    /* Keep Assets/UI/Images/Icons/menu.png, but force it to render white. */
+    -unity-background-image-tint-color: rgb(255, 255, 255);
+}
+
+/* Full-screen transparent layer: closes the popover when the user taps outside. */
+.more-menu-scrim {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+}
+
+.more-menu-scrim.visible {
+    display: flex;
+}
+
+.more-menu {
+    position: absolute;
+    /* Slightly left of the old position so the popup visually lines up with
+       the menu button instead of hugging the screen edge. */
+    right: 28px;
+    /* Drop the popup a little lower so there is a clearer gap below header. */
+    top: 114px;
+
+    width: 278px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+
+    background-color: rgb(255, 255, 255);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(231, 235, 243);
+    border-right-color: rgb(231, 235, 243);
+    border-top-color: rgb(231, 235, 243);
+    border-bottom-color: rgb(231, 235, 243);
+
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+}
+
+.more-menu-item {
+    height: 48px;
+    min-height: 48px;
+
+    padding-left: 18px;
+    padding-right: 14px;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    flex-direction: row;
+    align-items: center;
+
+    background-color: rgba(255, 255, 255, 0);
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.more-menu-item:hover {
+    background-color: rgb(247, 249, 253);
+}
+
+.more-menu-item:active {
+    background-color: rgb(239, 244, 251);
+}
+
+.more-menu-icon {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    margin-right: 12px;
+
+    /* Intentionally no background-image here.
+       Add your real PNG icons from Assets/UI/Images/Icons, for example:
+
+       .view-profile-menu-icon {
+           background-image: url("project://database/Assets/UI/Images/Icons/profile.png");
+       }
+
+       Do the same for:
+       - .search-conversation-menu-icon
+       - .shared-files-menu-icon
+       - .notifications-menu-icon
+       - .report-menu-icon
+    */
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.more-menu-label {
+    flex-grow: 1;
+    color: rgb(41, 56, 82);
+    font-size: 13px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+}
+
+.more-menu-state-dot {
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    min-height: 8px;
+
+    margin-left: 10px;
+
+    background-color: rgb(17, 83, 177);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+.more-menu-divider {
+    height: 1px;
+    margin-left: 18px;
+    margin-right: 18px;
+    background-color: rgb(232, 236, 243);
+}
+
+.report-menu-label {
+    color: rgb(226, 80, 86);
+}
+
+
+/* =========================================================
+   MORE MENU REAL ICONS
+   Assets/UI/Images/Icons
+   ========================================================= */
+
+.view-profile-menu-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/profile.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.shared-files-menu-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/attach-file.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.notifications-menu-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/notification.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* Applied while notifications for this conversation are muted. */
+.notifications-menu-icon.notifications-muted {
+    background-image: url("project://database/Assets/UI/Images/Icons/non-notification.png");
+}
+
+.report-menu-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/alert.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* Keep the popover inside narrower devices. */
+@media (max-width: 360px) {
+    .more-menu {
+        right: 22px;
+        width: 260px;
+    }
+
+    .more-menu-label {
+        font-size: 12px;
+    }
+}
+
+
+/* =========================================================
+   REPORT CONVERSATION BOTTOM SHEET
+   ========================================================= */
+.report-overlay {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    justify-content: flex-end;
+    background-color: rgba(9, 18, 35, 0.46);
+}
+
+.report-overlay.visible { display: flex; }
+
+.report-bottom-sheet {
+    width: 100%;
+    min-height: 250px;
+    padding-left: 18px;
+    padding-right: 18px;
+    padding-top: 12px;
+    padding-bottom: 18px;
+    align-items: center;
+    background-color: rgb(255, 255, 255);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+}
+
+.report-sheet-handle {
+    width: 34px;
+    height: 4px;
+    margin-bottom: 14px;
+    background-color: rgb(220, 226, 236);
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+    border-bottom-left-radius: 2px;
+    border-bottom-right-radius: 2px;
+}
+
+.report-alert-badge {
+    width: 42px;
+    height: 42px;
+    margin-bottom: 10px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(255, 241, 241);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.report-alert-icon {
+    width: 23px;
+    height: 23px;
+    background-image: url("project://database/Assets/UI/Images/Icons/alert.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.report-title {
+    color: rgb(31, 45, 72);
+    font-size: 16px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.report-description {
+    max-width: 320px;
+    margin-top: 8px;
+    margin-bottom: 18px;
+    color: rgb(123, 136, 158);
+    font-size: 12px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.report-actions-row {
+    width: 100%;
+    height: 48px;
+    flex-direction: row;
+}
+
+.report-action-button {
+    flex-grow: 1;
+    height: 46px;
+    font-size: 13px;
+    -unity-font-style: bold;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.report-cancel-button {
+    margin-right: 6px;
+    color: rgb(44, 59, 86);
+    background-color: rgb(247, 249, 253);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(225, 231, 241);
+    border-right-color: rgb(225, 231, 241);
+    border-top-color: rgb(225, 231, 241);
+    border-bottom-color: rgb(225, 231, 241);
+}
+
+.report-confirm-button {
+    margin-left: 6px;
+    color: rgb(255, 255, 255);
+    background-color: rgb(244, 69, 74);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.report-confirm-button:hover { background-color: rgb(225, 58, 65); }
+.report-confirm-button:active { background-color: rgb(205, 48, 55); }
+
+/* =========================================================
+   INSTRUCTOR PROFILE OVERLAY
+   ========================================================= */
+.profile-overlay {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgb(248, 250, 254);
+}
+
+.profile-overlay.visible { display: flex; }
+
+.profile-header {
+    /* Match the vertical placement of ChatScene's main header so the
+       title/back button stay safely below the phone cutout. */
+    height: 112px;
+    min-height: 112px;
+    padding-left: 18px;
+    padding-right: 18px;
+    padding-top: 32px;
+    padding-bottom: 6px;
+    flex-direction: row;
+    align-items: center;
+    background-color: rgb(255, 255, 255);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(235, 239, 245);
+}
+
+.profile-back-button {
+    width: 38px;
+    height: 38px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(244, 248, 255);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 19px;
+    border-top-right-radius: 19px;
+    border-bottom-left-radius: 19px;
+    border-bottom-right-radius: 19px;
+}
+
+.profile-back-icon {
+    width: 18px;
+    height: 18px;
+    background-image: url("project://database/Assets/UI/Images/Icons/back.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.profile-header-title {
+    margin-left: 12px;
+    color: rgb(33, 47, 75);
+    font-size: 15px;
+    -unity-font-style: bold;
+}
+
+.profile-scroll-view { flex-grow: 1; }
+.profile-scroll-view .unity-scroll-view__content-container { flex-grow: 1; }
+
+.profile-content {
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 24px;
+    padding-bottom: 18px;
+    align-items: center;
+}
+
+.profile-avatar-wrap {
+    width: 86px;
+    height: 86px;
+    margin-bottom: 12px;
+}
+
+.profile-avatar-large {
+    width: 80px;
+    height: 80px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(249, 158, 18);
+    border-top-left-radius: 40px;
+    border-top-right-radius: 40px;
+    border-bottom-left-radius: 40px;
+    border-bottom-right-radius: 40px;
+}
+
+.profile-avatar-large-text {
+    color: rgb(255, 255, 255);
+    font-size: 22px;
+    -unity-font-style: bold;
+}
+
+.profile-online-dot {
+    position: absolute;
+    right: 8px;
+    bottom: 10px;
+    width: 17px;
+    height: 17px;
+    background-color: rgb(31, 203, 99);
+    border-left-width: 3px;
+    border-right-width: 3px;
+    border-top-width: 3px;
+    border-bottom-width: 3px;
+    border-left-color: rgb(255, 255, 255);
+    border-right-color: rgb(255, 255, 255);
+    border-top-color: rgb(255, 255, 255);
+    border-bottom-color: rgb(255, 255, 255);
+    border-top-left-radius: 9px;
+    border-top-right-radius: 9px;
+    border-bottom-left-radius: 9px;
+    border-bottom-right-radius: 9px;
+}
+.profile-online-dot.offline { background-color: rgb(166, 177, 194); }
+
+.profile-name {
+    color: rgb(32, 46, 74);
+    font-size: 18px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.profile-role,
+.profile-department {
+    margin-top: 3px;
+    color: rgb(117, 130, 153);
+    font-size: 11px;
+    -unity-text-align: middle-center;
+}
+
+.profile-faculty-badge {
+    margin-top: 9px;
+    margin-bottom: 17px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    color: rgb(39, 92, 165);
+    font-size: 10px;
+    -unity-font-style: bold;
+    background-color: rgb(237, 245, 255);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.profile-card {
+    width: 100%;
+    margin-bottom: 10px;
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    background-color: rgb(255, 255, 255);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(229, 234, 242);
+    border-right-color: rgb(229, 234, 242);
+    border-top-color: rgb(229, 234, 242);
+    border-bottom-color: rgb(229, 234, 242);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.profile-card-heading {
+    margin-bottom: 8px;
+    color: rgb(93, 111, 139);
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+.profile-card-body {
+    color: rgb(48, 63, 91);
+    font-size: 12px;
+    white-space: normal;
+}
+
+.profile-info-row {
+    min-height: 40px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.profile-info-icon {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    margin-right: 10px;
+    background-color: rgb(242, 247, 255);
+    border-top-left-radius: 9px;
+    border-top-right-radius: 9px;
+    border-bottom-left-radius: 9px;
+    border-bottom-right-radius: 9px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.teaching-icon {
+    /* Add this PNG later at the path below. */
+    background-image: url("project://database/Assets/UI/Images/Icons/current-class.png");
+}
+
+
+.profile-info-texts { flex-grow: 1; }
+.profile-info-title { color: rgb(45, 61, 90); font-size: 12px; -unity-font-style: bold; }
+.profile-info-subtitle { margin-top: 2px; color: rgb(126, 138, 158); font-size: 10px; }
+
+.profile-status-line { flex-direction: row; align-items: center; padding-left: 4px; }
+.profile-status-dot {
+    width: 8px;
+    height: 8px;
+    margin-right: 8px;
+    background-color: rgb(31, 203, 99);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+.profile-status-dot.offline { background-color: rgb(166, 177, 194); }
+.profile-status-text { color: rgb(31, 168, 87); font-size: 12px; -unity-font-style: bold; }
+.profile-status-text.offline { color: rgb(126, 138, 158); }
+
+.profile-bottom-actions {
+    width: 100%;
+    height: 48px;
+    margin-top: 2px;
+    flex-direction: row;
+}
+
+.profile-primary-button,
+.profile-secondary-button {
+    flex-grow: 1;
+    height: 46px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    border-top-left-radius: 11px;
+    border-top-right-radius: 11px;
+    border-bottom-left-radius: 11px;
+    border-bottom-right-radius: 11px;
+}
+
+.profile-primary-button {
+    margin-right: 5px;
+    background-color: rgb(20, 92, 201);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.profile-secondary-button {
+    margin-left: 5px;
+    background-color: rgb(248, 250, 254);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(222, 228, 238);
+    border-right-color: rgb(222, 228, 238);
+    border-top-color: rgb(222, 228, 238);
+    border-bottom-color: rgb(222, 228, 238);
+}
+
+.profile-button-icon {
+    width: 17px;
+    height: 17px;
+    margin-right: 7px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+.message-white-icon { background-image: url("project://database/Assets/UI/Images/Icons/message-white.png"); }
+.phone-profile-icon { background-image: url("project://database/Assets/UI/Images/Icons/phone.png"); }
+.profile-primary-button-label { color: rgb(255, 255, 255); font-size: 12px; -unity-font-style: bold; }
+.profile-secondary-button-label { color: rgb(59, 73, 101); font-size: 12px; -unity-font-style: bold; }
+
+
+/* =========================================================
+   FILE MANAGER / SHARED CONTENT
+   ========================================================= */
+.file-manager-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: none;
+    flex-direction: column;
+    background-color: rgb(248, 250, 253);
+}
+.file-manager-overlay.visible { display: flex; }
+
+/*
+ * File Manager header uses the exact same geometry as the main ChatScene header.
+ * The overlay already lives inside #safe-area, so no extra top offset is needed.
+ */
+.file-manager-header {
+    height: 94px;
+    min-height: 94px;
+
+    padding-left: 18px;
+    padding-right: 18px;
+    padding-top: 14px;
+    padding-bottom: 6px;
+
+    flex-direction: row;
+    align-items: center;
+
+    background-color: rgb(255, 255, 255);
+}
+
+.file-manager-back-button {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
+
+    margin-right: 12px;
+
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    border-top-left-radius: 21px;
+    border-top-right-radius: 21px;
+    border-bottom-left-radius: 21px;
+    border-bottom-right-radius: 21px;
+
+    /* Match the light gray-blue round button used by ChatScene. */
+    background-color: rgb(241, 246, 255);
+}
+
+.file-manager-back-button:hover {
+    background-color: rgb(228, 237, 252);
+}
+
+.file-manager-back-button:active {
+    background-color: rgb(214, 226, 247);
+}
+
+.file-manager-back-icon {
+    width: 20px;
+    height: 20px;
+
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+
+    align-self: center;
+
+    background-image: url("project://database/Assets/UI/Images/Icons/back.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.file-manager-header-texts {
+    flex-grow: 1;
+    justify-content: center;
+}
+
+.file-manager-title {
+    color: rgb(29, 43, 68);
+    font-size: 16px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+}
+
+.file-manager-search-wrap {
+    height: 46px;
+    margin: 12px 16px 10px 16px;
+    padding-left: 14px; padding-right: 14px;
+    flex-direction: row;
+    align-items: center;
+    border-width: 1px;
+    border-color: rgb(222, 230, 242);
+    border-radius: 23px;
+    background-color: rgb(244, 247, 252);
+}
+.file-manager-search-icon {
+    width: 17px; height: 17px; min-width: 17px; min-height: 17px;
+    margin-right: 8px;
+    background-image: url("project://database/Assets/UI/Images/Icons/search.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+.file-manager-search-input { flex-grow: 1; height: 38px; border-width: 0; background-color: rgba(0,0,0,0); }
+.file-manager-search-input > .unity-text-input,
+.file-manager-search-input > .unity-base-text-field__input,
+.file-manager-search-input .unity-text-field__input,
+.file-manager-search-input .unity-base-text-field__input {
+    border-width: 0;
+    background-color: rgba(0,0,0,0);
+    color: rgb(46, 61, 86);
+    font-size: 12px;
+}
+.file-manager-search-placeholder {
+    position: absolute;
+    left: 42px;
+    color: rgb(161, 172, 190);
+    font-size: 12px;
+}
+
+.file-manager-tabs {
+    height: 48px;
+    min-height: 48px;
+
+    /* Same horizontal width as the search bar above. */
+    margin-left: 16px;
+    margin-right: 16px;
+
+    flex-direction: row;
+    align-self: stretch;
+
+    background-color: white;
+
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(226, 232, 241);
+}
+.file-manager-tab {
+    flex-grow: 1;
+    flex-basis: 0;
+
+    height: 48px;
+
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 3px;
+    border-bottom-color: rgba(0,0,0,0);
+
+    background-color: rgba(0,0,0,0);
+}
+.file-manager-tab.selected { border-bottom-color: rgb(24, 91, 191); }
+.file-manager-tab-icon { width: 15px; height: 15px; margin-right: 6px; -unity-background-scale-mode: scale-to-fit; }
+.photos-tab-icon { background-image: url("project://database/Assets/UI/Images/Icons/image.png"); }
+.files-tab-icon { background-image: url("project://database/Assets/UI/Images/Icons/document.png"); }
+.links-tab-icon { background-image: url("project://database/Assets/UI/Images/Icons/attach-file.png"); }
+.file-manager-tab-label { color: rgb(91, 105, 130); font-size: 11px; -unity-font-style: bold; }
+.file-manager-tab.selected .file-manager-tab-label { color: rgb(24, 91, 191); }
+.file-manager-tab-count {
+    margin-left: 5px;
+    padding-left: 5px; padding-right: 5px;
+    height: 18px;
+    min-width: 18px;
+    border-radius: 9px;
+    background-color: rgb(240, 244, 251);
+    color: rgb(112, 127, 151);
+    font-size: 9px;
+    -unity-text-align: middle-center;
+}
+
+.file-manager-scroll-view { flex-grow: 1; }
+.file-manager-content { padding: 14px 14px 28px 14px; }
+.file-manager-section-title { margin: 3px 0 10px 1px; color: rgb(117, 132, 156); font-size: 10px; -unity-font-style: bold; }
+.file-manager-photo-grid { flex-direction: row; flex-wrap: wrap; }
+.file-manager-photo-card {
+    width: 31%;
+    height: 116px;
+    margin-right: 2.3%;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    overflow: hidden;
+    background-color: rgb(238, 244, 252);
+    border-width: 1px;
+    border-color: rgb(225, 232, 242);
+    -unity-background-scale-mode: scale-and-crop;
+}
+.file-manager-photo-loading { align-self: center; margin-top: 47px; font-size: 9px; color: rgb(126, 140, 163); }
+
+.file-manager-list-card {
+    min-height: 82px;
+    margin-bottom: 10px;
+    padding: 12px;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 14px;
+    border-width: 1px;
+    border-color: rgb(225, 231, 240);
+    background-color: white;
+}
+.file-manager-item-icon-wrap {
+    width: 42px; height: 42px; min-width: 42px; min-height: 42px;
+    margin-right: 10px;
+    align-items: center; justify-content: center;
+    border-radius: 21px;
+    background-color: rgb(240, 246, 255);
+}
+.file-manager-item-icon { width: 20px; height: 20px; -unity-background-scale-mode: scale-to-fit; }
+.file-item-icon { background-image: url("project://database/Assets/UI/Images/Icons/document.png"); }
+.link-item-icon { background-image: url("project://database/Assets/UI/Images/Icons/link.png"); }
+.file-manager-item-texts { flex-grow: 1; }
+.file-manager-item-title { color: rgb(37, 53, 80); font-size: 12px; -unity-font-style: bold; white-space: normal; }
+.file-manager-item-meta { margin-top: 3px; color: rgb(137, 150, 171); font-size: 9px; white-space: normal; }
+.file-manager-item-action {
+    width: 34px; height: 34px; min-width: 34px; min-height: 34px;
+    margin-left: 8px;
+    padding: 0;
+    border-width: 0;
+    border-radius: 17px;
+    background-color: rgb(246, 249, 253);
+}
+.file-manager-download-icon {
+    width: 17px; height: 17px; align-self: center;
+    background-image: url("project://database/Assets/UI/Images/Icons/download.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+.file-manager-open-link-button {
+    height: 34px;
+    margin-top: 9px;
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 17px;
+    background-color: rgb(244, 247, 253);
+    color: rgb(55, 70, 98);
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+.file-manager-link-card { padding: 13px; margin-bottom: 10px; border-radius: 14px; border-width: 1px; border-color: rgb(225,231,240); background-color: white; }
+.file-manager-link-top { flex-direction: row; align-items: center; }
+.file-manager-link-url { margin-top: 3px; color: rgb(119, 134, 158); font-size: 9px; white-space: normal; }
+.file-manager-empty { margin-top: 90px; align-items: center; }
+.file-manager-empty-icon { width: 42px; height: 42px; background-image: url("project://database/Assets/UI/Images/Icons/attach-file.png"); -unity-background-scale-mode: scale-to-fit; }
+.file-manager-empty-title { margin-top: 12px; color: rgb(61, 77, 103); font-size: 13px; -unity-font-style: bold; }
+.file-manager-empty-description { margin-top: 5px; color: rgb(145, 157, 176); font-size: 10px; -unity-text-align: middle-center; white-space: normal; }
+
+/* =========================================================
+   IN-APP AGORA VOICE CALL
+   ========================================================= */
+
+.voice-call-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: none;
+    flex-direction: column;
+    background-color: rgb(248, 250, 253);
+}
+
+.voice-call-overlay.visible {
+    display: flex;
+}
+
+.voice-call-top-bar {
+    height: 72px;
+    min-height: 72px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(255, 255, 255);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(232, 237, 245);
+}
+
+.voice-call-header-label {
+    color: rgb(31, 45, 69);
+    font-size: 16px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.voice-call-body {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-bottom: 38px;
+}
+
+.voice-call-avatar {
+    width: 104px;
+    height: 104px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 52px;
+    background-color: rgb(255, 158, 20);
+    margin-bottom: 18px;
+}
+
+.voice-call-avatar-text {
+    color: white;
+    font-size: 30px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.voice-call-partner-name {
+    color: rgb(28, 42, 66);
+    font-size: 22px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin-bottom: 7px;
+}
+
+.voice-call-status {
+    color: rgb(122, 137, 160);
+    font-size: 14px;
+    -unity-text-align: middle-center;
+    margin-bottom: 5px;
+}
+
+.voice-call-timer {
+    height: 24px;
+    color: rgb(89, 106, 133);
+    font-size: 13px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin-bottom: 26px;
+}
+
+.voice-call-active-controls {
+    display: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 26px;
+}
+
+.voice-call-active-controls.visible {
+    display: flex;
+}
+
+.voice-call-circle-control {
+    width: 86px;
+    height: 82px;
+    margin-left: 10px;
+    margin-right: 10px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border-width: 0;
+    border-radius: 22px;
+    background-color: rgb(235, 240, 248);
+}
+
+.voice-call-circle-control.active {
+    background-color: rgb(207, 222, 246);
+}
+
+.voice-call-circle-icon {
+    font-size: 23px;
+    -unity-text-align: middle-center;
+    margin-bottom: 5px;
+}
+
+.voice-call-control-label {
+    color: rgb(55, 70, 98);
+    font-size: 11px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.voice-call-actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 22px;
+}
+
+.voice-call-action-button {
+    width: 104px;
+    height: 74px;
+    margin-left: 10px;
+    margin-right: 10px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 8px;
+    padding-bottom: 6px;
+    align-items: center;
+    justify-content: center;
+    border-width: 0;
+    border-radius: 18px;
+}
+
+.voice-call-decline-button,
+.voice-call-end-button {
+    background-color: rgb(243, 73, 78);
+}
+
+.voice-call-answer-button {
+    background-color: rgb(35, 181, 92);
+}
+
+.voice-call-action-icon {
+    width: 23px;
+    height: 23px;
+    margin-bottom: 4px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.voice-call-close-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/close.png");
+    -unity-background-image-tint-color: white;
+}
+
+.voice-call-phone-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/phone.png");
+    -unity-background-image-tint-color: white;
+}
+
+.voice-call-action-label {
+    color: white;
+    font-size: 12px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.voice-call-note {
+    max-width: 280px;
+    color: rgb(145, 158, 178);
+    font-size: 10px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+
+
+/* VOICE CALL STATE REFINEMENTS */
+.voice-call-active-controls { display: none; }
+.voice-call-active-controls.visible { display: flex; }
+.voice-call-outgoing-actions { margin-top: 2px; }
+.voice-call-end-button { background-color: rgb(243, 73, 78); }
+
+.voice-call-history-row { align-self: center; margin-top: 12px; margin-bottom: 12px; padding: 10px 16px; background-color: rgb(236, 242, 251); color: rgb(67, 83, 110); border-top-left-radius: 14px; border-top-right-radius: 14px; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; white-space: normal; }
+
+/* Messenger-style compact call event cards */
+.voice-call-history-row {
+    flex-direction: row;
+    align-items: center;
+    align-self: center;
+    max-width: 88%;
+    margin-top: 7px;
+    margin-bottom: 7px;
+    padding-top: 11px;
+    padding-bottom: 11px;
+    padding-left: 16px;
+    padding-right: 16px;
+    background-color: rgb(239, 244, 253);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+}
+.voice-call-history-icon { font-size: 18px; margin-right: 9px; color: rgb(38, 89, 166); }
+.voice-call-history-text { font-size: 14px; color: rgb(46, 62, 88); white-space: normal; }
+
+/* Messenger-inspired voice event cards */
+.voice-call-history-row { align-self: center; flex-direction: row; align-items: center; min-width: 220px; max-width: 88%; padding-top: 14px; padding-bottom: 14px; padding-left: 15px; padding-right: 15px; background-color: rgb(234, 240, 251); border-top-left-radius: 20px; border-top-right-radius: 20px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+.voice-call-history-icon { font-size: 24px; margin-right: 14px; color: rgb(39, 84, 157); }
+.voice-call-history-content { flex-direction: column; flex-shrink: 1; }
+.voice-call-history-title { font-size: 16px; color: rgb(35, 46, 65); -unity-font-style: bold; white-space: normal; }
+.voice-call-history-detail { font-size: 13px; margin-top: 4px; color: rgb(112, 124, 142); }
+
+/* Compact, left-aligned Messenger-like call history cards. Must be last to override old centered rules. */
+.voice-call-history-row {
+    align-self: flex-start;
+    min-width: 0;
+    max-width: 76%;
+    margin-left: 12px;
+    margin-right: 8px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+    padding-left: 12px;
+    padding-right: 12px;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+}
+.voice-call-history-title { font-size: 13px; }
+.voice-call-history-detail { font-size: 12px; margin-top: 2px; }
+.voice-call-history-icon { font-size: 17px; margin-right: 8px; }
+
+/* Call history: position follows the caller (not the call outcome).
+   These rules come last to override the earlier centered/left-only styles. */
+.voice-call-history-row.voice-call-history-incoming {
+    align-self: flex-start;
+    margin-left: 12px;
+    margin-right: 8px;
+}
+.voice-call-history-row.voice-call-history-outgoing {
+    align-self: flex-end;
+    margin-left: 8px;
+    margin-right: 12px;
 }

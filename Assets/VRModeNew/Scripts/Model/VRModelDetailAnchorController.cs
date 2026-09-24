@@ -822,15 +822,25 @@ public class VRModelDetailAnchorController : MonoBehaviour
                 continue;
             }
 
-            Vector3 backendPoint =
-                detailService.GetAnchorPosition(
-                    part
+            bool mappedToRuntimeNode =
+                TryGetNodeAnchorLocalPosition(
+                    part.node_name,
+                    out Vector3 nodeLocalPoint
                 );
 
-            Vector3 originalLocalPoint =
-                ConvertBackendAnchorToUnityLocal(
-                    backendPoint
-                );
+            Vector3 backendPoint = Vector3.zero;
+            Vector3 originalLocalPoint;
+            if (mappedToRuntimeNode)
+            {
+                originalLocalPoint = nodeLocalPoint;
+            }
+            else
+            {
+                backendPoint = detailService.GetAnchorPosition(part);
+
+                originalLocalPoint =
+                    ConvertBackendAnchorToUnityLocal(backendPoint);
+            }
 
             Vector3 finalLocalPoint =
                 originalLocalPoint;
@@ -853,6 +863,7 @@ public class VRModelDetailAnchorController : MonoBehaviour
             // native coordinate scale/origin and prevents different parts from
             // collapsing onto the same side of models such as brain.glb.
             if (
+                !mappedToRuntimeNode &&
                 preferSemanticViewProjection &&
                 cachedModelSurfaceVertices.Count > 0
             )
@@ -871,6 +882,7 @@ public class VRModelDetailAnchorController : MonoBehaviour
             // FALLBACK:
             // Older rows may not contain normalized_x/y metadata.
             if (
+                !mappedToRuntimeNode &&
                 !semanticProjected &&
                 snapAutomaticAnchorsToMesh &&
                 cachedModelSurfaceVertices.Count > 0
@@ -966,6 +978,94 @@ public class VRModelDetailAnchorController : MonoBehaviour
             + " | SurfaceVertices = "
             + cachedModelSurfaceVertices.Count
         );
+    }
+
+    /// <summary>
+    /// Resolves the exact GLB node selected by the backend and returns a point
+    /// in modelRoot-local coordinates. Renderer bounds are preferred because
+    /// exporter pivots are often outside the visible mesh.
+    /// </summary>
+    private bool TryGetNodeAnchorLocalPosition(
+        string nodeName,
+        out Vector3 localPoint)
+    {
+        localPoint = Vector3.zero;
+
+        if (modelRoot == null || string.IsNullOrWhiteSpace(nodeName))
+            return false;
+
+        string target = nodeName.Trim();
+        Transform[] transforms =
+            modelRoot.GetComponentsInChildren<Transform>(true);
+
+        Transform matched = null;
+        for (int i = 0; i < transforms.Length; i++)
+        {
+            Transform candidate = transforms[i];
+            if (candidate != null && string.Equals(
+                    candidate.name,
+                    target,
+                    StringComparison.Ordinal))
+            {
+                matched = candidate;
+                break;
+            }
+        }
+
+        if (matched == null)
+        {
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform candidate = transforms[i];
+                if (candidate != null && string.Equals(
+                        candidate.name,
+                        target,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    matched = candidate;
+                    break;
+                }
+            }
+        }
+
+        if (matched == null)
+            return false;
+
+        Renderer[] renderers =
+            matched.GetComponentsInChildren<Renderer>(true);
+
+        if (renderers != null && renderers.Length > 0)
+        {
+            bool hasBounds = false;
+            Bounds combined = default;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null ||
+                    renderer is LineRenderer ||
+                    renderer is TrailRenderer)
+                    continue;
+
+                if (!hasBounds)
+                {
+                    combined = renderer.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    combined.Encapsulate(renderer.bounds);
+                }
+            }
+
+            if (hasBounds)
+            {
+                localPoint = modelRoot.InverseTransformPoint(combined.center);
+                return true;
+            }
+        }
+
+        localPoint = modelRoot.InverseTransformPoint(matched.position);
+        return true;
     }
 
 

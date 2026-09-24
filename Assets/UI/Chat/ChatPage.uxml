@@ -31,15 +31,18 @@
                     <ui:Button name="call-button" class="round-icon-button">
                         <ui:VisualElement class="button-icon phone-icon"/>
                     </ui:Button>
-                    <ui:Button name="more-button" class="round-icon-button">
+                    <ui:Button name="more-button" class="round-icon-button more-button">
                         <ui:VisualElement class="button-icon menu-icon"/>
                     </ui:Button>
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement class="course-banner">
-                <ui:VisualElement class="course-icon"/>
-                <ui:Label name="course-label" text="Direct message" class="course-label"/>
+            <ui:VisualElement class="message-search-bar">
+                <ui:Button name="message-search-button" class="message-search-button">
+                    <ui:VisualElement class="message-search-icon"/>
+                </ui:Button>
+                <ui:TextField name="message-search-input" class="message-search-input" multiline="False"/>
+                <ui:Label name="message-search-placeholder" text="Search messages..." class="message-search-placeholder" picking-mode="Ignore"/>
             </ui:VisualElement>
 
             <ui:ScrollView name="message-scroll-view" class="message-scroll-view" mode="Vertical"
@@ -84,6 +87,224 @@
                     <ui:VisualElement name="send-icon" class="send-icon"/>
                 </ui:Button>
             </ui:VisualElement>
+
+            <!-- Android in-app photo tray. It is below the composer so opening
+                 it reduces the message viewport and moves the composer up. -->
+            <ui:VisualElement name="image-gallery-panel" class="image-gallery-panel">
+                <ui:VisualElement class="image-gallery-header">
+                    <ui:Label name="image-gallery-title" text="Recent photos" class="image-gallery-title"/>
+                    <ui:Button name="close-image-gallery-button" text="×" class="close-image-gallery-button"/>
+                </ui:VisualElement>
+                <ui:Label name="image-gallery-status" text="Loading photos..." class="image-gallery-status"/>
+                <ui:ScrollView name="image-gallery-scroll" class="image-gallery-scroll" mode="Vertical"
+                               horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden">
+                    <ui:VisualElement name="image-gallery-grid" class="image-gallery-grid"/>
+                </ui:ScrollView>
+            </ui:VisualElement>
+            <!-- Figma-style More menu. Kept after the header so it renders above it. -->
+            <ui:VisualElement name="more-menu-scrim" class="more-menu-scrim">
+                <ui:VisualElement name="more-menu" class="more-menu">
+                    <ui:Button name="view-profile-menu-item" class="more-menu-item">
+                        <ui:VisualElement class="more-menu-icon view-profile-menu-icon"/>
+                        <ui:Label name="view-profile-menu-label" text="View Instructor Profile" class="more-menu-label"/>
+                    </ui:Button>
+
+                    <ui:VisualElement class="more-menu-divider"/>
+
+                    <ui:Button name="shared-files-menu-item" class="more-menu-item">
+                        <ui:VisualElement class="more-menu-icon shared-files-menu-icon"/>
+                        <ui:Label name="shared-files-menu-label" text="Shared Files &amp; Materials" class="more-menu-label"/>
+                    </ui:Button>
+
+                    <ui:VisualElement class="more-menu-divider"/>
+
+                    <ui:Button name="notifications-menu-item" class="more-menu-item">
+                        <ui:VisualElement class="more-menu-icon notifications-menu-icon"/>
+                        <ui:Label name="notifications-menu-label" text="Notifications Muted" class="more-menu-label"/>
+                        <ui:VisualElement name="notifications-menu-dot" class="more-menu-state-dot"/>
+                    </ui:Button>
+
+                    <ui:VisualElement class="more-menu-divider"/>
+
+                    <ui:Button name="report-problem-menu-item" class="more-menu-item report-menu-item">
+                        <ui:VisualElement class="more-menu-icon report-menu-icon"/>
+                        <ui:Label name="report-problem-menu-label" text="Report a Problem" class="more-menu-label report-menu-label"/>
+                    </ui:Button>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- Report conversation bottom sheet -->
+            <ui:VisualElement name="report-overlay" class="report-overlay">
+                <ui:VisualElement class="report-bottom-sheet">
+                    <ui:VisualElement class="report-sheet-handle"/>
+                    <ui:VisualElement class="report-alert-badge">
+                        <ui:VisualElement class="report-alert-icon"/>
+                    </ui:VisualElement>
+                    <ui:Label name="report-title" text="Report conversation?" class="report-title"/>
+                    <ui:Label name="report-description" text="Use this option to report inappropriate content or a technical issue related to this conversation." class="report-description"/>
+                    <ui:VisualElement class="report-actions-row">
+                        <ui:Button name="report-cancel-button" text="Cancel" class="report-action-button report-cancel-button"/>
+                        <ui:Button name="report-confirm-button" text="Report" class="report-action-button report-confirm-button"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- Instructor profile screen -->
+            <ui:VisualElement name="profile-overlay" class="profile-overlay">
+                <ui:VisualElement class="profile-header">
+                    <ui:Button name="profile-back-button" class="profile-back-button">
+                        <ui:VisualElement class="profile-back-icon"/>
+                    </ui:Button>
+                    <ui:Label name="profile-header-title" text="Instructor Profile" class="profile-header-title"/>
+                </ui:VisualElement>
+
+                <ui:ScrollView name="profile-scroll-view" class="profile-scroll-view" mode="Vertical"
+                               horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden">
+                    <ui:VisualElement class="profile-content">
+                        <ui:VisualElement class="profile-avatar-wrap">
+                            <ui:VisualElement class="profile-avatar-large">
+                                <ui:Label name="profile-avatar-text" text="U" class="profile-avatar-large-text"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="profile-online-dot" class="profile-online-dot offline"/>
+                        </ui:VisualElement>
+                        <ui:Label name="profile-name" text="Chat user" class="profile-name"/>
+                        <ui:Label name="profile-role" text="Teacher" class="profile-role"/>
+                        <ui:Label name="profile-department" text="Virtual Education" class="profile-department"/>
+                        <ui:Label name="profile-faculty-badge" text="HCMUT FACULTY" class="profile-faculty-badge"/>
+
+                        <ui:VisualElement class="profile-card">
+                            <ui:Label name="profile-about-heading" text="ABOUT" class="profile-card-heading"/>
+                            <ui:Label name="profile-about-text" text="Instructor in this class. Use chat to ask questions and discuss course materials." class="profile-card-body"/>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="profile-card">
+                            <ui:Label name="profile-teaching-heading" text="TEACHING" class="profile-card-heading"/>
+                            <ui:VisualElement class="profile-info-row">
+                                <ui:VisualElement class="profile-info-icon teaching-icon"/>
+                                <ui:VisualElement class="profile-info-texts">
+                                    <ui:Label name="profile-course-name" text="Current Class" class="profile-info-title"/>
+                                    <ui:Label name="profile-course-subtitle" text="Virtual Education" class="profile-info-subtitle"/>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="profile-card">
+                            <ui:Label name="profile-status-heading" text="CURRENT STATUS" class="profile-card-heading"/>
+                            <ui:VisualElement class="profile-status-line">
+                                <ui:VisualElement name="profile-status-dot" class="profile-status-dot offline"/>
+                                <ui:Label name="profile-status-text" text="Offline" class="profile-status-text"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="profile-bottom-actions">
+                            <ui:Button name="profile-message-button" class="profile-primary-button">
+                                <ui:VisualElement class="profile-button-icon message-white-icon"/>
+                                <ui:Label name="profile-message-label" text="Message" class="profile-primary-button-label"/>
+                            </ui:Button>
+                            <ui:Button name="profile-call-button" class="profile-secondary-button">
+                                <ui:VisualElement class="profile-button-icon phone-profile-icon"/>
+                                <ui:Label name="profile-call-label" text="Voice Call" class="profile-secondary-button-label"/>
+                            </ui:Button>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:ScrollView>
+            </ui:VisualElement>
+
+            <!-- In-app Agora voice-call overlay. No external browser room is opened. -->
+            <ui:VisualElement name="voice-call-overlay" class="voice-call-overlay">
+                <ui:VisualElement class="voice-call-top-bar">
+                    <ui:Label name="voice-call-header-label" text="Voice Call" class="voice-call-header-label"/>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="voice-call-body">
+                    <ui:VisualElement class="voice-call-avatar">
+                        <ui:Label name="voice-call-avatar-text" text="?" class="voice-call-avatar-text"/>
+                    </ui:VisualElement>
+
+                    <ui:Label name="voice-call-partner-name" text="Chat user" class="voice-call-partner-name"/>
+                    <ui:Label name="voice-call-status" text="Calling..." class="voice-call-status"/>
+                    <ui:Label name="voice-call-timer" text="" class="voice-call-timer"/>
+
+                    <ui:VisualElement name="voice-call-active-controls" class="voice-call-active-controls">
+                        <ui:Button name="voice-call-speaker-button" class="voice-call-circle-control">
+                            <ui:Label name="voice-call-speaker-icon-label" text="🔊" class="voice-call-circle-icon"/>
+                            <ui:Label name="voice-call-speaker-label" text="Speaker" class="voice-call-control-label"/>
+                        </ui:Button>
+
+                        <ui:Button name="voice-call-mute-button" class="voice-call-circle-control">
+                            <ui:Label name="voice-call-mute-icon-label" text="🎤" class="voice-call-circle-icon"/>
+                            <ui:Label name="voice-call-mute-label" text="Mute" class="voice-call-control-label"/>
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="voice-call-incoming-actions" class="voice-call-actions">
+                        <ui:Button name="voice-call-decline-button" class="voice-call-action-button voice-call-decline-button">
+                            <ui:VisualElement class="voice-call-action-icon voice-call-close-icon"/>
+                            <ui:Label name="voice-call-decline-label" text="Decline" class="voice-call-action-label"/>
+                        </ui:Button>
+
+                        <ui:Button name="voice-call-answer-button" class="voice-call-action-button voice-call-answer-button">
+                            <ui:VisualElement class="voice-call-action-icon voice-call-phone-icon"/>
+                            <ui:Label name="voice-call-answer-label" text="Answer" class="voice-call-action-label"/>
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="voice-call-outgoing-actions" class="voice-call-actions">
+                        <ui:Button name="voice-call-end-button" class="voice-call-action-button voice-call-end-button">
+                            <ui:VisualElement class="voice-call-action-icon voice-call-close-icon"/>
+                            <ui:Label name="voice-call-end-label" text="End Call" class="voice-call-action-label"/>
+                        </ui:Button>
+                    </ui:VisualElement>
+
+                    <ui:Label name="voice-call-note"
+                              text="Voice is connected securely inside the app."
+                              class="voice-call-note"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+
+            <!-- Shared content / File manager screen -->
+            <ui:VisualElement name="file-manager-overlay" class="file-manager-overlay">
+                <ui:VisualElement class="file-manager-header">
+                    <ui:Button name="file-manager-back-button" class="file-manager-back-button">
+                        <ui:VisualElement class="file-manager-back-icon"/>
+                    </ui:Button>
+                    <ui:VisualElement class="file-manager-header-texts">
+                        <ui:Label name="file-manager-title" text="File Manager" class="file-manager-title"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="file-manager-search-wrap">
+                    <ui:VisualElement class="file-manager-search-icon"/>
+                    <ui:TextField name="file-manager-search-input" class="file-manager-search-input"/>
+                    <ui:Label name="file-manager-search-placeholder" text="Search shared content..." class="file-manager-search-placeholder" picking-mode="Ignore"/>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="file-manager-tabs">
+                    <ui:Button name="file-manager-photos-tab" class="file-manager-tab selected">
+                        <ui:VisualElement class="file-manager-tab-icon photos-tab-icon"/>
+                        <ui:Label name="file-manager-photos-label" text="Photos" class="file-manager-tab-label"/>
+                        <ui:Label name="file-manager-photos-count" text="0" class="file-manager-tab-count"/>
+                    </ui:Button>
+                    <ui:Button name="file-manager-files-tab" class="file-manager-tab">
+                        <ui:VisualElement class="file-manager-tab-icon files-tab-icon"/>
+                        <ui:Label name="file-manager-files-label" text="Files" class="file-manager-tab-label"/>
+                        <ui:Label name="file-manager-files-count" text="0" class="file-manager-tab-count"/>
+                    </ui:Button>
+                    <ui:Button name="file-manager-links-tab" class="file-manager-tab">
+                        <ui:VisualElement class="file-manager-tab-icon links-tab-icon"/>
+                        <ui:Label name="file-manager-links-label" text="Links" class="file-manager-tab-label"/>
+                        <ui:Label name="file-manager-links-count" text="0" class="file-manager-tab-count"/>
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <ui:ScrollView name="file-manager-scroll-view" class="file-manager-scroll-view" mode="Vertical"
+                               horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden">
+                    <ui:VisualElement name="file-manager-content" class="file-manager-content"/>
+                </ui:ScrollView>
+            </ui:VisualElement>
+
+
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

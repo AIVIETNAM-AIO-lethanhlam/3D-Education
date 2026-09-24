@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
@@ -36,7 +37,6 @@ public class CreateLessonPageController : MonoBehaviour
     private Button backButton;
     private Button cancelButton;
     private Button nextButton;
-    private Button saveDraftButton;
     private Label stepLabel;
     private Label pageTitleLabel;
     private Label nextButtonLabel;
@@ -74,9 +74,31 @@ public class CreateLessonPageController : MonoBehaviour
     private VisualElement modelFileRow;
     private Label exerciseFileLabel;
     private Label modelFileLabel;
+    private Button quizDeadlineDateButton;
+    private Button quizDeadlineTimeButton;
+    private Label quizDeadlineDateLabel;
+    private Label quizDeadlineTimeLabel;
+    private VisualElement quizCalendarPopup;
+    private Label quizCalendarMonthLabel;
+    private VisualElement quizCalendarWeekdays;
+    private VisualElement quizCalendarDays;
+    private Button quizCalendarPreviousButton;
+    private Button quizCalendarNextButton;
+    private VisualElement quizTimePopup;
+    private ScrollView quizHourScroll;
+    private ScrollView quizMinuteScroll;
+    private Button quizTimeDoneButton;
+    private string quizDeadlineDateValue = string.Empty;
+    private string quizDeadlineTimeValue = string.Empty;
+    private DateTime calendarDisplayMonth;
+    private int selectedDeadlineHour = 23;
+    private int selectedDeadlineMinute = 59;
+    private readonly List<Button> deadlineHourButtons = new();
+    private readonly List<Button> deadlineMinuteButtons = new();
     private Button removeExerciseButton;
     private Button removeModelButton;
     private VisualElement documentChipContainer;
+    private Label documentPickerStatusLabel;
     private Label assetErrorLabel;
 
     private TextField lessonTitleField;
@@ -98,10 +120,192 @@ public class CreateLessonPageController : MonoBehaviour
     private string selectedExercisePath = string.Empty;
     private string selectedModelPath = string.Empty;
     private string selectedChapterId = string.Empty;
+    private string existingQuizId = string.Empty;
 
     private readonly List<string> selectedDocumentPaths = new();
     private readonly List<TextField> objectiveFields = new();
     private readonly List<ChapterRecord> loadedChapters = new();
+
+    // Keep original UI text so switching languages is reversible, without touching user input.
+    private readonly Dictionary<VisualElement, string> staticTexts = new();
+    private static readonly Dictionary<string, string> VietnameseText = new(StringComparer.Ordinal)
+    {
+            { "Cancel", "Hủy" },
+            { "CHAPTER", "CHƯƠNG" },
+            { "CLASS NAME", "TÊN BÀI HỌC" },
+            { "LESSON FORMAT", "ĐỊNH DẠNG BÀI HỌC" },
+            { "Select all that apply", "Chọn tất cả" },
+            { "A lesson can combine multiple formats.", "Một bài học có thể kết hợp nhiều định dạng." },
+            { "Video Lecture", "Bài giảng video" },
+            { "Upload or link a recorded video lesson", "Tải lên hoặc liên kết video bài giảng" },
+            { "3D Interactive", "Tương tác 3D" },
+            { "Attach a 3D model or simulation", "Đính kèm mô hình 3D hoặc mô phỏng" },
+            { "Document", "Tài liệu" },
+            { "PDF reading, slides, or study notes", "Tài liệu PDF, slide hoặc ghi chú học tập" },
+            { "Upload assets for each format selected. You can skip blocks that don't apply.", "Tải tài nguyên cho từng định dạng đã chọn. Có thể bỏ qua mục không áp dụng." },
+            { "Paste one YouTube video URL", "Dán một liên kết video YouTube" },
+            { "Confirm YouTube Link", "Xác nhận liên kết YouTube" },
+            { "Documents", "Tài liệu" },
+            { "Upload one or more PDF documents", "Tải lên một hoặc nhiều tài liệu PDF" },
+            { "Select PDF Documents", "Chọn tài liệu PDF" },
+            { "Exercise PDF", "PDF bài tập" },
+            { "Upload one exercise PDF file (Max 1 file)", "Tải lên một PDF bài tập (tối đa 1 tệp)" },
+            { "No exercise PDF selected", "Chưa chọn PDF bài tập" },
+            { "Select Exercise PDF", "Chọn PDF bài tập" },
+            { "QUIZ DEADLINE", "HẠN NỘP QUIZ" },
+            { "Use local time. Example: 2026-10-30 at 23:59", "Dùng giờ địa phương. Ví dụ: 2026-10-30 lúc 23:59" },
+            { "Please enter the quiz deadline date and time.", "Vui lòng nhập ngày và giờ hết hạn của quiz." },
+            { "Quiz deadline must use YYYY-MM-DD and HH:mm.", "Hạn nộp quiz phải có định dạng YYYY-MM-DD và HH:mm." },
+            { "Quiz deadline must be in the future.", "Hạn nộp quiz phải ở thời điểm tương lai." },
+            { "Choose time", "Chọn giờ" },
+            { "Done", "Xong" },
+            { "3D Interactive Model", "Mô hình 3D tương tác" },
+            { "Upload one GLB model (Max 1 file)", "Tải lên một mô hình GLB (tối đa 1 tệp)" },
+            { "No 3D asset selected", "Chưa chọn mô hình 3D" },
+            { "Select GLB Model", "Chọn mô hình GLB" },
+            { "Generate Description & Objectives with AI", "Tạo mô tả và mục tiêu bằng AI" },
+            { "LESSON DESCRIPTION", "MÔ TẢ BÀI HỌC" },
+            { "LEARNING OBJECTIVES", "MỤC TIÊU HỌC TẬP" },
+            { "Add New Objective", "Thêm mục tiêu mới" },
+            { "Save Draft", "Lưu bản nháp" },
+            { "Next", "Tiếp theo" },
+            { "Finish", "Hoàn tất" },
+            { "Save & Publish", "Lưu và xuất bản" },
+            { "Step 1 of 3", "Bước 1/3" },
+            { "Location & Format", "Vị trí và định dạng" },
+            { "Asset Upload", "Tải tài nguyên lên" },
+            { "Lesson Details", "Chi tiết bài học" },
+            { "Create Lesson", "Tạo bài học" },
+            { "Loading chapters...", "Đang tải chương..." },
+            { "No chapter available", "Chưa có chương nào" },
+            { "Please select a valid chapter.", "Vui lòng chọn chương hợp lệ." },
+            { "Please enter the lesson name.", "Vui lòng nhập tên bài học." },
+            { "Please select at least one lesson format.", "Vui lòng chọn ít nhất một định dạng bài học." },
+            { "Please enter a valid YouTube URL.", "Vui lòng nhập đường dẫn YouTube hợp lệ." },
+            { "Invalid YouTube URL.", "Đường dẫn YouTube không hợp lệ." },
+            { "YouTube link confirmed.", "Đã xác nhận liên kết YouTube." },
+            { "Please select at least one PDF document.", "Vui lòng chọn ít nhất một tài liệu PDF." },
+            { "Please select one GLB model.", "Vui lòng chọn một mô hình GLB." },
+            { "Please return to Step 1 and enter the lesson name.", "Vui lòng quay lại bước 1 và nhập tên bài học." },
+            { "Please enter at least one learning objective.", "Vui lòng nhập ít nhất một mục tiêu học tập." },
+            { "Enter a lesson title before generating content.", "Nhập tên bài học trước khi tạo nội dung." },
+            { "Preparing lesson...", "Đang chuẩn bị bài học..." },
+            { "Updating lesson...", "Đang cập nhật bài học..." },
+            { "Lesson updated.", "Đã cập nhật bài học." },
+            { "Creating lesson record...", "Đang tạo bài học..." },
+            { "Saving learning objectives...", "Đang lưu mục tiêu học tập..." },
+            { "Draft saved.", "Đã lưu bản nháp." },
+            { "Lesson published.", "Đã xuất bản bài học." },
+            { "The lesson could not be found.", "Không tìm thấy bài học." },
+            { "The lesson selected for editing is invalid.", "Bài học được chọn để chỉnh sửa không hợp lệ." },
+            { "No class selected. Please reopen this page from Class Detail.", "Chưa chọn lớp học. Hãy mở lại từ trang chi tiết lớp học." },
+            { "This class has no chapter. Create a chapter first.", "Lớp chưa có chương. Hãy tạo chương trước." },
+            { "Android file picker is not installed yet.", "Chưa cài đặt bộ chọn tệp Android." },
+            { "The selected file does not exist.", "Không tìm thấy tệp đã chọn." },
+            { "Missing class, teacher, or chapter information.", "Thiếu thông tin lớp, giáo viên hoặc chương." },
+            { "Cannot create lesson.", "Không thể tạo bài học." },
+            { "Students will be able to...", "Học sinh có thể..." },
+            { "SupabaseLessonService is missing.", "Thiếu SupabaseLessonService." },
+            { "SupabaseRuntimeRestService is missing.", "Thiếu SupabaseRuntimeRestService." },
+            { "CloudflareR2StorageService is missing.", "Thiếu CloudflareR2StorageService." },
+            { "selected_class_id is not a valid UUID.", "Mã lớp học không hợp lệ." },
+            { "teacher_id is not a valid UUID.", "Mã giáo viên không hợp lệ." },
+            { "selected_chapter_id is not a valid UUID.", "Mã chương không hợp lệ." },
+            { "Describe what this lesson is about, its structure, and any prerequisites students should know before starting...", "Mô tả nội dung, cấu trúc và kiến thức cần có trước khi học..." },
+    };
+
+    private static string T(string english, string vietnamese) =>
+        AppLanguageManager.IsVietnamese ? vietnamese : english;
+
+    private static string L(string english)
+    {
+        if (!AppLanguageManager.IsVietnamese || string.IsNullOrEmpty(english)) return english;
+        if (VietnameseText.TryGetValue(english, out string translated)) return translated;
+        if (english.StartsWith("Uploading PDF ") && english.EndsWith(" to R2..."))
+            return english.Replace("Uploading PDF ", "Đang tải PDF ").Replace(" of ", "/").Replace(" to R2...", " lên R2...");
+        return english;
+    }
+
+    private void CaptureStaticTexts()
+    {
+        staticTexts.Clear();
+        CaptureStaticTextsRecursive(root);
+    }
+
+    private void CaptureStaticTextsRecursive(VisualElement element)
+    {
+        if (element is Label label && !string.IsNullOrEmpty(label.text))
+            staticTexts[element] = label.text;
+        else if (element is Button button && !string.IsNullOrEmpty(button.text))
+            staticTexts[element] = button.text;
+        foreach (VisualElement child in element.Children()) CaptureStaticTextsRecursive(child);
+    }
+
+    private void OnLanguageChanged(string language) => ApplyCurrentLanguage();
+
+    private void ApplyCurrentLanguage()
+    {
+        if (root == null) return;
+        foreach (var entry in staticTexts)
+        {
+            if (entry.Key is Label label) label.text = L(entry.Value);
+            else if (entry.Key is Button button) button.text = L(entry.Value);
+        }
+        if (lessonTitleField != null) lessonTitleField.textEdition.placeholder = T("Enter lesson name", "Nhập tên bài học");
+        if (lessonDescriptionField != null) lessonDescriptionField.textEdition.placeholder = T("Describe what this lesson is about, its structure, and any prerequisites students should know before starting...", "Mô tả nội dung, cấu trúc và kiến thức cần có trước khi học...");
+        RefreshDeadlineLabels();
+        BuildCalendarWeekdays();
+        BuildCalendarDays();
+        if (cancelButton != null) cancelButton.text = L("Cancel");
+        foreach (TextField field in objectiveFields) field.tooltip = L("Students will be able to...");
+        TranslateVisibleMessage(formatErrorLabel);
+        TranslateVisibleMessage(assetErrorLabel);
+        TranslateVisibleMessage(detailsErrorLabel);
+        TranslateVisibleMessage(saveProgressLabel);
+        if (exerciseFileLabel != null && (exerciseFileLabel.text == "No exercise PDF selected" || exerciseFileLabel.text == "Chưa chọn PDF bài tập"))
+            exerciseFileLabel.text = L("No exercise PDF selected");
+        if (modelFileLabel != null && (modelFileLabel.text == "No 3D asset selected" || modelFileLabel.text == "Chưa chọn mô hình 3D"))
+            modelFileLabel.text = L("No 3D asset selected");
+        if (videoLinkStatusLabel != null && !string.IsNullOrEmpty(videoLinkStatusLabel.text))
+            videoLinkStatusLabel.text = AppLanguageManager.IsVietnamese ? L(videoLinkStatusLabel.text) : EnglishForVietnamese(videoLinkStatusLabel.text);
+        UpdateChapterDropdownLabels();
+        UpdateHeader();
+        UpdateBottomActions();
+    }
+
+    private static void TranslateVisibleMessage(Label label)
+    {
+        if (label == null || string.IsNullOrEmpty(label.text)) return;
+        string english = EnglishForVietnamese(label.text);
+        label.text = L(english);
+    }
+
+    private static string EnglishForVietnamese(string value)
+    {
+        foreach (var pair in VietnameseText) if (pair.Value == value) return pair.Key;
+        return value;
+    }
+
+    private string ChapterDisplay(ChapterRecord chapter)
+    {
+        int order = chapter.chapter_order > 0 ? chapter.chapter_order : loadedChapters.IndexOf(chapter) + 1;
+        string name = chapter.title?.Trim() ?? string.Empty;
+        // Default chapter titles already include their number: do not print Chapter 1 – Chương 1.
+        if (name == $"Chapter {order}" || name == $"Chương {order}" || name == $"New Chapter {order}")
+            return T($"Chapter {order}", $"Chương {order}");
+        return string.IsNullOrEmpty(name) ? T($"Chapter {order}", $"Chương {order}") : name;
+    }
+
+    private void UpdateChapterDropdownLabels()
+    {
+        if (chapterDropdown == null || loadedChapters.Count == 0) return;
+        int selectedIndex = loadedChapters.FindIndex(ch => ch.id == selectedChapterId);
+        if (selectedIndex < 0) selectedIndex = 0;
+        List<string> choices = new();
+        foreach (ChapterRecord chapter in loadedChapters) choices.Add(ChapterDisplay(chapter));
+        chapterDropdown.choices = choices;
+        chapterDropdown.SetValueWithoutNotify(choices[selectedIndex]);
+    }
 
     private void OnEnable()
     {
@@ -121,7 +325,10 @@ public class CreateLessonPageController : MonoBehaviour
 
         ResolveServices();
         QueryElements();
+        InitializeDeadlinePickers();
         RegisterEvents();
+        AppLanguageManager.LanguageChanged += OnLanguageChanged;
+        CaptureStaticTexts();
         isUpdateMode = string.Equals(
             PlayerPrefs.GetString("lesson_editor_mode", "create"),
             "update",
@@ -134,13 +341,16 @@ public class CreateLessonPageController : MonoBehaviour
         );
 
         BuildInitialObjectives();
+        ApplyCurrentLanguage();
         ShowStep(1);
         StartCoroutine(InitializeEditorRoutine());
     }
 
     private void OnDisable()
     {
+        AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         UnregisterEvents();
+        staticTexts.Clear();
     }
 
     private void ResolveServices()
@@ -171,7 +381,6 @@ public class CreateLessonPageController : MonoBehaviour
         backButton = root.Q<Button>("back-button");
         cancelButton = root.Q<Button>("cancel-button");
         nextButton = root.Q<Button>("next-button");
-        saveDraftButton = root.Q<Button>("save-draft-button");
         stepLabel = root.Q<Label>("step-label");
         pageTitleLabel = root.Q<Label>("page-title-label");
         nextButtonLabel = root.Q<Label>("next-button-label");
@@ -209,9 +418,24 @@ public class CreateLessonPageController : MonoBehaviour
         modelFileRow = root.Q<VisualElement>("model-file-row");
         exerciseFileLabel = root.Q<Label>("exercise-file-label");
         modelFileLabel = root.Q<Label>("model-file-label");
+        quizDeadlineDateButton = root.Q<Button>("quiz-deadline-date-button");
+        quizDeadlineTimeButton = root.Q<Button>("quiz-deadline-time-button");
+        quizDeadlineDateLabel = root.Q<Label>("quiz-deadline-date-label");
+        quizDeadlineTimeLabel = root.Q<Label>("quiz-deadline-time-label");
+        quizCalendarPopup = root.Q<VisualElement>("quiz-calendar-popup");
+        quizCalendarMonthLabel = root.Q<Label>("quiz-calendar-month-label");
+        quizCalendarWeekdays = root.Q<VisualElement>("quiz-calendar-weekdays");
+        quizCalendarDays = root.Q<VisualElement>("quiz-calendar-days");
+        quizCalendarPreviousButton = root.Q<Button>("quiz-calendar-previous-button");
+        quizCalendarNextButton = root.Q<Button>("quiz-calendar-next-button");
+        quizTimePopup = root.Q<VisualElement>("quiz-time-popup");
+        quizHourScroll = root.Q<ScrollView>("quiz-hour-scroll");
+        quizMinuteScroll = root.Q<ScrollView>("quiz-minute-scroll");
+        quizTimeDoneButton = root.Q<Button>("quiz-time-done-button");
         removeExerciseButton = root.Q<Button>("remove-exercise-button");
         removeModelButton = root.Q<Button>("remove-model-button");
         documentChipContainer = root.Q<VisualElement>("document-chip-container");
+        documentPickerStatusLabel = root.Q<Label>("document-picker-status-label");
         assetErrorLabel = root.Q<Label>("asset-error-label");
 
         lessonTitleField = root.Q<TextField>("lesson-title-field");
@@ -231,7 +455,6 @@ public class CreateLessonPageController : MonoBehaviour
         if (backButton != null) backButton.clicked += HandleBack;
         if (cancelButton != null) cancelButton.clicked += HandleCancel;
         if (nextButton != null) nextButton.clicked += HandleNext;
-        if (saveDraftButton != null) saveDraftButton.clicked += HandleSaveDraft;
 
         if (videoFormatButton != null) videoFormatButton.clicked += ToggleVideoFormat;
         if (modelFormatButton != null) modelFormatButton.clicked += ToggleModelFormat;
@@ -244,12 +467,19 @@ public class CreateLessonPageController : MonoBehaviour
         if (uploadModelButton != null) uploadModelButton.clicked += PickModel;
         if (removeExerciseButton != null) removeExerciseButton.clicked += RemoveExercisePdf;
         if (removeModelButton != null) removeModelButton.clicked += RemoveModel;
+        if (quizDeadlineDateButton != null) quizDeadlineDateButton.clicked += ToggleCalendarPicker;
+        if (quizDeadlineTimeButton != null) quizDeadlineTimeButton.clicked += ToggleTimePicker;
+        if (quizCalendarPreviousButton != null) quizCalendarPreviousButton.clicked += ShowPreviousCalendarMonth;
+        if (quizCalendarNextButton != null) quizCalendarNextButton.clicked += ShowNextCalendarMonth;
+        if (quizTimeDoneButton != null) quizTimeDoneButton.clicked += ConfirmTimeSelection;
 
         if (generateAiButton != null) generateAiButton.clicked += HandleGenerateWithAi;
         if (addObjectiveButton != null) addObjectiveButton.clicked += AddObjective;
 
         if (chapterDropdown != null)
             chapterDropdown.RegisterValueChangedCallback(HandleChapterChanged);
+
+        root?.RegisterCallback<PointerDownEvent>(HandleRootPointerDown, TrickleDown.TrickleDown);
     }
 
     private void UnregisterEvents()
@@ -257,7 +487,6 @@ public class CreateLessonPageController : MonoBehaviour
         if (backButton != null) backButton.clicked -= HandleBack;
         if (cancelButton != null) cancelButton.clicked -= HandleCancel;
         if (nextButton != null) nextButton.clicked -= HandleNext;
-        if (saveDraftButton != null) saveDraftButton.clicked -= HandleSaveDraft;
 
         if (videoFormatButton != null) videoFormatButton.clicked -= ToggleVideoFormat;
         if (modelFormatButton != null) modelFormatButton.clicked -= ToggleModelFormat;
@@ -270,12 +499,19 @@ public class CreateLessonPageController : MonoBehaviour
         if (uploadModelButton != null) uploadModelButton.clicked -= PickModel;
         if (removeExerciseButton != null) removeExerciseButton.clicked -= RemoveExercisePdf;
         if (removeModelButton != null) removeModelButton.clicked -= RemoveModel;
+        if (quizDeadlineDateButton != null) quizDeadlineDateButton.clicked -= ToggleCalendarPicker;
+        if (quizDeadlineTimeButton != null) quizDeadlineTimeButton.clicked -= ToggleTimePicker;
+        if (quizCalendarPreviousButton != null) quizCalendarPreviousButton.clicked -= ShowPreviousCalendarMonth;
+        if (quizCalendarNextButton != null) quizCalendarNextButton.clicked -= ShowNextCalendarMonth;
+        if (quizTimeDoneButton != null) quizTimeDoneButton.clicked -= ConfirmTimeSelection;
 
         if (generateAiButton != null) generateAiButton.clicked -= HandleGenerateWithAi;
         if (addObjectiveButton != null) addObjectiveButton.clicked -= AddObjective;
 
         if (chapterDropdown != null)
             chapterDropdown.UnregisterValueChangedCallback(HandleChapterChanged);
+
+        root?.UnregisterCallback<PointerDownEvent>(HandleRootPointerDown, TrickleDown.TrickleDown);
     }
 
     private IEnumerator InitializeEditorRoutine()
@@ -320,14 +556,14 @@ public class CreateLessonPageController : MonoBehaviour
                 id = passedChapterId,
                 class_id = classId,
                 title = string.IsNullOrWhiteSpace(passedChapterTitle)
-                    ? $"Chapter {Mathf.Max(1, passedChapterOrder)}"
+                    ? T($"Chapter {Mathf.Max(1, passedChapterOrder)}", $"Chương {Mathf.Max(1, passedChapterOrder)}")
                     : passedChapterTitle,
                 chapter_order = Mathf.Max(1, passedChapterOrder)
             });
 
             if (chapterDropdown != null)
             {
-                string label = $"Chapter {loadedChapters[0].chapter_order} – {loadedChapters[0].title}";
+                string label = ChapterDisplay(loadedChapters[0]);
                 chapterDropdown.choices = new List<string> { label };
                 chapterDropdown.index = 0;
                 chapterDropdown.SetEnabled(false);
@@ -345,7 +581,7 @@ public class CreateLessonPageController : MonoBehaviour
 
         if (chapterDropdown != null)
         {
-            chapterDropdown.choices = new List<string> { "Loading chapters..." };
+            chapterDropdown.choices = new List<string> { L("Loading chapters...") };
             chapterDropdown.index = 0;
             chapterDropdown.SetEnabled(false);
         }
@@ -372,7 +608,7 @@ public class CreateLessonPageController : MonoBehaviour
         {
             if (chapterDropdown != null)
             {
-                chapterDropdown.choices = new List<string> { "No chapter available" };
+                chapterDropdown.choices = new List<string> { L("No chapter available") };
                 chapterDropdown.index = 0;
                 chapterDropdown.SetEnabled(false);
             }
@@ -385,7 +621,7 @@ public class CreateLessonPageController : MonoBehaviour
         foreach (ChapterRecord chapter in loadedChapters)
         {
             int order = chapter.chapter_order <= 0 ? labels.Count + 1 : chapter.chapter_order;
-            labels.Add($"Chapter {order} – {chapter.title}");
+            labels.Add(ChapterDisplay(chapter));
         }
 
         if (chapterDropdown != null)
@@ -470,7 +706,7 @@ public class CreateLessonPageController : MonoBehaviour
         if (isUpdateMode)
             StartCoroutine(UpdateLessonRoutine());
         else
-            SaveLesson(false);
+            SaveLesson();
     }
 
     private void HandleBack()
@@ -551,7 +787,411 @@ public class CreateLessonPageController : MonoBehaviour
             return false;
         }
 
+        bool hasExistingQuiz = existingAssets.Exists(
+            asset => asset.asset_type == "quiz_pdf" &&
+                     !removedExistingAssetIds.Contains(asset.id)
+        );
+
+        if ((!string.IsNullOrWhiteSpace(selectedExercisePath) || hasExistingQuiz) &&
+            !TryGetQuizDeadlineUtc(out _, out string deadlineError))
+        {
+            SetLabel(assetErrorLabel, deadlineError);
+            quizDeadlineDateButton?.Focus();
+            return false;
+        }
+
         return true;
+    }
+
+    private bool TryGetQuizDeadlineUtc(out string utcIso, out string error)
+    {
+        utcIso = string.Empty;
+        error = string.Empty;
+
+        string date = quizDeadlineDateValue;
+        string time = quizDeadlineTimeValue;
+
+        if (string.IsNullOrWhiteSpace(date) || string.IsNullOrWhiteSpace(time))
+        {
+            error = "Please enter the quiz deadline date and time.";
+            return false;
+        }
+
+        if (!DateTime.TryParseExact(
+                date + " " + time,
+                "yyyy-MM-dd HH:mm",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces,
+                out DateTime localDeadline))
+        {
+            error = "Quiz deadline must use YYYY-MM-DD and HH:mm.";
+            return false;
+        }
+
+        localDeadline = DateTime.SpecifyKind(localDeadline, DateTimeKind.Local);
+
+        if (localDeadline <= DateTime.Now)
+        {
+            error = "Quiz deadline must be in the future.";
+            return false;
+        }
+
+        utcIso = localDeadline.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture);
+        return true;
+    }
+
+    private void InitializeDeadlinePickers()
+    {
+        DateTime today = DateTime.Today;
+        calendarDisplayMonth = new DateTime(today.Year, today.Month, 1);
+
+        BuildCalendarWeekdays();
+        BuildCalendarDays();
+        BuildTimeOptions();
+        RefreshDeadlineLabels();
+
+        quizCalendarPopup?.AddToClassList("hidden");
+        quizTimePopup?.AddToClassList("hidden");
+    }
+
+    private void ToggleCalendarPicker()
+    {
+        bool willOpen = quizCalendarPopup != null &&
+                        quizCalendarPopup.ClassListContains("hidden");
+
+        quizTimePopup?.AddToClassList("hidden");
+
+        if (quizCalendarPopup == null) return;
+        if (willOpen)
+        {
+            BuildCalendarDays();
+            quizCalendarPopup.RemoveFromClassList("hidden");
+        }
+        else
+        {
+            quizCalendarPopup.AddToClassList("hidden");
+        }
+    }
+
+    private void ToggleTimePicker()
+    {
+        bool willOpen = quizTimePopup != null &&
+                        quizTimePopup.ClassListContains("hidden");
+
+        quizCalendarPopup?.AddToClassList("hidden");
+
+        if (quizTimePopup == null) return;
+        if (willOpen)
+        {
+            RefreshTimeOptionStyles();
+            quizTimePopup.RemoveFromClassList("hidden");
+            ScrollToSelectedTime();
+        }
+        else
+        {
+            quizTimePopup.AddToClassList("hidden");
+        }
+    }
+
+    private void ShowPreviousCalendarMonth()
+    {
+        calendarDisplayMonth = calendarDisplayMonth.AddMonths(-1);
+        BuildCalendarDays();
+    }
+
+    private void ShowNextCalendarMonth()
+    {
+        calendarDisplayMonth = calendarDisplayMonth.AddMonths(1);
+        BuildCalendarDays();
+    }
+
+    private void BuildCalendarWeekdays()
+    {
+        if (quizCalendarWeekdays == null) return;
+        quizCalendarWeekdays.Clear();
+
+        string[] english = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+        string[] vietnamese = { "CN", "T2", "T3", "T4", "T5", "T6", "T7" };
+        string[] values = AppLanguageManager.IsVietnamese ? vietnamese : english;
+
+        foreach (string value in values)
+        {
+            VisualElement cell = new VisualElement();
+            cell.AddToClassList("quiz-calendar-cell");
+            Label label = new Label(value);
+            label.AddToClassList("quiz-calendar-weekday");
+            cell.Add(label);
+            quizCalendarWeekdays.Add(cell);
+        }
+    }
+
+    private void BuildCalendarDays()
+    {
+        if (quizCalendarDays == null) return;
+        quizCalendarDays.Clear();
+
+        if (quizCalendarMonthLabel != null)
+        {
+            quizCalendarMonthLabel.text = AppLanguageManager.IsVietnamese
+                ? $"Tháng {calendarDisplayMonth.Month}, {calendarDisplayMonth.Year}"
+                : calendarDisplayMonth.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+        }
+
+        int emptyCells = (int)calendarDisplayMonth.DayOfWeek;
+        for (int i = 0; i < emptyCells; i++)
+        {
+            VisualElement empty = new VisualElement();
+            empty.AddToClassList("quiz-calendar-cell");
+            quizCalendarDays.Add(empty);
+        }
+
+        int daysInMonth = DateTime.DaysInMonth(
+            calendarDisplayMonth.Year,
+            calendarDisplayMonth.Month
+        );
+
+        DateTime selectedDate;
+        bool hasSelectedDate = DateTime.TryParseExact(
+            quizDeadlineDateValue,
+            "yyyy-MM-dd",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out selectedDate
+        );
+
+        for (int day = 1; day <= daysInMonth; day++)
+        {
+            DateTime date = new DateTime(
+                calendarDisplayMonth.Year,
+                calendarDisplayMonth.Month,
+                day
+            );
+
+            Button dayButton = new Button(() => SelectDeadlineDate(date))
+            {
+                text = day.ToString(CultureInfo.InvariantCulture)
+            };
+            dayButton.AddToClassList("quiz-calendar-day");
+
+            if (date.Date == DateTime.Today)
+                dayButton.AddToClassList("quiz-calendar-day-today");
+
+            if (hasSelectedDate && date.Date == selectedDate.Date)
+                dayButton.AddToClassList("quiz-calendar-day-selected");
+
+            VisualElement cell = new VisualElement();
+            cell.AddToClassList("quiz-calendar-cell");
+            cell.Add(dayButton);
+            quizCalendarDays.Add(cell);
+        }
+
+        int renderedCells = emptyCells + daysInMonth;
+        int trailingCells = (7 - (renderedCells % 7)) % 7;
+        for (int i = 0; i < trailingCells; i++)
+        {
+            VisualElement empty = new VisualElement();
+            empty.AddToClassList("quiz-calendar-cell");
+            quizCalendarDays.Add(empty);
+        }
+    }
+
+    private void SelectDeadlineDate(DateTime date)
+    {
+        quizDeadlineDateValue = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        calendarDisplayMonth = new DateTime(date.Year, date.Month, 1);
+        RefreshDeadlineLabels();
+        BuildCalendarDays();
+        quizCalendarPopup?.AddToClassList("hidden");
+        ClearLabel(assetErrorLabel);
+    }
+
+    private void BuildTimeOptions()
+    {
+        deadlineHourButtons.Clear();
+        deadlineMinuteButtons.Clear();
+        quizHourScroll?.Clear();
+        quizMinuteScroll?.Clear();
+
+        for (int hour = 0; hour < 24; hour++)
+        {
+            int value = hour;
+            Button button = CreateTimeOption(value, () =>
+            {
+                selectedDeadlineHour = value;
+                RefreshTimeOptionStyles();
+            });
+            deadlineHourButtons.Add(button);
+            quizHourScroll?.Add(button);
+        }
+
+        for (int minute = 0; minute < 60; minute++)
+        {
+            int value = minute;
+            Button button = CreateTimeOption(value, () =>
+            {
+                selectedDeadlineMinute = value;
+                RefreshTimeOptionStyles();
+            });
+            deadlineMinuteButtons.Add(button);
+            quizMinuteScroll?.Add(button);
+        }
+
+        RefreshTimeOptionStyles();
+    }
+
+    private static Button CreateTimeOption(int value, Action clicked)
+    {
+        Button button = new Button(clicked)
+        {
+            text = value.ToString("00", CultureInfo.InvariantCulture)
+        };
+        button.AddToClassList("quiz-time-option");
+        return button;
+    }
+
+    private void RefreshTimeOptionStyles()
+    {
+        for (int i = 0; i < deadlineHourButtons.Count; i++)
+            deadlineHourButtons[i].EnableInClassList("quiz-time-option-selected", i == selectedDeadlineHour);
+
+        for (int i = 0; i < deadlineMinuteButtons.Count; i++)
+            deadlineMinuteButtons[i].EnableInClassList("quiz-time-option-selected", i == selectedDeadlineMinute);
+    }
+
+    private void ScrollToSelectedTime()
+    {
+        quizTimePopup?.schedule.Execute(() =>
+        {
+            if (selectedDeadlineHour >= 0 && selectedDeadlineHour < deadlineHourButtons.Count)
+                quizHourScroll?.ScrollTo(deadlineHourButtons[selectedDeadlineHour]);
+
+            if (selectedDeadlineMinute >= 0 && selectedDeadlineMinute < deadlineMinuteButtons.Count)
+                quizMinuteScroll?.ScrollTo(deadlineMinuteButtons[selectedDeadlineMinute]);
+        });
+    }
+
+    private void ConfirmTimeSelection()
+    {
+        quizDeadlineTimeValue =
+            $"{selectedDeadlineHour:00}:{selectedDeadlineMinute:00}";
+        RefreshDeadlineLabels();
+        quizTimePopup?.AddToClassList("hidden");
+        ClearLabel(assetErrorLabel);
+    }
+
+    private void HandleRootPointerDown(PointerDownEvent evt)
+    {
+        VisualElement target = evt.target as VisualElement;
+        if (target == null) return;
+
+        bool insideCalendar =
+            (quizCalendarPopup != null && quizCalendarPopup.Contains(target)) ||
+            (quizDeadlineDateButton != null && quizDeadlineDateButton.Contains(target));
+
+        bool insideTimePicker =
+            (quizTimePopup != null && quizTimePopup.Contains(target)) ||
+            (quizDeadlineTimeButton != null && quizDeadlineTimeButton.Contains(target));
+
+        if (!insideCalendar && !insideTimePicker)
+        {
+            quizCalendarPopup?.AddToClassList("hidden");
+            quizTimePopup?.AddToClassList("hidden");
+        }
+    }
+
+    private void RefreshDeadlineLabels()
+    {
+        SetPickerLabel(
+            quizDeadlineDateLabel,
+            quizDeadlineDateValue,
+            "YYYY-MM-DD"
+        );
+        SetPickerLabel(
+            quizDeadlineTimeLabel,
+            quizDeadlineTimeValue,
+            "HH:mm"
+        );
+    }
+
+    private static void SetPickerLabel(Label label, string value, string placeholder)
+    {
+        if (label == null) return;
+        bool isEmpty = string.IsNullOrWhiteSpace(value);
+        label.text = isEmpty ? placeholder : value;
+        label.EnableInClassList("quiz-picker-placeholder", isEmpty);
+    }
+
+    private void ClearQuizDeadline()
+    {
+        quizDeadlineDateValue = string.Empty;
+        quizDeadlineTimeValue = string.Empty;
+        selectedDeadlineHour = 23;
+        selectedDeadlineMinute = 59;
+        calendarDisplayMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        RefreshDeadlineLabels();
+        RefreshTimeOptionStyles();
+        quizCalendarPopup?.AddToClassList("hidden");
+        quizTimePopup?.AddToClassList("hidden");
+    }
+
+    private void SetQuizDeadlineFields(string utcIso)
+    {
+        if (string.IsNullOrWhiteSpace(utcIso) ||
+            !DateTimeOffset.TryParse(
+                utcIso,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind,
+                out DateTimeOffset parsed))
+        {
+            return;
+        }
+
+        DateTime local = parsed.ToLocalTime().DateTime;
+        quizDeadlineDateValue = local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        quizDeadlineTimeValue = local.ToString("HH:mm", CultureInfo.InvariantCulture);
+        calendarDisplayMonth = new DateTime(local.Year, local.Month, 1);
+        selectedDeadlineHour = local.Hour;
+        selectedDeadlineMinute = local.Minute;
+        RefreshDeadlineLabels();
+    }
+
+    private IEnumerator UpdateQuizDeadlineRoutine(string quizId, Action<string> onError)
+    {
+        if (string.IsNullOrWhiteSpace(quizId))
+        {
+            onError?.Invoke("Quiz ID is missing. Cannot save deadline.");
+            yield break;
+        }
+
+        if (!TryGetQuizDeadlineUtc(out string utcIso, out string validationError))
+        {
+            onError?.Invoke(validationError);
+            yield break;
+        }
+
+        if (quizService == null)
+        {
+            onError?.Invoke("SupabaseQuizService is missing. Cannot save deadline.");
+            yield break;
+        }
+
+        string requestError = null;
+        string savedDeadline = null;
+
+        yield return quizService.UpdateQuizDeadline(
+            quizId,
+            utcIso,
+            value => savedDeadline = value,
+            message => requestError = message
+        );
+
+        if (string.IsNullOrWhiteSpace(requestError) &&
+            string.IsNullOrWhiteSpace(savedDeadline))
+        {
+            requestError = "Supabase did not confirm that the quiz deadline was saved.";
+        }
+
+        onError?.Invoke(requestError);
     }
 
     private bool ValidateDetails()
@@ -604,7 +1244,7 @@ public class CreateLessonPageController : MonoBehaviour
     private void SetVideoStatus(string text, bool isError)
     {
         if (videoLinkStatusLabel == null) return;
-        videoLinkStatusLabel.text = text;
+        videoLinkStatusLabel.text = L(text);
         videoLinkStatusLabel.EnableInClassList("video-link-status-error", isError);
     }
 
@@ -623,17 +1263,17 @@ public class CreateLessonPageController : MonoBehaviour
 
     private void UpdateHeader()
     {
-        if (stepLabel != null) stepLabel.text = $"Step {currentStep} of {TotalSteps}";
+        if (stepLabel != null) stepLabel.text = T($"Step {currentStep} of {TotalSteps}", $"Bước {currentStep}/{TotalSteps}");
 
         if (pageTitleLabel != null)
         {
-            pageTitleLabel.text = currentStep switch
+            pageTitleLabel.text = L(currentStep switch
             {
                 1 => "Location & Format",
                 2 => "Asset Upload",
                 3 => "Lesson Details",
                 _ => "Create Lesson"
-            };
+            });
         }
     }
 
@@ -658,13 +1298,12 @@ public class CreateLessonPageController : MonoBehaviour
         if (nextButtonLabel != null)
         {
             nextButtonLabel.text = isLastStep
-                ? (isUpdateMode ? "Finish" : "Save & Publish")
-                : "Next";
+                ? (isUpdateMode ? T("Save Changes", "Lưu thay đổi") : L("Create Lesson"))
+                : L("Next");
         }
 
         nextButton?.EnableInClassList("update-mode-finish", isUpdateMode && isLastStep);
         SetVisible(nextButtonIcon, !isLastStep);
-        SetVisible(saveDraftButton, isLastStep && !isUpdateMode);
     }
 
     private void UpdateUploadCards()
@@ -697,7 +1336,7 @@ public class CreateLessonPageController : MonoBehaviour
         TextField field = new();
         field.AddToClassList("objective-field");
         field.multiline = true;
-        field.tooltip = "Students will be able to...";
+        field.tooltip = L("Students will be able to...");
 
         Button remove = new();
         remove.text = "×";
@@ -740,25 +1379,40 @@ public class CreateLessonPageController : MonoBehaviour
             return;
         }
 
-        if (lessonDescriptionField != null && string.IsNullOrWhiteSpace(lessonDescriptionField.value))
-        {
-            lessonDescriptionField.value =
-                $"This lesson introduces {title}, explains the core concepts, and gives students guided practice before applying the topic independently.";
-        }
+        // Read the current SettingScene language at the exact moment the user
+        // generates content. This prevents content generated in an older
+        // language from being kept after the application language changes.
+        bool generateInVietnamese = AppLanguageManager.IsVietnamese;
 
-        string[] generatedObjectives =
-        {
-            $"Explain the fundamental concepts of {title}",
-            $"Apply the main principles of {title} in a practical activity"
-        };
+        string generatedDescription = generateInVietnamese
+            ? $"Bài học giới thiệu {title}, giải thích các khái niệm cốt lõi và hướng dẫn học sinh thực hành trước khi tự vận dụng."
+            : $"This lesson introduces {title}, explains the core concepts, and gives students guided practice before applying the topic independently.";
 
-        while (objectiveFields.Count < generatedObjectives.Length)
+        string[] generatedObjectives = generateInVietnamese
+            ? new[]
+            {
+                $"Giải thích các khái niệm cơ bản của {title}",
+                $"Vận dụng các nguyên lý chính của {title} trong hoạt động thực hành"
+            }
+            : new[]
+            {
+                $"Explain the fundamental concepts of {title}",
+                $"Apply the main principles of {title} in a practical activity"
+            };
+
+        // Pressing the AI button means regenerate. Always replace the previous
+        // generated description/objectives so stale English text cannot remain
+        // when SettingScene is currently Vietnamese (and vice versa).
+        if (lessonDescriptionField != null)
+            lessonDescriptionField.value = generatedDescription;
+
+        objectivesContainer?.Clear();
+        objectiveFields.Clear();
+
+        foreach (string generatedObjective in generatedObjectives)
+        {
             AddObjective();
-
-        for (int i = 0; i < generatedObjectives.Length; i++)
-        {
-            if (string.IsNullOrWhiteSpace(objectiveFields[i].value))
-                objectiveFields[i].value = generatedObjectives[i];
+            objectiveFields[^1].SetValueWithoutNotify(generatedObjective);
         }
 
         ClearLabel(detailsErrorLabel);
@@ -767,7 +1421,7 @@ public class CreateLessonPageController : MonoBehaviour
     private void PickDocuments()
     {
 #if UNITY_EDITOR
-        string path = UnityEditor.EditorUtility.OpenFilePanel("Choose PDF Document", string.Empty, "pdf");
+        string path = UnityEditor.EditorUtility.OpenFilePanel(T("Choose PDF Document", "Chọn tài liệu PDF"), string.Empty, "pdf");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         if (!ValidateLocalFile(path, ".pdf", MaxPdfBytes, "PDF", out string error))
@@ -783,15 +1437,66 @@ public class CreateLessonPageController : MonoBehaviour
         }
 
         ClearLabel(assetErrorLabel);
+#elif UNITY_ANDROID || UNITY_IOS
+        if (NativeFilePicker.IsFilePickerBusy())
+        {
+            SetLabel(assetErrorLabel, T("The file picker is already open.", "Trình chọn tệp đang mở."));
+            return;
+        }
+
+        ClearLabel(assetErrorLabel);
+        SetDocumentPickerStatus(T("Opening file picker...", "Đang mở trình chọn tệp..."));
+
+        string pdfFileType = NativeFilePicker.ConvertExtensionToFileType("pdf");
+        NativeFilePicker.PickMultipleFiles(paths =>
+        {
+            if (paths == null || paths.Length == 0)
+            {
+                SetDocumentPickerStatus(T("No new PDF selected.", "Chưa chọn thêm PDF."));
+                return;
+            }
+
+            int addedCount = 0;
+            List<string> errors = new();
+            foreach (string path in paths)
+            {
+                string normalizedPath = NormalizeLocalFilePath(path);
+                if (!ValidateLocalFile(normalizedPath, ".pdf", MaxPdfBytes, "PDF", out string error))
+                {
+                    errors.Add($"{Path.GetFileName(path)}: {error}");
+                    continue;
+                }
+
+                if (!selectedDocumentPaths.Contains(normalizedPath))
+                {
+                    selectedDocumentPaths.Add(normalizedPath);
+                    addedCount++;
+                }
+            }
+
+            RebuildDocumentChips();
+            SetDocumentPickerStatus(T(
+                $"{selectedDocumentPaths.Count} PDF document(s) selected.",
+                $"Đã chọn {selectedDocumentPaths.Count} tài liệu PDF."
+            ));
+
+            if (errors.Count > 0)
+                SetLabel(assetErrorLabel, string.Join("\n", errors));
+            else if (addedCount == 0)
+                SetLabel(assetErrorLabel, T("The selected PDFs were already added.", "Các PDF đã chọn đã có trong danh sách."));
+            else
+                ClearLabel(assetErrorLabel);
+        }, new[] { pdfFileType });
+
 #else
-        SetLabel(assetErrorLabel, "Android file picker is not installed yet.");
+        SetLabel(assetErrorLabel, T("File selection is not supported on this platform.", "Nền tảng này không hỗ trợ chọn tệp."));
 #endif
     }
 
     private void PickExercisePdf()
     {
 #if UNITY_EDITOR
-        string path = UnityEditor.EditorUtility.OpenFilePanel("Choose Exercise PDF", string.Empty, "pdf");
+        string path = UnityEditor.EditorUtility.OpenFilePanel(T("Choose Exercise PDF", "Chọn PDF bài tập"), string.Empty, "pdf");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         if (!ValidateLocalFile(path, ".pdf", MaxPdfBytes, "Exercise PDF", out string error))
@@ -807,15 +1512,51 @@ public class CreateLessonPageController : MonoBehaviour
 
         SetVisible(exerciseFileRow, true);
         ClearLabel(assetErrorLabel);
+#elif UNITY_ANDROID || UNITY_IOS
+        if (NativeFilePicker.IsFilePickerBusy())
+        {
+            SetLabel(assetErrorLabel, T("The file picker is already open.", "Trình chọn tệp đang mở."));
+            return;
+        }
+
+        ClearLabel(assetErrorLabel);
+        string pdfFileType = NativeFilePicker.ConvertExtensionToFileType("pdf");
+        NativeFilePicker.PickFile(path =>
+        {
+            if (string.IsNullOrWhiteSpace(path)) return;
+
+            path = NormalizeLocalFilePath(path);
+
+            if (!ValidateLocalFile(path, ".pdf", MaxPdfBytes, "Exercise PDF", out string error))
+            {
+                SetLabel(assetErrorLabel, error);
+                return;
+            }
+
+            selectedExercisePath = path;
+            if (exerciseFileLabel != null)
+                exerciseFileLabel.text = Path.GetFileName(path);
+
+            SetVisible(exerciseFileRow, true);
+            ClearLabel(assetErrorLabel);
+        }, new[] { pdfFileType });
+
 #else
-        SetLabel(assetErrorLabel, "Android file picker is not installed yet.");
+        SetLabel(assetErrorLabel, T("File selection is not supported on this platform.", "Nền tảng này không hỗ trợ chọn tệp."));
 #endif
+    }
+
+    private void SetDocumentPickerStatus(string message)
+    {
+        if (documentPickerStatusLabel == null) return;
+        documentPickerStatusLabel.text = message ?? string.Empty;
+        SetVisible(documentPickerStatusLabel, !string.IsNullOrWhiteSpace(message));
     }
 
     private void PickModel()
     {
 #if UNITY_EDITOR
-        string path = UnityEditor.EditorUtility.OpenFilePanel("Choose GLB 3D Model", string.Empty, "glb");
+        string path = UnityEditor.EditorUtility.OpenFilePanel(T("Choose GLB 3D Model", "Chọn mô hình GLB 3D"), string.Empty, "glb");
         if (string.IsNullOrWhiteSpace(path)) return;
 
         if (!ValidateLocalFile(path, ".glb", MaxModelBytes, "GLB", out string error))
@@ -831,8 +1572,54 @@ public class CreateLessonPageController : MonoBehaviour
 
         SetVisible(modelFileRow, true);
         ClearLabel(assetErrorLabel);
+#elif UNITY_ANDROID || UNITY_IOS
+        if (NativeFilePicker.IsFilePickerBusy())
+        {
+            SetLabel(assetErrorLabel, T("The file picker is already open.", "Trình chọn tệp đang mở."));
+            return;
+        }
+
+        ClearLabel(assetErrorLabel);
+
+#if UNITY_ANDROID
+        // Some Android document providers don't register the .glb MIME type.
+        // Allow the common GLB MIME types (and */* as a compatibility fallback),
+        // then strictly validate the selected file extension below.
+        string[] glbFileTypes =
+        {
+            "model/gltf-binary",
+            "application/octet-stream",
+            "*/*"
+        };
 #else
-        SetLabel(assetErrorLabel, "Android file picker is not installed yet.");
+        string[] glbFileTypes =
+        {
+            NativeFilePicker.ConvertExtensionToFileType("glb")
+        };
+#endif
+
+        NativeFilePicker.PickFile(path =>
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return;
+
+            string normalizedPath = NormalizeLocalFilePath(path);
+            if (!ValidateLocalFile(normalizedPath, ".glb", MaxModelBytes, "GLB", out string error))
+            {
+                SetLabel(assetErrorLabel, error);
+                return;
+            }
+
+            selectedModelPath = normalizedPath;
+
+            if (modelFileLabel != null)
+                modelFileLabel.text = Path.GetFileName(normalizedPath);
+
+            SetVisible(modelFileRow, true);
+            ClearLabel(assetErrorLabel);
+        }, glbFileTypes);
+#else
+        SetLabel(assetErrorLabel, T("File selection is not supported on this platform.", "Nền tảng này không hỗ trợ chọn tệp."));
 #endif
     }
 
@@ -842,9 +1629,11 @@ public class CreateLessonPageController : MonoBehaviour
         if (existing != null) removedExistingAssetIds.Add(existing.id);
 
         selectedExercisePath = string.Empty;
+        existingQuizId = string.Empty;
+        ClearQuizDeadline();
 
         if (exerciseFileLabel != null)
-            exerciseFileLabel.text = "No exercise PDF selected";
+            exerciseFileLabel.text = L("No exercise PDF selected");
 
         SetVisible(exerciseFileRow, false);
         ClearLabel(assetErrorLabel);
@@ -858,7 +1647,7 @@ public class CreateLessonPageController : MonoBehaviour
         selectedModelPath = string.Empty;
 
         if (modelFileLabel != null)
-            modelFileLabel.text = "No 3D asset selected";
+            modelFileLabel.text = L("No 3D asset selected");
 
         SetVisible(modelFileRow, false);
         ClearLabel(assetErrorLabel);
@@ -887,6 +1676,24 @@ public class CreateLessonPageController : MonoBehaviour
         }
 
         return true;
+    }
+
+    private static string NormalizeLocalFilePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+
+        string trimmed = path.Trim();
+        if (!trimmed.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+            return trimmed;
+
+        try
+        {
+            return new Uri(trimmed).LocalPath;
+        }
+        catch
+        {
+            return trimmed.Replace("file://", string.Empty);
+        }
     }
 
     private void RebuildDocumentChips()
@@ -922,6 +1729,9 @@ public class CreateLessonPageController : MonoBehaviour
             {
                 selectedDocumentPaths.Remove(path);
                 RebuildDocumentChips();
+                SetDocumentPickerStatus(selectedDocumentPaths.Count == 0
+                    ? string.Empty
+                    : T($"{selectedDocumentPaths.Count} PDF document(s) selected.", $"Đã chọn {selectedDocumentPaths.Count} tài liệu PDF."));
             })
             { text = "×" };
             remove.AddToClassList("remove-file-button");
@@ -1006,6 +1816,34 @@ public class CreateLessonPageController : MonoBehaviour
         UpdateFormatVisual(modelFormatButton, modelRadio, modelSelected);
 
         RebuildExistingAssetRows();
+
+        string quizResponse = null;
+        error = null;
+
+        yield return runtimeRestService.SendJson(
+            UnityWebRequest.kHttpVerbGET,
+            "rest/v1/quizzes?select=id,closes_at&lesson_id=eq." + lessonId + "&order=created_at.desc&limit=1",
+            null, null,
+            value => quizResponse = value,
+            message => error = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            SetLabel(assetErrorLabel, error);
+            yield break;
+        }
+
+        QuizDeadlineRecordList quizWrapper = JsonUtility.FromJson<QuizDeadlineRecordList>(
+            $"{{\"items\":{quizResponse}}}"
+        );
+
+        existingQuizId = string.Empty;
+        if (quizWrapper?.items != null && quizWrapper.items.Length > 0)
+        {
+            existingQuizId = quizWrapper.items[0].id ?? string.Empty;
+            SetQuizDeadlineFields(quizWrapper.items[0].closes_at);
+        }
 
         string objectiveResponse = null;
         error = null;
@@ -1205,6 +2043,17 @@ public class CreateLessonPageController : MonoBehaviour
         string teacherId = PlayerPrefs.GetString("user_id", string.Empty);
         string error = null;
 
+        if (string.IsNullOrWhiteSpace(selectedExercisePath) &&
+            !string.IsNullOrWhiteSpace(existingQuizId))
+        {
+            yield return UpdateQuizDeadlineRoutine(existingQuizId, message => error = message);
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                FailSaving(error);
+                yield break;
+            }
+        }
+
         // 1. Upload new Document PDFs lên Cloudflare R2
         for (int i = 0; i < selectedDocumentPaths.Count; i++)
         {
@@ -1271,7 +2120,7 @@ public class CreateLessonPageController : MonoBehaviour
 
             SetSaveProgress(
                 72f,
-                "Đang phân tích Quiz PDF và lưu dữ liệu..."
+                T("Analyzing Quiz PDF and saving data...", "Đang phân tích Quiz PDF và lưu dữ liệu...")
             );
 
             ParseQuizPdfResponse quizResult = null;
@@ -1282,13 +2131,20 @@ public class CreateLessonPageController : MonoBehaviour
 
             if (string.IsNullOrWhiteSpace(quizTitle))
             {
-                quizTitle = "Bài tập";
+                quizTitle = T("Exercise", "Bài tập");
+            }
+
+            if (!TryGetQuizDeadlineUtc(out string closesAtUtcIso, out string deadlineError))
+            {
+                FailSaving(deadlineError);
+                yield break;
             }
 
             yield return quizService.CallParseQuizFunctionDetailed(
                 lessonId,
                 quizTitle,
                 selectedExercisePath,
+                closesAtUtcIso,
                 response => quizResult = response,
                 message => quizError = message
             );
@@ -1306,6 +2162,8 @@ public class CreateLessonPageController : MonoBehaviour
                 yield break;
             }
 
+            existingQuizId = quizResult.quiz_id;
+
             Debug.Log(
                 "[CreateLessonPageController] Quiz update pipeline completed. " +
                 $"Quiz ID: {quizResult.quiz_id}, " +
@@ -1315,7 +2173,7 @@ public class CreateLessonPageController : MonoBehaviour
 
             SetSaveProgress(
                 82f,
-                "Quiz đã được lưu thành công."
+                T("Quiz saved successfully.", "Quiz đã được lưu thành công.")
             );
         }
 
@@ -1369,7 +2227,7 @@ public class CreateLessonPageController : MonoBehaviour
             yield break;
         }
 
-        SetSaveProgress(progressValue, "Đang tải model 3D lên R2...");
+        SetSaveProgress(progressValue, T("Uploading 3D model to R2...", "Đang tải model 3D lên R2..."));
 
         string storagePath =
             $"{teacherId}/{classId}/{lessonId}/models/{Guid.NewGuid():N}.glb";
@@ -1415,9 +2273,10 @@ public class CreateLessonPageController : MonoBehaviour
         };
 
         string insertError = null;
+        LessonAssetRecord createdModelAsset = null;
         yield return lessonService.CreateLessonAsset(
             modelAsset,
-            () => { },
+            created => createdModelAsset = created,
             error => insertError = error
         );
 
@@ -1427,26 +2286,61 @@ public class CreateLessonPageController : MonoBehaviour
             yield break;
         }
 
+        if (createdModelAsset == null ||
+            string.IsNullOrWhiteSpace(createdModelAsset.id))
+        {
+            FailSaving("Model đã được upload nhưng không lấy được asset_id để phân tích GLB.");
+            yield break;
+        }
+
+        // Do not rely only on a database webhook. Mobile uploads explicitly
+        // queue analysis using the exact row id returned by Supabase.
+        string analysisError = null;
+        yield return lessonService.GenerateModelDetails(
+            createdModelAsset.id,
+            () => { },
+            error => analysisError = error
+        );
+
+        if (!string.IsNullOrWhiteSpace(analysisError))
+        {
+            // Uploading the GLB and generating AI metadata are two separate
+            // operations. A temporary Gemini/worker outage must not discard
+            // an otherwise valid lesson or force the user to upload the model
+            // again. The asset remains in lesson_assets and can be processed
+            // again by the webhook/manual retry pipeline.
+            Debug.LogWarning(
+                "[CreateLessonPageController] Model upload succeeded, but " +
+                "automatic detail generation is pending/failed temporarily. " +
+                $"Asset ID: {createdModelAsset.id}. Error: {analysisError}"
+            );
+
+            SetSaveProgress(
+                Mathf.Min(progressValue + 4f, 96f),
+                T(
+                    "Model uploaded. Detail analysis can be retried later.",
+                    "Mô hình đã tải lên. Có thể thử phân tích chi tiết lại sau."
+                )
+            );
+
+            yield break;
+        }
+
         SetSaveProgress(
             Mathf.Min(progressValue + 4f, 96f),
-            "Model đã tải lên. Backend đang tự động tạo nhãn và mô tả..."
+            T("Model uploaded and analyzed successfully.", "Model đã tải lên và phân tích cấu trúc thành công.")
         );
 
         Debug.Log(
             "[CreateLessonPageController] Model asset inserted successfully. " +
-            "Database trigger auto_process_model_detail should now run automatically. " +
+            "GLB structure analysis completed. " +
+            $"Asset ID: {createdModelAsset.id}, " +
             $"Lesson ID: {lessonId}, File: {Path.GetFileName(localModelPath)}, " +
             $"R2: lesson-models/{uploadedPath}"
         );
     }
 
-    private void HandleSaveDraft()
-    {
-        if (!ValidateDetails()) return;
-        SaveLesson(true);
-    }
-
-    private void SaveLesson(bool asDraft)
+    private void SaveLesson()
     {
         if (isSaving) return;
 
@@ -1468,10 +2362,10 @@ public class CreateLessonPageController : MonoBehaviour
             return;
         }
 
-        StartCoroutine(CreateLessonRoutine(asDraft));
+        StartCoroutine(CreateLessonRoutine());
     }
 
-    private IEnumerator CreateLessonRoutine(bool asDraft)
+    private IEnumerator CreateLessonRoutine()
     {
         isSaving = true;
         SetSavingUi(true);
@@ -1505,7 +2399,7 @@ public class CreateLessonPageController : MonoBehaviour
         }
 
         List<string> objectives = CollectObjectives();
-        string finalStatus = asDraft ? "draft" : "published";
+        string finalStatus = "published";
         string finalYoutubeUrl = videoSelected && !string.IsNullOrWhiteSpace(selectedYoutubeUrl)
             ? selectedYoutubeUrl.Trim()
             : null;
@@ -1620,16 +2514,23 @@ public class CreateLessonPageController : MonoBehaviour
 
             SetSaveProgress(
                 CalculateUploadProgress(completedUploads, totalUploads),
-                "Đang phân tích Quiz PDF và lưu dữ liệu..."
+                T("Analyzing Quiz PDF and saving data...", "Đang phân tích Quiz PDF và lưu dữ liệu...")
             );
 
             ParseQuizPdfResponse quizResult = null;
             string quizError = null;
 
+            if (!TryGetQuizDeadlineUtc(out string closesAtUtcIso, out string deadlineError))
+            {
+                FailSaving(deadlineError);
+                yield break;
+            }
+
             yield return quizService.CallParseQuizFunctionDetailed(
                 createdLesson.id,
                 createdLesson.title,
                 selectedExercisePath,
+                closesAtUtcIso,
                 response => quizResult = response,
                 message => quizError = message
             );
@@ -1704,7 +2605,7 @@ public class CreateLessonPageController : MonoBehaviour
         PlayerPrefs.SetString("selected_lesson_id", createdLesson.id);
         PlayerPrefs.Save();
 
-        SetSaveProgress(100f, asDraft ? "Draft saved." : "Lesson published.");
+        SetSaveProgress(100f, "Lesson published.");
         yield return new WaitForSecondsRealtime(0.35f);
 
         isSaving = false;
@@ -1732,7 +2633,6 @@ public class CreateLessonPageController : MonoBehaviour
     private void SetSavingUi(bool saving)
     {
         nextButton?.SetEnabled(!saving);
-        saveDraftButton?.SetEnabled(!saving);
         cancelButton?.SetEnabled(!saving);
         backButton?.SetEnabled(!saving);
 
@@ -1745,7 +2645,7 @@ public class CreateLessonPageController : MonoBehaviour
             saveProgressBar.value = Mathf.Clamp(value, 0f, 100f);
 
         if (saveProgressLabel != null)
-            saveProgressLabel.text = text;
+            saveProgressLabel.text = L(text);
     }
 
     private void FailSaving(string message)
@@ -1765,11 +2665,13 @@ public class CreateLessonPageController : MonoBehaviour
         selectedYoutubeUrl = string.Empty;
         selectedExercisePath = string.Empty;
         selectedModelPath = string.Empty;
+        existingQuizId = string.Empty;
         selectedDocumentPaths.Clear();
 
         youtubeUrlField?.SetValueWithoutNotify(string.Empty);
         lessonTitleField?.SetValueWithoutNotify(string.Empty);
         lessonDescriptionField?.SetValueWithoutNotify(string.Empty);
+        ClearQuizDeadline();
 
         UpdateFormatVisual(videoFormatButton, videoRadio, false);
         UpdateFormatVisual(modelFormatButton, modelRadio, false);
@@ -1779,10 +2681,10 @@ public class CreateLessonPageController : MonoBehaviour
         SetVideoStatus(string.Empty, false);
 
         if (exerciseFileLabel != null)
-            exerciseFileLabel.text = "No exercise PDF selected";
+            exerciseFileLabel.text = L("No exercise PDF selected");
 
         if (modelFileLabel != null)
-            modelFileLabel.text = "No 3D asset selected";
+            modelFileLabel.text = L("No 3D asset selected");
 
         SetVisible(exerciseFileRow, false);
         SetVisible(modelFileRow, false);
@@ -1811,7 +2713,7 @@ public class CreateLessonPageController : MonoBehaviour
 
     private static void SetLabel(Label label, string message)
     {
-        if (label != null) label.text = message;
+        if (label != null) label.text = L(message);
     }
 
     private static void ClearLabel(Label label)
@@ -1881,5 +2783,24 @@ public class LessonUpdatePayload
     public string youtube_url;
     public bool has_video;
     public string status;
+}
+
+[Serializable]
+public class QuizDeadlineRecord
+{
+    public string id;
+    public string closes_at;
+}
+
+[Serializable]
+public class QuizDeadlineRecordList
+{
+    public QuizDeadlineRecord[] items;
+}
+
+[Serializable]
+public class QuizDeadlineUpdatePayload
+{
+    public string closes_at;
 }
 #endregion

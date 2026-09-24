@@ -7,6 +7,13 @@ using UnityEngine.Networking;
 public static class AIService
 {
     [Serializable]
+    private class AIImagePayload
+    {
+        public string imageBase64;
+        public string imageMimeType;
+    }
+
+    [Serializable]
     private class AIChatRequest
     {
         public string message;
@@ -22,6 +29,11 @@ public static class AIService
         // Context mô hình - dùng sau này cho 3D/AR/VR.
         public string modelId;
         public string selectedPart;
+
+        // Optional Gemini vision input. Base64 must not include a data: prefix.
+        public string imageBase64;
+        public string imageMimeType;
+        public AIImagePayload[] images;
     }
 
     [Serializable]
@@ -36,6 +48,84 @@ public static class AIService
         string message,
         Action<string> onSuccess,
         Action<string> onError)
+    {
+        return SendMessageInternal(
+            message,
+            string.Empty,
+            string.Empty,
+            onSuccess,
+            onError
+        );
+    }
+
+    public static IEnumerator SendMessageWithImage(
+        string message,
+        string imageBase64,
+        string imageMimeType,
+        Action<string> onSuccess,
+        Action<string> onError)
+    {
+        return SendMessageInternal(
+            message,
+            imageBase64,
+            imageMimeType,
+            onSuccess,
+            onError
+        );
+    }
+
+    public static IEnumerator SendMessageWithImages(
+        string message,
+        string[] imageBase64Values,
+        string[] imageMimeTypes,
+        Action<string> onSuccess,
+        Action<string> onError)
+    {
+        int count = imageBase64Values == null ? 0 : imageBase64Values.Length;
+        if (count == 0 || imageMimeTypes == null || imageMimeTypes.Length != count)
+        {
+            onError?.Invoke("Invalid image selection.");
+            return EmptyRoutine();
+        }
+
+        if (count > 4)
+        {
+            onError?.Invoke("You can send up to 4 images.");
+            return EmptyRoutine();
+        }
+
+        AIImagePayload[] images = new AIImagePayload[count];
+        for (int i = 0; i < count; i++)
+        {
+            images[i] = new AIImagePayload
+            {
+                imageBase64 = imageBase64Values[i],
+                imageMimeType = imageMimeTypes[i]
+            };
+        }
+
+        return SendMessageInternal(
+            message,
+            string.Empty,
+            string.Empty,
+            onSuccess,
+            onError,
+            images
+        );
+    }
+
+    private static IEnumerator EmptyRoutine()
+    {
+        yield break;
+    }
+
+    private static IEnumerator SendMessageInternal(
+        string message,
+        string imageBase64,
+        string imageMimeType,
+        Action<string> onSuccess,
+        Action<string> onError,
+        AIImagePayload[] images = null)
     {
         // ---------------------------------------------------------
         // 1. Validate Supabase configuration
@@ -73,12 +163,25 @@ public static class AIService
         // 3. Validate message
         // ---------------------------------------------------------
 
-        if (string.IsNullOrWhiteSpace(message))
+        bool hasImage = !string.IsNullOrWhiteSpace(imageBase64) ||
+                        (images != null && images.Length > 0);
+
+        if (string.IsNullOrWhiteSpace(message) && !hasImage)
         {
             onError?.Invoke(
                 "Message is empty."
             );
 
+            yield break;
+        }
+
+        if (hasImage &&
+            images == null &&
+            imageMimeType != "image/jpeg" &&
+            imageMimeType != "image/png" &&
+            imageMimeType != "image/webp")
+        {
+            onError?.Invoke("Unsupported image format.");
             yield break;
         }
 
@@ -114,7 +217,12 @@ public static class AIService
                     string.Empty,
 
                 modelId = string.Empty,
-                selectedPart = string.Empty
+                selectedPart = string.Empty,
+                imageBase64 = hasImage ? imageBase64.Trim() : string.Empty,
+                imageMimeType = !string.IsNullOrWhiteSpace(imageBase64)
+                    ? imageMimeType.Trim()
+                    : string.Empty,
+                images = images ?? Array.Empty<AIImagePayload>()
             };
 
         string json =
@@ -127,7 +235,8 @@ public static class AIService
             "[AIService] AI Context\n" +
             "Mode: chat\n" +
             "Class ID: " + currentClassId + "\n" +
-            "Lesson ID: " + currentLessonId
+            "Lesson ID: " + currentLessonId + "\n" +
+            "Has image: " + hasImage
         );
 
         // ---------------------------------------------------------

@@ -76,6 +76,7 @@ public class DoQuizPageController : MonoBehaviour
     private bool isLoading;
     private bool isSubmitting;
     private bool isReviewMode;
+    private DateTimeOffset? quizDeadlineUtc;
 
     // Review swipe navigation.
     // Swipe LEFT  -> next question.
@@ -133,6 +134,10 @@ public class DoQuizPageController : MonoBehaviour
                 "review",
                 StringComparison.OrdinalIgnoreCase
             );
+
+        quizDeadlineUtc = ParseDeadline(
+            PlayerPrefs.GetString("selected_quiz_close_at", string.Empty)
+        );
 
         HideResult();
         CloseQuizDrawer();
@@ -1204,6 +1209,12 @@ public class DoQuizPageController : MonoBehaviour
         if (isReviewMode)
             return;
 
+        if (HasDeadlinePassed())
+        {
+            LockExpiredQuiz();
+            return;
+        }
+
         if (isSubmitting ||
             currentQuestionIndex < 0 ||
             currentQuestionIndex >= questions.Count ||
@@ -1276,6 +1287,12 @@ public class DoQuizPageController : MonoBehaviour
     {
         if (isSubmitting)
             yield break;
+
+        if (HasDeadlinePassed())
+        {
+            LockExpiredQuiz();
+            yield break;
+        }
 
         if (selectedOptionIds.Count != questions.Count)
         {
@@ -1422,6 +1439,32 @@ public class DoQuizPageController : MonoBehaviour
             $"Correct: {result.correct_count}/{result.total_questions}. " +
             $"Score: {roundedScore:0.##}/{maximumGrade:0.##}"
         );
+    }
+
+    private static DateTimeOffset? ParseDeadline(string iso)
+    {
+        return DateTimeOffset.TryParse(
+            iso,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind,
+            out DateTimeOffset value
+        ) ? value.ToUniversalTime() : null;
+    }
+
+    private bool HasDeadlinePassed()
+    {
+        return !isReviewMode &&
+               quizDeadlineUtc.HasValue &&
+               DateTimeOffset.UtcNow >= quizDeadlineUtc.Value;
+    }
+
+    private void LockExpiredQuiz()
+    {
+        nextQuestionButton?.SetEnabled(false);
+        quizDrawerActionButton?.SetEnabled(false);
+        SetAnswerButtonsEnabled(false);
+        HideSubmitConfirmation();
+        SetMessage("Quiz đã hết hạn. Bạn không thể tiếp tục hoặc nộp bài.");
     }
 
     private void ShowResult(

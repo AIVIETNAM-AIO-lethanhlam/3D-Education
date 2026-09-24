@@ -1,249 +1,209 @@
 package com.virtualeducation.chat;
 
 import android.app.Activity;
-import android.content.Intent;
-import android.net.Uri;
-import android.provider.OpenableColumns;
-import android.database.Cursor;
 import android.content.ContentResolver;
-
-import com.unity3d.player.UnityPlayer;
-
+import android.content.ContentUris;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.MediaStore;
+import android.provider.OpenableColumns;
+import android.util.Size;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 
+/** Bridge for the image grid rendered directly inside ChatAIScene. */
 public final class ChatImagePicker {
-    private static final int REQUEST_PICK_IMAGE = 48192;
-
-    private static String receiverObjectName;
-    private static String successMethodName;
-    private static String cancelMethodName;
-
     private ChatImagePicker() {}
 
-    public static void openImagePicker(
-            final Activity activity,
-            final String receiverObject,
-            final String successMethod,
-            final String cancelMethod) {
-
-        receiverObjectName = receiverObject;
-        successMethodName = successMethod;
-        cancelMethodName = cancelMethod;
-
-        activity.runOnUiThread(() -> {
-            Intent intent = new Intent(
-                    activity,
-                    ChatImagePickerActivity.class
-            );
-
-            activity.startActivity(intent);
-        });
+    public static String getRecentImages(Activity activity, int requestedLimit) {
+        return getRecentImagesPage(activity, 0, requestedLimit);
     }
 
-    static void sendSuccess(String localPath) {
-        if (receiverObjectName == null ||
-            successMethodName == null) {
-            return;
-        }
+    /** Returns one page ordered from newest to oldest. */
+    public static String getRecentImagesPage(
+            Activity activity,
+            int requestedOffset,
+            int requestedLimit) {
+        JSONObject result = new JSONObject();
+        JSONArray items = new JSONArray();
+        Cursor cursor = null;
 
-        UnityPlayer.UnitySendMessage(
-                receiverObjectName,
-                successMethodName,
-                localPath == null ? "" : localPath
-        );
-    }
+        try {
+            int offset = Math.max(0, requestedOffset);
+            int limit = Math.max(1, Math.min(requestedLimit, 40));
+            ContentResolver resolver = activity.getContentResolver();
+            Uri collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+            String[] projection = {
+                MediaStore.Images.Media._ID,
+                MediaStore.Images.Media.DISPLAY_NAME
+            };
 
-    static void sendCancelled() {
-        if (receiverObjectName == null ||
-            cancelMethodName == null) {
-            return;
-        }
-
-        UnityPlayer.UnitySendMessage(
-                receiverObjectName,
-                cancelMethodName,
-                ""
-        );
-    }
-
-    public static class ChatImagePickerActivity extends Activity {
-        private boolean pickerOpened;
-
-        @Override
-        protected void onCreate(android.os.Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-
-            if (savedInstanceState == null) {
-                openPicker();
-            }
-        }
-
-        private void openPicker() {
-            pickerOpened = true;
-
-            Intent intent =
-                    new Intent(Intent.ACTION_OPEN_DOCUMENT);
-
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("image/*");
-
-            startActivityForResult(
-                    intent,
-                    REQUEST_PICK_IMAGE
-            );
-        }
-
-        @Override
-        protected void onActivityResult(
-                int requestCode,
-                int resultCode,
-                Intent data) {
-
-            super.onActivityResult(
-                    requestCode,
-                    resultCode,
-                    data
+            cursor = resolver.query(
+                collection,
+                projection,
+                null,
+                null,
+                MediaStore.Images.Media.DATE_ADDED + " DESC"
             );
 
-            if (requestCode != REQUEST_PICK_IMAGE) {
-                return;
+            if (cursor != null) {
+                int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
+                int nameColumn = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME);
+                File directory = new File(activity.getCacheDir(), "chat_gallery_thumbnails");
+                if (!directory.exists()) directory.mkdirs();
+
+                int scanned = 0;
+                int count = 0;
+                if (offset > 0) cursor.moveToPosition(offset - 1);
+                while (cursor.moveToNext() && count < limit) {
+                    scanned++;
+                    long id = cursor.getLong(idColumn);
+                    Uri uri = ContentUris.withAppendedId(collection, id);
+                    String name = nameColumn >= 0 ? cursor.getString(nameColumn) : null;
+                    if (name == null || name.trim().isEmpty()) name = "image_" + id + ".jpg";
+
+                    File thumbnail = new File(directory, "thumb_" + id + ".png");
+                    if (!createThumbnail(resolver, uri, thumbnail)) continue;
+
+                    JSONObject item = new JSONObject();
+                    item.put("uri", uri.toString());
+                    item.put("displayName", name);
+                    item.put("thumbnailPath", thumbnail.getAbsolutePath());
+                    items.put(item);
+                    count++;
+                }
+
+                int nextOffset = offset + scanned;
+                result.put("nextOffset", nextOffset);
+                result.put("hasMore", nextOffset < cursor.getCount());
             }
 
-            if (resultCode != RESULT_OK ||
-                data == null ||
-                data.getData() == null) {
-
-                ChatImagePicker.sendCancelled();
-                finish();
-                return;
-            }
-
-            Uri uri = data.getData();
-
+            result.put("items", items);
+            result.put("error", "");
+        } catch (Exception exception) {
             try {
-                String fileName =
-                        resolveFileName(uri);
-
-                if (fileName == null ||
-                    fileName.trim().isEmpty()) {
-
-                    fileName =
-                            "chat_image_" +
-                            System.currentTimeMillis() +
-                            ".jpg";
-                }
-
-                fileName = sanitizeFileName(fileName);
-
-                File destination =
-                        new File(
-                                getCacheDir(),
-                                "chat_" +
-                                System.currentTimeMillis() +
-                                "_" +
-                                fileName
-                        );
-
-                copyUriToFile(
-                        uri,
-                        destination
-                );
-
-                ChatImagePicker.sendSuccess(
-                        destination.getAbsolutePath()
-                );
-            }
-            catch (Exception exception) {
-                exception.printStackTrace();
-                ChatImagePicker.sendCancelled();
-            }
-
-            finish();
+                result.put("items", items);
+                result.put("error", exception.getMessage() == null
+                    ? exception.toString() : exception.getMessage());
+            } catch (Exception ignored) {}
+        } finally {
+            if (cursor != null) cursor.close();
         }
 
-        @Override
-        protected void onResume() {
-            super.onResume();
+        return result.toString();
+    }
 
-            // When the picker is cancelled Android returns through
-            // onActivityResult, so no extra handling is needed here.
+    public static String copyImageToCache(
+            Activity activity,
+            String uriValue,
+            String suggestedName) {
+        if (uriValue == null || uriValue.trim().isEmpty()) return "";
+
+        try {
+            Uri uri = Uri.parse(uriValue);
+            String name = suggestedName;
+            if (name == null || name.trim().isEmpty()) name = resolveFileName(activity, uri);
+            if (name == null || name.trim().isEmpty())
+                name = "chat_image_" + System.currentTimeMillis() + ".jpg";
+
+            File destination = new File(
+                activity.getCacheDir(),
+                "chat_" + System.currentTimeMillis() + "_" + sanitizeFileName(name)
+            );
+            copyUriToFile(activity, uri, destination);
+            return destination.getAbsolutePath();
+        } catch (Exception exception) {
+            exception.printStackTrace();
+            return "";
         }
+    }
 
-        private String resolveFileName(Uri uri) {
-            ContentResolver resolver =
-                    getContentResolver();
-
-            Cursor cursor = null;
-
-            try {
-                cursor = resolver.query(
-                        uri,
-                        new String[] {
-                                OpenableColumns.DISPLAY_NAME
-                        },
-                        null,
-                        null,
-                        null
+    private static boolean createThumbnail(
+            ContentResolver resolver,
+            Uri uri,
+            File destination) {
+        try {
+            Bitmap bitmap;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                bitmap = resolver.loadThumbnail(uri, new Size(320, 320), null);
+            } else {
+                bitmap = MediaStore.Images.Thumbnails.getThumbnail(
+                    resolver,
+                    ContentUris.parseId(uri),
+                    MediaStore.Images.Thumbnails.MINI_KIND,
+                    null
                 );
-
-                if (cursor != null &&
-                    cursor.moveToFirst()) {
-
-                    int index =
-                            cursor.getColumnIndex(
-                                    OpenableColumns.DISPLAY_NAME
-                            );
-
-                    if (index >= 0)
-                        return cursor.getString(index);
-                }
-            }
-            finally {
-                if (cursor != null)
-                    cursor.close();
             }
 
-            return null;
-        }
+            if (bitmap == null) return false;
 
-        private void copyUriToFile(
-                Uri uri,
-                File destination)
-                throws Exception {
+            // MediaStore can return a GPU/hardware-backed bitmap on newer
+            // Android devices. Compressing that bitmap directly produces
+            // solid-black thumbnails on some vendors, so always render it
+            // into a normal software ARGB bitmap first.
+            Bitmap softwareBitmap = Bitmap.createBitmap(
+                bitmap.getWidth(),
+                bitmap.getHeight(),
+                Bitmap.Config.ARGB_8888
+            );
+            Canvas canvas = new Canvas(softwareBitmap);
+            canvas.drawBitmap(bitmap, 0f, 0f, null);
 
-            ContentResolver resolver =
-                    getContentResolver();
-
-            try (InputStream input =
-                         resolver.openInputStream(uri);
-                 FileOutputStream output =
-                         new FileOutputStream(destination)) {
-
-                if (input == null)
-                    throw new IllegalStateException(
-                            "Unable to open selected image."
-                    );
-
-                byte[] buffer =
-                        new byte[16 * 1024];
-
-                int read;
-
-                while ((read = input.read(buffer)) > 0) {
-                    output.write(buffer, 0, read);
-                }
-
+            try (FileOutputStream output = new FileOutputStream(destination)) {
+                boolean success = softwareBitmap.compress(Bitmap.CompressFormat.PNG, 100, output);
                 output.flush();
+                return success;
+            } finally {
+                softwareBitmap.recycle();
+                bitmap.recycle();
             }
+        } catch (Exception exception) {
+            exception.printStackTrace();
+            return false;
         }
+    }
 
-        private String sanitizeFileName(String value) {
-            return value.replaceAll(
-                    "[^A-Za-z0-9._-]",
-                    "_"
+    private static String resolveFileName(Activity activity, Uri uri) {
+        Cursor cursor = null;
+        try {
+            cursor = activity.getContentResolver().query(
+                uri,
+                new String[] { OpenableColumns.DISPLAY_NAME },
+                null, null, null
             );
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (index >= 0) return cursor.getString(index);
+            }
+        } finally {
+            if (cursor != null) cursor.close();
         }
+        return null;
+    }
+
+    private static void copyUriToFile(
+            Activity activity,
+            Uri uri,
+            File destination) throws Exception {
+        try (InputStream input = activity.getContentResolver().openInputStream(uri);
+             FileOutputStream output = new FileOutputStream(destination)) {
+            if (input == null)
+                throw new IllegalStateException("Unable to open selected image.");
+
+            byte[] buffer = new byte[16 * 1024];
+            int read;
+            while ((read = input.read(buffer)) > 0) output.write(buffer, 0, read);
+            output.flush();
+        }
+    }
+
+    private static String sanitizeFileName(String value) {
+        return value.replaceAll("[^A-Za-z0-9._-]", "_");
     }
 }

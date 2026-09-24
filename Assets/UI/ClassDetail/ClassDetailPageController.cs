@@ -19,12 +19,14 @@ public class ClassDetailPageController : MonoBehaviour
     private VisualElement root;
 
     private Button backButton;
-    private Button moreButton;
     private Button teacherMessageButton;
 
     private Button syllabusTabButton;
     private Button labsTabButton;
     private Button studentListTabButton;
+    private Label syllabusTabLabel;
+    private Label labsTabLabel;
+    private Label studentListTabLabel;
     private VisualElement studentListUnreadDot;
 
     private VisualElement syllabusContent;
@@ -48,7 +50,6 @@ public class ClassDetailPageController : MonoBehaviour
     private Button labsRetryButton;
 
     private VisualElement chapterList;
-    private VisualElement reorderPreview;
     private Button addChapterButton;
     private Button editContentButton;
 
@@ -121,6 +122,20 @@ public class ClassDetailPageController : MonoBehaviour
     [Serializable] private class DirectConversationRpcBody { public string p_other_user_id; public string p_class_id; }
     [Serializable] private class UnreadMessageRecord { public string id; }
     [Serializable] private class UnreadMessageArray { public UnreadMessageRecord[] items; }
+    [Serializable] private class LessonProgressRecord { public string lesson_id; }
+    [Serializable] private class LessonProgressArray { public LessonProgressRecord[] items; }
+    [Serializable] private class ClassQuizRecord { public string id; public string lesson_id; }
+    [Serializable] private class ClassQuizArray { public ClassQuizRecord[] items; }
+    [Serializable] private class ClassQuizAttemptRecord { public string quiz_id; public float score; }
+    [Serializable] private class ClassQuizAttemptArray { public ClassQuizAttemptRecord[] items; }
+
+    [Serializable]
+    private class LessonProgressUpsert
+    {
+        public string student_id;
+        public string lesson_id;
+        public string viewed_at;
+    }
 
     [Serializable]
     private class TeacherConversationRecord
@@ -170,7 +185,7 @@ public class ClassDetailPageController : MonoBehaviour
 
         AppLanguageManager.LanguageChanged += OnLanguageChanged;
 
-        HideVerticalScrollbar();
+        ConfigureContentScrolling();
         ResolveServices();
         RegisterEvents();
 
@@ -236,9 +251,6 @@ public class ClassDetailPageController : MonoBehaviour
         backButton =
             root.Q<Button>("back-button");
 
-        moreButton =
-            root.Q<Button>("more-button");
-
         teacherMessageButton =
             root.Q<Button>("teacher-message-button");
 
@@ -250,6 +262,10 @@ public class ClassDetailPageController : MonoBehaviour
 
         studentListTabButton =
             root.Q<Button>("student-list-tab-button");
+
+        syllabusTabLabel = root.Q<Label>("syllabus-tab-label");
+        labsTabLabel = root.Q<Label>("labs-tab-label");
+        studentListTabLabel = root.Q<Label>("student-list-tab-label");
 
         studentListUnreadDot =
             root.Q<VisualElement>("student-list-unread-dot");
@@ -307,9 +323,6 @@ public class ClassDetailPageController : MonoBehaviour
 
         chapterList =
             root.Q<VisualElement>("chapter-list");
-
-        reorderPreview =
-            root.Q<VisualElement>("reorder-preview");
 
         addChapterButton =
             root.Q<Button>("add-chapter-button");
@@ -385,6 +398,16 @@ public class ClassDetailPageController : MonoBehaviour
 
         LocalizeElementTree(root);
 
+        // Set the child labels directly so their layout never depends on the
+        // intrinsic width of Button.text. A deliberate line break prevents the
+        // longer Vietnamese title from overflowing on Android devices.
+        if (syllabusTabLabel != null)
+            syllabusTabLabel.text = T("Syllabus", "Nội dung");
+        if (labsTabLabel != null)
+            labsTabLabel.text = "3D Labs";
+        if (studentListTabLabel != null)
+            studentListTabLabel.text = T("Student List", "Danh sách\nhọc sinh");
+
         if (semesterLabel != null)
             semesterLabel.text = T("CLASS OVERVIEW", "TỔNG QUAN LỚP HỌC");
 
@@ -401,8 +424,8 @@ public class ClassDetailPageController : MonoBehaviour
 
         // Dynamic sections are rebuilt so chapter, model and student text
         // follows the newly selected language immediately.
-        RenderChapterList();
         UpdateProgress();
+        RenderChapterList();
 
         if (class3DModels.Count > 0)
             Render3DModelCards();
@@ -467,9 +490,6 @@ public class ClassDetailPageController : MonoBehaviour
             case "Overall Progress":
             case "Tiến độ tổng":
                 return vi ? "Tiến độ tổng" : "Overall Progress";
-            case "Preview drag & drop reordering":
-            case "Xem trước sắp xếp kéo & thả":
-                return vi ? "Xem trước sắp xếp kéo & thả" : "Preview drag & drop reordering";
             case "Add New Chapter":
             case "Thêm chương mới":
                 return vi ? "Thêm chương mới" : "Add New Chapter";
@@ -542,7 +562,7 @@ public class ClassDetailPageController : MonoBehaviour
         return AppLanguageManager.IsVietnamese ? vietnamese : english;
     }
 
-    private void HideVerticalScrollbar()
+    private void ConfigureContentScrolling()
     {
         ScrollView scrollView = root.Q<ScrollView>("content-scroll-view");
         if (scrollView == null)
@@ -550,6 +570,11 @@ public class ClassDetailPageController : MonoBehaviour
 
         scrollView.verticalScrollerVisibility = ScrollerVisibility.Hidden;
         scrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+
+        // The default Elastic behavior lets users pull down even when all
+        // chapters fit on screen. Clamped prevents this overscroll while
+        // preserving normal scrolling when the lesson list is actually long.
+        scrollView.touchScrollBehavior = ScrollView.TouchScrollBehavior.Clamped;
     }
 
     // =========================================================
@@ -560,9 +585,6 @@ public class ClassDetailPageController : MonoBehaviour
     {
         if (backButton != null)
             backButton.clicked += OnBackClicked;
-
-        if (moreButton != null)
-            moreButton.clicked += OnMoreClicked;
 
         if (teacherMessageButton != null)
             teacherMessageButton.clicked += OnTeacherMessageClicked;
@@ -599,9 +621,6 @@ public class ClassDetailPageController : MonoBehaviour
     {
         if (backButton != null)
             backButton.clicked -= OnBackClicked;
-
-        if (moreButton != null)
-            moreButton.clicked -= OnMoreClicked;
 
         if (teacherMessageButton != null)
             teacherMessageButton.clicked -= OnTeacherMessageClicked;
@@ -658,8 +677,6 @@ public class ClassDetailPageController : MonoBehaviour
         // Teacher-only controls.
         SetVisible(editContentButton, isTeacher);
         SetVisible(addChapterButton, isTeacher);
-        SetVisible(reorderPreview, isTeacher);
-        SetVisible(moreButton, isTeacher);
 
         if (isTeacher)
         {
@@ -812,12 +829,10 @@ public class ClassDetailPageController : MonoBehaviour
         if (moduleCountLabel != null)
             moduleCountLabel.text = Mathf.Max(0, stats.lesson_count).ToString();
 
-        if (averageScoreLabel != null)
-        {
-            averageScoreLabel.text = stats.has_average_score
-                ? $"{Mathf.RoundToInt(Mathf.Clamp(stats.average_score, 0f, 100f))}%"
-                : "0%";
-        }
+        // Teachers always see the completed class score. A student's value is
+        // loaded from submitted quiz attempts after all class lessons are known.
+        if (averageScoreLabel != null && isTeacher)
+            averageScoreLabel.text = "100%";
 
         // Students need the teacher user id to open the same direct conversation
         // and to display the unread-message badge on the teacher chat icon.
@@ -1147,8 +1162,10 @@ public class ClassDetailPageController : MonoBehaviour
             yield return LoadLessonsForChapter(chapters[i]);
         }
 
-        RenderChapterList();
+        yield return LoadLessonProgress();
+        yield return LoadAverageQuizScore();
         UpdateProgress();
+        RenderChapterList();
 
         int loadedLessonCount = 0;
 
@@ -1434,57 +1451,21 @@ public class ClassDetailPageController : MonoBehaviour
                 ? chapter.Order
                 : chapterIndex + 1;
 
-        Label indexLabel =
-            new(T($"CHAPTER {displayOrder}", $"CHƯƠNG {displayOrder}"));
+        string chapterTitle = string.IsNullOrWhiteSpace(chapter.Title)
+            ? T($"Chapter {displayOrder}", $"Chương {displayOrder}")
+            : chapter.Title;
 
-        indexLabel.AddToClassList(
-            "chapter-index-label"
-        );
+        Label titleLabel = new(chapterTitle);
+        titleLabel.AddToClassList("chapter-title-label");
 
-        Label titleLabel =
-            new(chapter.Title);
+        Label lessonCount = new(T(
+            $"{chapter.Lessons?.Count ?? 0} lessons",
+            $"{chapter.Lessons?.Count ?? 0} bài học"
+        ));
+        lessonCount.AddToClassList("chapter-lesson-count");
 
-        titleLabel.AddToClassList(
-            "chapter-title-label"
-        );
-
-        VisualElement metaRow = new();
-        metaRow.AddToClassList("chapter-meta-row");
-
-        Label lessonCount =
-            new(T($"{chapter.Lessons?.Count ?? 0} lessons", $"{chapter.Lessons?.Count ?? 0} bài học"));
-
-        lessonCount.AddToClassList(
-            "chapter-lesson-count"
-        );
-
-        Label separator = new("·");
-        separator.AddToClassList(
-            "chapter-meta-separator"
-        );
-
-        Label statusLabel =
-            new(GetChapterStatusText(chapter.Status));
-
-        statusLabel.AddToClassList(
-            "chapter-status-label"
-        );
-
-        statusLabel.AddToClassList(
-            chapter.Status == ChapterStatus.Complete
-                ? "status-text-complete"
-                : chapter.Status == ChapterStatus.InProgress
-                    ? "status-text-in-progress"
-                    : "status-text-upcoming"
-        );
-
-        metaRow.Add(lessonCount);
-        metaRow.Add(separator);
-        metaRow.Add(statusLabel);
-
-        information.Add(indexLabel);
         information.Add(titleLabel);
-        information.Add(metaRow);
+        information.Add(lessonCount);
 
         VisualElement editActions = new();
         editActions.AddToClassList("chapter-edit-actions");
@@ -1683,20 +1664,39 @@ public class ClassDetailPageController : MonoBehaviour
 
         foreach (ChapterData chapter in chapters)
         {
+            int chapterTotal = chapter?.Lessons?.Count ?? 0;
+            int chapterCompleted = 0;
+
             foreach (LessonData lesson in chapter.Lessons)
             {
                 totalLessons++;
 
-                if (lesson.IsComplete)
+                if (isTeacher || lesson.IsComplete)
                 {
                     completedLessons++;
+                    chapterCompleted++;
+                    lesson.IsComplete = true;
                 }
             }
+
+            chapter.ProgressPercent = isTeacher
+                ? 100
+                : chapterTotal <= 0
+                    ? 0
+                    : Mathf.RoundToInt((float)chapterCompleted / chapterTotal * 100f);
+
+            // Always render a numeric percentage for chapters containing
+            // lessons. Teachers also see 100% for an empty chapter as required.
+            chapter.Status = (chapterTotal > 0 || isTeacher)
+                ? ChapterStatus.InProgress
+                : ChapterStatus.Upcoming;
         }
 
-        float progress = totalLessons <= 0
-            ? 0f
-            : (float)completedLessons / totalLessons;
+        float progress = isTeacher
+            ? 1f
+            : totalLessons <= 0
+                ? 0f
+                : (float)completedLessons / totalLessons;
 
         int percent =
             Mathf.RoundToInt(progress * 100f);
@@ -1709,8 +1709,10 @@ public class ClassDetailPageController : MonoBehaviour
 
         if (progressDetailLabel != null)
         {
-            progressDetailLabel.text =
-                $"{completedLessons} / {totalLessons} lessons";
+            progressDetailLabel.text = T(
+                $"{completedLessons} / {totalLessons} lessons",
+                $"{completedLessons} / {totalLessons} bài học"
+            );
         }
 
         if (progressFill != null)
@@ -1721,6 +1723,183 @@ public class ClassDetailPageController : MonoBehaviour
                     LengthUnit.Percent
                 );
         }
+    }
+
+    private IEnumerator LoadLessonProgress()
+    {
+        if (isTeacher)
+        {
+            foreach (ChapterData chapter in chapters)
+            foreach (LessonData lesson in chapter.Lessons)
+                lesson.IsComplete = true;
+            yield break;
+        }
+
+        string studentId = GetCurrentUserId();
+        if (runtimeRestService == null || !Guid.TryParse(studentId, out _))
+            yield break;
+
+        string response = null;
+        string error = null;
+        string path =
+            "rest/v1/lesson_progress?student_id=eq." +
+            UnityWebRequest.EscapeURL(studentId) +
+            "&select=lesson_id";
+
+        yield return runtimeRestService.SendJson(
+            "GET",
+            path,
+            null,
+            null,
+            value => response = value,
+            message => error = message
+        );
+
+        HashSet<string> viewedLessonIds =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (string.IsNullOrWhiteSpace(error))
+        {
+            LessonProgressRecord[] records =
+                ParseRestArray<LessonProgressArray, LessonProgressRecord>(
+                    response,
+                    wrapper => wrapper.items
+                );
+
+            foreach (LessonProgressRecord record in records)
+                if (!string.IsNullOrWhiteSpace(record?.lesson_id))
+                    viewedLessonIds.Add(record.lesson_id);
+        }
+        else
+        {
+            Debug.LogWarning("[ClassDetail] Unable to load lesson progress: " + error);
+        }
+
+        foreach (ChapterData chapter in chapters)
+        foreach (LessonData lesson in chapter.Lessons)
+        {
+            string localKey = GetLessonViewedKey(studentId, lesson.Id);
+            lesson.IsComplete =
+                viewedLessonIds.Contains(lesson.Id) ||
+                PlayerPrefs.GetInt(localKey, 0) == 1;
+        }
+    }
+
+    private IEnumerator LoadAverageQuizScore()
+    {
+        if (averageScoreLabel == null)
+            yield break;
+
+        if (isTeacher)
+        {
+            averageScoreLabel.text = "100%";
+            yield break;
+        }
+
+        averageScoreLabel.text = "0%";
+
+        string studentId = GetCurrentUserId();
+        if (runtimeRestService == null || !Guid.TryParse(studentId, out _))
+            yield break;
+
+        List<string> lessonIds = new List<string>();
+        foreach (ChapterData chapter in chapters)
+        foreach (LessonData lesson in chapter.Lessons)
+            if (Guid.TryParse(lesson?.Id, out _))
+                lessonIds.Add(lesson.Id);
+
+        if (lessonIds.Count == 0)
+            yield break;
+
+        string lessonFilter = string.Join(",", lessonIds);
+        string quizResponse = null;
+        string quizError = null;
+        string quizPath =
+            "rest/v1/quizzes?select=id,lesson_id" +
+            "&is_published=eq.true" +
+            "&lesson_id=in.(" + UnityWebRequest.EscapeURL(lessonFilter) + ")";
+
+        yield return runtimeRestService.SendJson(
+            UnityWebRequest.kHttpVerbGET,
+            quizPath,
+            null,
+            null,
+            value => quizResponse = value,
+            message => quizError = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(quizError))
+        {
+            Debug.LogWarning("[ClassDetail] Unable to load class quizzes: " + quizError);
+            yield break;
+        }
+
+        ClassQuizRecord[] quizzes =
+            ParseRestArray<ClassQuizArray, ClassQuizRecord>(
+                quizResponse,
+                wrapper => wrapper.items
+            );
+
+        HashSet<string> quizIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (ClassQuizRecord quiz in quizzes)
+            if (Guid.TryParse(quiz?.id, out _))
+                quizIds.Add(quiz.id);
+
+        int totalQuizCount = quizIds.Count;
+        if (totalQuizCount == 0)
+            yield break;
+
+        string attemptResponse = null;
+        string attemptError = null;
+        string quizFilter = string.Join(",", quizIds);
+        string attemptPath =
+            "rest/v1/quiz_attempts?select=quiz_id,score" +
+            "&student_id=eq." + UnityWebRequest.EscapeURL(studentId) +
+            "&status=eq.submitted" +
+            "&quiz_id=in.(" + UnityWebRequest.EscapeURL(quizFilter) + ")";
+
+        yield return runtimeRestService.SendJson(
+            UnityWebRequest.kHttpVerbGET,
+            attemptPath,
+            null,
+            null,
+            value => attemptResponse = value,
+            message => attemptError = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(attemptError))
+        {
+            Debug.LogWarning("[ClassDetail] Unable to load student quiz scores: " + attemptError);
+            yield break;
+        }
+
+        ClassQuizAttemptRecord[] attempts =
+            ParseRestArray<ClassQuizAttemptArray, ClassQuizAttemptRecord>(
+                attemptResponse,
+                wrapper => wrapper.items
+            );
+
+        // Retakes must not inflate the class average. Keep the best submitted
+        // score for each quiz; quizzes not attempted contribute zero points.
+        Dictionary<string, float> bestScoreByQuiz =
+            new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (ClassQuizAttemptRecord attempt in attempts)
+        {
+            if (attempt == null || !quizIds.Contains(attempt.quiz_id))
+                continue;
+
+            float score = Mathf.Clamp(attempt.score, 0f, 10f);
+            if (!bestScoreByQuiz.TryGetValue(attempt.quiz_id, out float best) || score > best)
+                bestScoreByQuiz[attempt.quiz_id] = score;
+        }
+
+        float totalScore = 0f;
+        foreach (float score in bestScoreByQuiz.Values)
+            totalScore += score;
+
+        float percent = totalScore / (10f * totalQuizCount) * 100f;
+        averageScoreLabel.text = $"{Mathf.RoundToInt(Mathf.Clamp(percent, 0f, 100f))}%";
     }
 
     // =========================================================
@@ -2760,6 +2939,12 @@ public class ClassDetailPageController : MonoBehaviour
         activeContent.RemoveFromClassList(
             HiddenClass
         );
+
+        // The three tabs share a single ScrollView. Do not carry an offset
+        // from a long tab into a short one (which would show blank space).
+        ScrollView scrollView = root.Q<ScrollView>("content-scroll-view");
+        if (scrollView != null)
+            scrollView.scrollOffset = Vector2.zero;
     }
 
     // =========================================================
@@ -2771,21 +2956,6 @@ public class ClassDetailPageController : MonoBehaviour
         // Không LoadScene("MyClassesScene") trực tiếp.
         // SceneHistory sẽ pop đúng Scene trước đó trong stack.
         SceneHistory.GoBack("MyClassesScene");
-    }
-
-    private void OnMoreClicked()
-    {
-        Debug.Log(
-            "Open class options menu."
-        );
-
-        /*
-         * Có thể mở popup gồm:
-         * - Edit class
-         * - Class settings
-         * - Archive class
-         * - Delete class
-         */
     }
 
     private void OnTeacherMessageClicked()
@@ -2864,10 +3034,18 @@ public class ClassDetailPageController : MonoBehaviour
 
         int nextChapterOrder = GetNextChapterOrder();
 
+        // Capture the selected language when the user creates the chapter.
+        // Persist the localized title in Supabase; do not rename existing chapters
+        // when the interface language changes later.
+        string defaultChapterTitle = T(
+            $"Chapter {nextChapterOrder}",
+            $"Chương {nextChapterOrder}"
+        );
+
         CreateChapterRequest request = new()
         {
             class_id = classId,
-            title = $"New Chapter {nextChapterOrder}",
+            title = defaultChapterTitle,
             chapter_order = nextChapterOrder
         };
 
@@ -3295,6 +3473,61 @@ public class ClassDetailPageController : MonoBehaviour
         LessonData lesson
     )
     {
+        if (!isTeacher)
+        {
+            StartCoroutine(OpenStudentLessonRoutine(chapter, lesson));
+            return;
+        }
+
+        NavigateToLesson(chapter, lesson);
+    }
+
+    private IEnumerator OpenStudentLessonRoutine(
+        ChapterData chapter,
+        LessonData lesson)
+    {
+        string studentId = GetCurrentUserId();
+
+        // Record locally first, so a temporary network failure does not make
+        // the lesson appear unseen when the student returns to this scene.
+        if (Guid.TryParse(studentId, out _) &&
+            Guid.TryParse(lesson?.Id, out _))
+        {
+            PlayerPrefs.SetInt(GetLessonViewedKey(studentId, lesson.Id), 1);
+            PlayerPrefs.Save();
+            lesson.IsComplete = true;
+
+            if (runtimeRestService != null)
+            {
+                LessonProgressUpsert payload = new LessonProgressUpsert
+                {
+                    student_id = studentId,
+                    lesson_id = lesson.Id,
+                    viewed_at = DateTime.UtcNow.ToString("o")
+                };
+
+                string error = null;
+                yield return runtimeRestService.SendJson(
+                    "POST",
+                    "rest/v1/lesson_progress?on_conflict=student_id,lesson_id",
+                    JsonUtility.ToJson(payload),
+                    "resolution=merge-duplicates,return=minimal",
+                    _ => { },
+                    message => error = message
+                );
+
+                if (!string.IsNullOrWhiteSpace(error))
+                    Debug.LogWarning("[ClassDetail] Unable to save viewed lesson: " + error);
+            }
+        }
+
+        NavigateToLesson(chapter, lesson);
+    }
+
+    private void NavigateToLesson(
+        ChapterData chapter,
+        LessonData lesson)
+    {
         PlayerPrefs.SetString(
             "selected_chapter_id",
             chapter.Id
@@ -3331,6 +3564,11 @@ public class ClassDetailPageController : MonoBehaviour
         }
     }
 
+    private static string GetLessonViewedKey(string studentId, string lessonId)
+    {
+        return "lesson_viewed_" + studentId + "_" + lessonId;
+    }
+
     // =========================================================
     // HELPERS
     // =========================================================
@@ -3365,24 +3603,6 @@ public class ClassDetailPageController : MonoBehaviour
         return count;
     }
 
-    private string GetChapterStatusText(
-        ChapterStatus status
-    )
-    {
-        return status switch
-        {
-            ChapterStatus.Complete =>
-                "Complete",
-
-            ChapterStatus.InProgress =>
-                "In Progress",
-
-            ChapterStatus.Upcoming =>
-                "Upcoming",
-
-            _ => "Upcoming"
-        };
-    }
 }
 
 [Serializable]

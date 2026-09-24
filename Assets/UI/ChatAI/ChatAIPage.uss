@@ -18,25 +18,37 @@
     height: 100%;
 }
 
+/* Fill only the strip reserved above the header by Screen.safeArea.
+   The controller sets this height to the exact top inset (in panel pixels).
+   Absolute positioning keeps the header/avatar/text at their current Y. */
+.chat-top-safe-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 18px; /* minimum safe area; updated from Screen.safeArea */
+    background-color: rgb(255, 255, 255);
+}
+
 
 /* =========================================================
    HEADER
    ========================================================= */
 
 .chat-header {
-    height: 94px;
-    min-height: 94px;
+    height: 100px;
+    min-height: 100px;
 
     flex-direction: row;
     align-items: center;
 
     /* Keep the two outer edges of the header perfectly symmetrical. */
-    padding-left: 18px;
-    padding-right: 18px;
-    /* Smaller top spacing for ChatAIScene.
-       Safe-area padding is still applied by the controller. */
-    padding-top: 14px;
-    padding-bottom: 6px;
+    padding-left: 24px;
+    padding-right: 24px;
+    /* Same content inset as the shared header. The controller paints
+       the device's top safe-area separately in white. */
+    padding-top: 22px;
+    padding-bottom: 8px;
 
     background-color: rgb(255, 255, 255);
 }
@@ -124,13 +136,16 @@
     border-bottom-left-radius: 22px;
     border-bottom-right-radius: 22px;
 
-    background-color: rgb(249, 158, 18);
+    background-color: rgb(37, 99, 212);
 
     align-items: center;
     justify-content: center;
 }
 
 .teacher-avatar-text {
+    width: 24px;
+    height: 24px;
+
     color: white;
     font-size: 14px;
     -unity-font-style: bold;
@@ -327,6 +342,8 @@
 
 .message-scroll-view {
     flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
 
     border-top-width: 1px;
     border-top-color: rgb(231, 236, 246);
@@ -348,6 +365,16 @@
     padding-right: 16px;
     padding-top: 18px;
     padding-bottom: 12px;
+}
+
+/* With the keyboard open, keep the last bubble visually close to the
+   composer while still leaving a small breathing space. */
+.safe-area.keyboard-visible .message-container {
+    padding-bottom: 2px;
+}
+
+.safe-area.keyboard-visible .message-row {
+    margin-bottom: 4px;
 }
 
 
@@ -522,7 +549,7 @@
     border-bottom-left-radius: 15px;
     border-bottom-right-radius: 15px;
 
-    background-color: rgb(249, 158, 18);
+    background-color: rgb(37, 99, 212);
 
     align-items: center;
     justify-content: center;
@@ -534,10 +561,23 @@
 
 .student-avatar-text,
 .teacher-small-avatar-text {
+    width: 17px;
+    height: 17px;
+
     color: white;
     font-size: 10px;
     -unity-font-style: bold;
     -unity-text-align: middle-center;
+}
+
+.ai-avatar-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/ai-white.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.ai-avatar-icon-small {
+    width: 17px;
+    height: 17px;
 }
 
 
@@ -600,9 +640,218 @@
    INPUT AREA
    ========================================================= */
 
+.image-gallery-panel {
+    display: none;
+    height: 285px;
+    min-height: 285px;
+    flex-shrink: 0;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    border-top-width: 1px;
+    border-top-color: rgb(222, 230, 243);
+    background-color: rgb(255, 255, 255);
+}
+
+.image-gallery-panel.visible {
+    display: flex;
+}
+
+.image-gallery-header {
+    height: 36px;
+    min-height: 36px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.image-gallery-title {
+    flex-grow: 1;
+    color: rgb(25, 37, 61);
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.close-image-gallery-button {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 2px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+    color: rgb(61, 76, 105);
+    background-color: rgb(241, 246, 255);
+    font-size: 20px;
+}
+
+.image-gallery-status {
+    flex-grow: 1;
+    color: rgb(119, 134, 160);
+    font-size: 11px;
+    -unity-text-align: middle-center;
+}
+
+.image-gallery-scroll {
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.image-gallery-grid {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+}
+
+.image-gallery-item {
+    position: relative;
+    width: 23%;
+    height: 74px;
+    margin-left: 1%;
+    margin-right: 1%;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background-color: rgb(242, 246, 252);
+    -unity-background-image-tint-color: rgb(255, 255, 255);
+    background-position: center;
+    background-repeat: no-repeat;
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.image-gallery-thumbnail {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.image-gallery-item.selected {
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(28, 94, 207);
+    border-right-color: rgb(28, 94, 207);
+    border-top-color: rgb(28, 94, 207);
+    border-bottom-color: rgb(28, 94, 207);
+}
+
+.image-selection-badge {
+    display: none;
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    width: 20px;
+    height: 20px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    background-color: rgb(28, 94, 207);
+}
+
+.image-gallery-item.selected .image-selection-badge {
+    display: flex;
+}
+
+.composer-section {
+    flex-shrink: 0;
+    background-color: rgb(255, 255, 255);
+}
+
+.selected-image-preview {
+    display: none;
+    height: 68px;
+    min-height: 68px;
+    margin-left: 14px;
+    margin-right: 14px;
+    padding-left: 8px;
+    padding-right: 8px;
+    flex-direction: row;
+    align-items: center;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    background-color: rgb(241, 246, 255);
+}
+
+.selected-image-preview.visible {
+    display: flex;
+}
+
+.selected-image-thumbnail {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background-position: center;
+    background-repeat: no-repeat;
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.selected-image-name {
+    flex-grow: 1;
+    margin-left: 10px;
+    color: rgb(38, 57, 92);
+    font-size: 11px;
+    -unity-text-overflow-position: end;
+}
+
+.remove-selected-image-button {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 2px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+    color: rgb(210, 55, 55);
+    background-color: rgb(255, 255, 255);
+    font-size: 20px;
+}
+
 .message-input-section {
     height: 74px;
     min-height: 74px;
+    flex-shrink: 0;
 
     padding-left: 14px;
     padding-right: 14px;
@@ -616,6 +865,64 @@
     border-top-color: rgb(226, 232, 242);
 
     background-color: rgb(255, 255, 255);
+}
+
+/* The controller adds bottom safe padding equal to the Android/iOS keyboard
+   height. Keep the composer as a fixed, opaque row while the message list
+   shrinks above it. */
+.safe-area.keyboard-visible .message-input-section {
+    flex-shrink: 0;
+    background-color: rgb(255, 255, 255);
+}
+
+.safe-area.keyboard-visible .composer-section {
+    flex-shrink: 0;
+}
+
+.message-images-grid {
+    width: 220px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+
+    background-color: rgba(0, 0, 0, 0);
+}
+
+/* Small visual gap only when a text bubble follows the images. */
+.message-images-grid.with-caption {
+    margin-bottom: 5px;
+}
+
+.message-image {
+    width: 106px;
+    height: 106px;
+    margin-right: 4px;
+    margin-bottom: 4px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.message-images-grid.single .message-image {
+    width: 220px;
+    height: 155px;
 }
 
 .input-side-button,
@@ -743,7 +1050,7 @@
     top: 0;
     bottom: 0;
 
-    color: rgb(145, 157, 180);
+    color: rgb(92, 103, 122);
     font-size: 12px;
 
     -unity-text-align: middle-left;
@@ -757,8 +1064,9 @@
 
 @media (max-width: 390px) {
     .chat-header {
-        padding-left: 10px;
-        padding-right: 10px;
+        /* Do not collapse the shared horizontal inset on narrow phones. */
+        padding-left: 24px;
+        padding-right: 24px;
     }
 
     .teacher-avatar-wrapper {
@@ -906,12 +1214,26 @@
 
 /* =========================================================
    HEADER EDGE BALANCE
-   Left edge: 18px -> back button
-   Right edge: more button -> 18px
+   Left edge: 24px -> back button
+   Right edge: more button -> 24px
    ========================================================= */
 .chat-header > #back-button {
+    /* Match GeneralHeader's back circle on MyClasses and Settings. */
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    border-radius: 21px;
+    flex-grow: 0;
+    flex-shrink: 0;
     margin-left: 0;
     margin-right: 0;
+}
+
+.chat-header > #back-button .back-icon {
+    width: 20px;
+    height: 20px;
+    -unity-background-scale-mode: scale-to-fit;
 }
 
 .chat-header > .header-actions {

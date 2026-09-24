@@ -7,14 +7,15 @@
             <ui:VisualElement class="safe-top-space" />
 
             <ui:VisualElement class="header-navigation">
-                <ui:Button name="back-button" text="‹" class="round-header-button back-button" />
+                <ui:Button name="back-button" class="round-header-button back-button">
+                    <ui:VisualElement class="back-arrow-icon" picking-mode="Ignore" />
+                </ui:Button>
 
                 <ui:VisualElement class="class-title-container">
                     <ui:Label name="semester-label" text="CLASS OVERVIEW" class="semester-label" />
                     <ui:Label name="class-title-label" text="Loading class..." class="class-title-label" />
                 </ui:VisualElement>
 
-                <ui:Button name="more-button" text="⋮" class="round-header-button more-button" />
             </ui:VisualElement>
 
             <ui:VisualElement class="teacher-card">
@@ -49,10 +50,18 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <!-- A real Label in each tab can wrap inside its equal-width column.
+             Button.text itself may keep its intrinsic width on Android and push
+             the long Vietnamese Student List title outside the viewport. -->
         <ui:VisualElement class="tab-navigation">
-            <ui:Button name="syllabus-tab-button" text="Syllabus" class="tab-button tab-button-active" />
-            <ui:Button name="labs-tab-button" text="3D Labs" class="tab-button" />
-            <ui:Button name="student-list-tab-button" text="Student List" class="tab-button">
+            <ui:Button name="syllabus-tab-button" class="tab-button tab-button-active">
+                <ui:Label name="syllabus-tab-label" text="Syllabus" class="tab-button-label" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="labs-tab-button" class="tab-button">
+                <ui:Label name="labs-tab-label" text="3D Labs" class="tab-button-label" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="student-list-tab-button" class="tab-button">
+                <ui:Label name="student-list-tab-label" text="Student List" class="tab-button-label student-list-tab-label" picking-mode="Ignore" />
                 <ui:VisualElement name="student-list-unread-dot" class="student-list-unread-dot hidden" picking-mode="Ignore" />
             </ui:Button>
         </ui:VisualElement>
@@ -70,11 +79,6 @@
                         </ui:VisualElement>
                         <ui:Label name="progress-detail-label" text="0 / 0 lessons" class="progress-detail" />
                     </ui:VisualElement>
-                </ui:VisualElement>
-
-                <ui:VisualElement name="reorder-preview" class="reorder-preview">
-                    <ui:VisualElement class="reorder-preview-icon" />
-                    <ui:Label text="Preview drag &amp; drop reordering" class="reorder-preview-text" />
                 </ui:VisualElement>
 
                 <ui:VisualElement name="chapter-list" class="chapter-list" />

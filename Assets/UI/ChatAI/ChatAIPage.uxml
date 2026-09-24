@@ -2,15 +2,18 @@
     <Style src="ChatAIPage.uss"/>
 
     <ui:VisualElement name="chat-root" class="chat-root">
+        <!-- White continuation behind the Android top safe area. This element is
+             absolutely positioned, so it never moves the header text or buttons. -->
+        <ui:VisualElement name="chat-top-safe-background" class="chat-top-safe-background" picking-mode="Ignore"/>
         <ui:VisualElement name="safe-area" class="safe-area">
-            <ui:VisualElement name="chat-header" class="chat-header">
+            <ui:VisualElement name="chat-header" class="chat-header unified-header-spacing">
                 <ui:Button name="back-button" class="round-icon-button">
                     <ui:VisualElement class="button-icon back-icon"/>
                 </ui:Button>
 
                 <ui:VisualElement class="teacher-avatar-wrapper">
                     <ui:VisualElement class="teacher-avatar">
-                        <ui:Label name="partner-avatar-text" text="AI" class="teacher-avatar-text"/>
+                        <ui:Label name="partner-avatar-text" text="" class="teacher-avatar-text ai-avatar-icon" picking-mode="Ignore"/>
                     </ui:VisualElement>
                     <ui:VisualElement name="header-online-dot" class="online-dot offline"/>
                 </ui:VisualElement>
@@ -55,7 +58,7 @@
 
                     <ui:VisualElement name="typing-row" class="typing-row">
                         <ui:VisualElement class="teacher-small-avatar">
-                            <ui:Label name="typing-avatar-text" text="AI" class="teacher-small-avatar-text"/>
+                            <ui:Label name="typing-avatar-text" text="" class="teacher-small-avatar-text ai-avatar-icon ai-avatar-icon-small" picking-mode="Ignore"/>
                         </ui:VisualElement>
                         <ui:VisualElement class="typing-content">
                             <ui:VisualElement class="typing-bubble">
@@ -69,17 +72,34 @@
                 </ui:VisualElement>
             </ui:ScrollView>
 
-            <ui:VisualElement class="message-input-section">
-                <ui:Button name="attachment-button" class="input-side-button">
-                    <ui:VisualElement class="attachment-icon"/>
-                </ui:Button>
-                <ui:VisualElement class="message-input-wrapper">
-                    <ui:TextField name="message-input" class="message-input" multiline="False"/>
-                    <ui:Label name="input-placeholder" text="Ask AI Assistant..." class="input-placeholder" picking-mode="Ignore"/>
+            <ui:VisualElement name="composer-section" class="composer-section">
+                <ui:VisualElement name="message-input-section" class="message-input-section">
+                    <ui:Button name="attachment-button" class="input-side-button">
+                        <ui:VisualElement class="attachment-icon"/>
+                    </ui:Button>
+                    <ui:VisualElement class="message-input-wrapper">
+                        <ui:TextField name="message-input" class="message-input" multiline="False"/>
+                        <ui:Label name="input-placeholder" text="Ask AI Assistant..." class="input-placeholder" picking-mode="Ignore"/>
+                    </ui:VisualElement>
+                    <ui:Button name="send-button" class="send-button">
+                        <ui:VisualElement name="send-icon" class="send-icon"/>
+                    </ui:Button>
                 </ui:VisualElement>
-                <ui:Button name="send-button" class="send-button">
-                    <ui:VisualElement name="send-icon" class="send-icon"/>
-                </ui:Button>
+            </ui:VisualElement>
+
+            <!-- Keep the photo tray below the composer. When it opens it takes
+                 space from the message list and moves the composer upward,
+                 matching the Android keyboard behaviour. -->
+            <ui:VisualElement name="image-gallery-panel" class="image-gallery-panel">
+                <ui:VisualElement class="image-gallery-header">
+                    <ui:Label name="image-gallery-title" text="Recent photos" class="image-gallery-title"/>
+                    <ui:Button name="close-image-gallery-button" text="×" class="close-image-gallery-button"/>
+                </ui:VisualElement>
+                <ui:Label name="image-gallery-status" text="Loading photos..." class="image-gallery-status"/>
+                <ui:ScrollView name="image-gallery-scroll" class="image-gallery-scroll" mode="Vertical"
+                               horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden">
+                    <ui:VisualElement name="image-gallery-grid" class="image-gallery-grid"/>
+                </ui:ScrollView>
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

@@ -17,7 +17,18 @@ public enum HeaderRightActionType
 
 public class GeneralHeaderController : IDisposable
 {
+    // The same top/side spacing contract is used by ChatAIPageController.
+    // CSS supplies a 54px/24px fallback while root geometry is unavailable.
+    private const float HeaderTopFallback = 54f;
+    private const float HeaderTopAfterSafeArea = 32f;
+    private const float HeaderSidePadding = 24f;
+
+    private readonly VisualElement pageRoot;
     private readonly VisualElement headerRoot;
+    private bool largeSafeAreaEnabled;
+    private float lastTopPadding = float.NaN;
+    private float lastLeftPadding = float.NaN;
+    private float lastRightPadding = float.NaN;
 
     private readonly VisualElement homeHeaderLayout;
     private readonly VisualElement pageHeaderLayout;
@@ -52,6 +63,8 @@ public class GeneralHeaderController : IDisposable
 
     public GeneralHeaderController(VisualElement pageRoot)
     {
+        this.pageRoot = pageRoot;
+
         if (pageRoot == null)
         {
             Debug.LogError(
@@ -143,6 +156,70 @@ public class GeneralHeaderController : IDisposable
 
         SetHeaderType(GeneralHeaderType.Home);
         SetRightActionType(HeaderRightActionType.None);
+
+        // Root geometry changes when the panel settles or Android rotates.
+        pageRoot.RegisterCallback<GeometryChangedEvent>(OnPageGeometryChanged);
+        ApplyResponsiveInsets();
+    }
+
+    private void OnPageGeometryChanged(GeometryChangedEvent evt)
+    {
+        ApplyResponsiveInsets();
+    }
+
+    private void ApplyResponsiveInsets()
+    {
+        if (pageRoot == null || headerRoot == null)
+            return;
+
+        float panelWidth = pageRoot.resolvedStyle.width;
+        float panelHeight = pageRoot.resolvedStyle.height;
+
+        // The USS values are the fallback until UI Toolkit has laid out the panel.
+        if (panelWidth <= 0f || panelHeight <= 0f ||
+            float.IsNaN(panelWidth) || float.IsNaN(panelHeight))
+            return;
+
+        float screenWidth = Mathf.Max(1f, Screen.width);
+        float screenHeight = Mathf.Max(1f, Screen.height);
+        Rect safe = Screen.safeArea;
+
+        // Screen.safeArea is in screen pixels; USS padding uses panel pixels.
+        float topInset = Mathf.Max(0f,
+            (screenHeight - safe.yMax) / screenHeight * panelHeight);
+        float leftInset = Mathf.Max(0f,
+            safe.xMin / screenWidth * panelWidth);
+        float rightInset = Mathf.Max(0f,
+            (screenWidth - safe.xMax) / screenWidth * panelWidth);
+
+        float topPadding = Mathf.Max(
+            largeSafeAreaEnabled ? 62f : HeaderTopFallback,
+            topInset + HeaderTopAfterSafeArea +
+                (largeSafeAreaEnabled ? 8f : 0f));
+        float leftPadding = HeaderSidePadding + leftInset;
+        float rightPadding = HeaderSidePadding + rightInset;
+
+        // Avoid a geometry callback loop from reassigning identical styles.
+        if (float.IsNaN(lastTopPadding) ||
+            Mathf.Abs(lastTopPadding - topPadding) > 0.25f)
+        {
+            headerRoot.style.paddingTop = topPadding;
+            lastTopPadding = topPadding;
+        }
+
+        if (float.IsNaN(lastLeftPadding) ||
+            Mathf.Abs(lastLeftPadding - leftPadding) > 0.25f)
+        {
+            headerRoot.style.paddingLeft = leftPadding;
+            lastLeftPadding = leftPadding;
+        }
+
+        if (float.IsNaN(lastRightPadding) ||
+            Mathf.Abs(lastRightPadding - rightPadding) > 0.25f)
+        {
+            headerRoot.style.paddingRight = rightPadding;
+            lastRightPadding = rightPadding;
+        }
     }
 
     private void RegisterCallbacks()
@@ -440,9 +517,11 @@ public class GeneralHeaderController : IDisposable
          Chỉ nên dùng cho page header trên thiết bị
          có notch hoặc status bar lớn.
         */
+        largeSafeAreaEnabled = enabled;
         headerRoot.EnableInClassList(
             "header-large-safe-area",
             enabled);
+        ApplyResponsiveInsets();
     }
 
     public void SetCustomClass(
@@ -508,6 +587,9 @@ public class GeneralHeaderController : IDisposable
 
     public void Dispose()
     {
+        if (pageRoot != null)
+            pageRoot.UnregisterCallback<GeometryChangedEvent>(OnPageGeometryChanged);
+
         if (notificationButton != null)
         {
             notificationButton.clicked -=
