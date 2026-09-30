@@ -26,10 +26,11 @@
 
             <ui:VisualElement class="privacy-content">
 
-                <!-- INTRODUCTION -->
+                <!-- INTRODUCTION (text is set by PrivacyPageController for EN / VI) -->
                 <ui:VisualElement class="privacy-intro-card">
                     <ui:Label
-                        text="This Privacy Policy describes how Bách Khoa University Virtual Education collects, uses, and protects your personal information. Please read all sections carefully before proceeding."
+                        name="privacy-intro-label"
+                        text=""
                         class="privacy-intro-text"/>
                 </ui:VisualElement>
 
@@ -43,13 +44,19 @@
                         class="privacy-section-header">
 
                         <ui:Label
+                            name="privacy-section-1-title"
                             text="1. Data Collection"
                             class="privacy-section-title"/>
 
-                        <ui:Label
+                        <!-- Arrow uses arrow-down.png / arrow-up.png (switched by USS class) -->
+                        <ui:VisualElement
                             name="privacy-section-1-arrow"
-                            text="⌃"
-                            class="privacy-section-arrow"/>
+                            class="privacy-section-arrow privacy-section-arrow--expanded"
+                            picking-mode="Ignore">
+                            <ui:VisualElement
+                                class="privacy-section-arrow-icon"
+                                picking-mode="Ignore"/>
+                        </ui:VisualElement>
                     </ui:Button>
 
                     <ui:VisualElement
@@ -57,7 +64,8 @@
                         class="privacy-section-content">
 
                         <ui:Label
-                            text="We collect information you provide directly to us, including name, email address, institution affiliation, and usage data. This data is used solely to provide and improve the Virtual Education service. We do not sell personal information to third parties under any circumstances."
+                            name="privacy-section-1-body"
+                            text=""
                             class="privacy-section-body"/>
                     </ui:VisualElement>
                 </ui:VisualElement>
@@ -72,13 +80,19 @@
                         class="privacy-section-header">
 
                         <ui:Label
+                            name="privacy-section-2-title"
                             text="2. How We Use Your Data"
                             class="privacy-section-title"/>
 
-                        <ui:Label
+                        <!-- Arrow uses arrow-down.png / arrow-up.png (switched by USS class) -->
+                        <ui:VisualElement
                             name="privacy-section-2-arrow"
-                            text="⌄"
-                            class="privacy-section-arrow"/>
+                            class="privacy-section-arrow"
+                            picking-mode="Ignore">
+                            <ui:VisualElement
+                                class="privacy-section-arrow-icon"
+                                picking-mode="Ignore"/>
+                        </ui:VisualElement>
                     </ui:Button>
 
                     <ui:VisualElement
@@ -86,7 +100,8 @@
                         class="privacy-section-content privacy-section-content-hidden">
 
                         <ui:Label
-                            text="Your data is used to personalize your learning experience, deliver course content, track academic progress, generate AI-powered recommendations, and ensure platform security. Analytics are processed in aggregate and anonymized form."
+                            name="privacy-section-2-body"
+                            text=""
                             class="privacy-section-body"/>
                     </ui:VisualElement>
                 </ui:VisualElement>
@@ -101,13 +116,19 @@
                         class="privacy-section-header">
 
                         <ui:Label
+                            name="privacy-section-3-title"
                             text="3. Data Sharing &amp; Third Parties"
                             class="privacy-section-title"/>
 
-                        <ui:Label
+                        <!-- Arrow uses arrow-down.png / arrow-up.png (switched by USS class) -->
+                        <ui:VisualElement
                             name="privacy-section-3-arrow"
-                            text="⌄"
-                            class="privacy-section-arrow"/>
+                            class="privacy-section-arrow"
+                            picking-mode="Ignore">
+                            <ui:VisualElement
+                                class="privacy-section-arrow-icon"
+                                picking-mode="Ignore"/>
+                        </ui:VisualElement>
                     </ui:Button>
 
                     <ui:VisualElement
@@ -115,7 +136,8 @@
                         class="privacy-section-content privacy-section-content-hidden">
 
                         <ui:Label
-                            text="We share data with Bách Khoa University faculty and administration for academic purposes only. Third-party services such as authentication, cloud storage, and AI services are bound by data-processing agreements and applicable privacy standards."
+                            name="privacy-section-3-body"
+                            text=""
                             class="privacy-section-body"/>
                     </ui:VisualElement>
                 </ui:VisualElement>
@@ -130,13 +152,19 @@
                         class="privacy-section-header">
 
                         <ui:Label
+                            name="privacy-section-4-title"
                             text="4. Security &amp; Encryption"
                             class="privacy-section-title"/>
 
-                        <ui:Label
+                        <!-- Arrow uses arrow-down.png / arrow-up.png (switched by USS class) -->
+                        <ui:VisualElement
                             name="privacy-section-4-arrow"
-                            text="⌄"
-                            class="privacy-section-arrow"/>
+                            class="privacy-section-arrow"
+                            picking-mode="Ignore">
+                            <ui:VisualElement
+                                class="privacy-section-arrow-icon"
+                                picking-mode="Ignore"/>
+                        </ui:VisualElement>
                     </ui:Button>
 
                     <ui:VisualElement
@@ -144,7 +172,8 @@
                         class="privacy-section-content privacy-section-content-hidden">
 
                         <ui:Label
-                            text="Data is protected in transit and at rest using appropriate encryption. Authentication sessions expire according to security policy. We conduct regular security reviews and address reported vulnerabilities."
+                            name="privacy-section-4-body"
+                            text=""
                             class="privacy-section-body"/>
                     </ui:VisualElement>
                 </ui:VisualElement>
@@ -159,13 +188,19 @@
                         class="privacy-section-header">
 
                         <ui:Label
+                            name="privacy-section-5-title"
                             text="5. Your Rights"
                             class="privacy-section-title"/>
 
-                        <ui:Label
+                        <!-- Arrow uses arrow-down.png / arrow-up.png (switched by USS class) -->
+                        <ui:VisualElement
                             name="privacy-section-5-arrow"
-                            text="⌄"
-                            class="privacy-section-arrow"/>
+                            class="privacy-section-arrow"
+                            picking-mode="Ignore">
+                            <ui:VisualElement
+                                class="privacy-section-arrow-icon"
+                                picking-mode="Ignore"/>
+                        </ui:VisualElement>
                     </ui:Button>
 
                     <ui:VisualElement
@@ -173,7 +208,8 @@
                         class="privacy-section-content privacy-section-content-hidden">
 
                         <ui:Label
-                            text="You may request access, correction, export, or deletion of your personal data where applicable. Requests can be submitted through the application settings or the university support channel."
+                            name="privacy-section-5-body"
+                            text=""
                             class="privacy-section-body"/>
                     </ui:VisualElement>
                 </ui:VisualElement>
@@ -188,13 +224,19 @@
                         class="privacy-section-header">
 
                         <ui:Label
+                            name="privacy-section-6-title"
                             text="6. Terms of Academic Use"
                             class="privacy-section-title"/>
 
-                        <ui:Label
+                        <!-- Arrow uses arrow-down.png / arrow-up.png (switched by USS class) -->
+                        <ui:VisualElement
                             name="privacy-section-6-arrow"
-                            text="⌄"
-                            class="privacy-section-arrow"/>
+                            class="privacy-section-arrow"
+                            picking-mode="Ignore">
+                            <ui:VisualElement
+                                class="privacy-section-arrow-icon"
+                                picking-mode="Ignore"/>
+                        </ui:VisualElement>
                     </ui:Button>
 
                     <ui:VisualElement
@@ -202,7 +244,8 @@
                         class="privacy-section-content privacy-section-content-hidden">
 
                         <ui:Label
-                            text="The platform is provided for educational purposes only. Sharing login credentials, submitting AI-generated work as your own without disclosure, or attempting unauthorized access may result in academic or account-related action."
+                            name="privacy-section-6-body"
+                            text=""
                             class="privacy-section-body"/>
                     </ui:VisualElement>
                 </ui:VisualElement>
@@ -217,13 +260,19 @@
                         class="privacy-section-header">
 
                         <ui:Label
+                            name="privacy-section-7-title"
                             text="7. Cookie Policy"
                             class="privacy-section-title"/>
 
-                        <ui:Label
+                        <!-- Arrow uses arrow-down.png / arrow-up.png (switched by USS class) -->
+                        <ui:VisualElement
                             name="privacy-section-7-arrow"
-                            text="⌄"
-                            class="privacy-section-arrow"/>
+                            class="privacy-section-arrow"
+                            picking-mode="Ignore">
+                            <ui:VisualElement
+                                class="privacy-section-arrow-icon"
+                                picking-mode="Ignore"/>
+                        </ui:VisualElement>
                     </ui:Button>
 
                     <ui:VisualElement
@@ -231,16 +280,10 @@
                         class="privacy-section-content privacy-section-content-hidden">
 
                         <ui:Label
-                            text="We use essential session cookies and optional analytics cookies. Analytics preferences may be managed in Settings. Essential cookies are required for authentication and core application functionality."
+                            name="privacy-section-7-body"
+                            text=""
                             class="privacy-section-body"/>
                     </ui:VisualElement>
-                </ui:VisualElement>
-
-                <ui:VisualElement class="scroll-hint">
-                    <ui:Label text="⌄" class="scroll-hint-icon"/>
-                    <ui:Label
-                        text="Scroll to read all sections"
-                        class="scroll-hint-text"/>
                 </ui:VisualElement>
 
                 <ui:VisualElement class="privacy-scroll-bottom-space"/>
@@ -249,12 +292,16 @@
         </ui:ScrollView>
 
         <!-- FIXED CONSENT PANEL -->
-        <ui:VisualElement class="privacy-consent-panel">
+        <ui:VisualElement
+            name="privacy-consent-panel"
+            class="privacy-consent-panel">
 
-            <ui:Toggle
-                name="privacy-consent-toggle"
-                text="I have read and understood the policy"
-                class="privacy-consent-toggle"/>
+            <ui:VisualElement class="privacy-consent-row">
+                <ui:Toggle
+                    name="privacy-consent-toggle"
+                    text="I have read and understood the policy"
+                    class="privacy-consent-toggle"/>
+            </ui:VisualElement>
 
             <ui:Button
                 name="accept-continue-button"

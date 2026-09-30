@@ -92,6 +92,35 @@ public class StartQuizPageController : MonoBehaviour
         restService = GetComponent<SupabaseRuntimeRestService>();
     }
 
+    private Button quizReportButton;
+
+    private void AddQuizReportButton()
+    {
+        bool isTeacher = string.Equals(
+            PlayerPrefs.GetString("current_role", "student"), "teacher", StringComparison.OrdinalIgnoreCase);
+
+        string quizId = PlayerPrefs.GetString("selected_quiz_id", string.Empty);
+        string lessonId = PlayerPrefs.GetString("selected_lesson_id", string.Empty);
+
+        if (isTeacher || SupabaseSession.IsAdmin || quizReportButton != null || statusBadge?.parent == null ||
+            !Guid.TryParse(quizId, out _) || !Guid.TryParse(lessonId, out _))
+            return;
+
+        ModerationReportSheet.EnsureStyles(root);
+        quizReportButton = ModerationReportSheet.CreateReportButton(() =>
+            ModerationReportSheet.Show(root, this, new[]
+            {
+                new ModerationReportSheet.Target
+                {
+                    TargetType = "quiz",
+                    LessonId = lessonId,
+                    QuizId = quizId,
+                    Label = "Quiz"
+                }
+            }));
+        statusBadge.parent.Add(quizReportButton);
+    }
+
     private void OnEnable()
     {
         if (uiDocument == null)
@@ -168,6 +197,9 @@ public class StartQuizPageController : MonoBehaviour
         confirmationMessageLabel = root.Q<Label>("confirmation-message-label");
 
         statusBadge = root.Q<VisualElement>("status-badge");
+
+        // Students can report this quiz to the admin (2026-09).
+        AddQuizReportButton();
 
         confirmationOverlay = root.Q<VisualElement>(
             "confirmation-overlay"

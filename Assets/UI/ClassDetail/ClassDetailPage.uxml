@@ -166,6 +166,8 @@
             </ui:VisualElement>
         </ui:ScrollView>
 
+        <ui:VisualElement name="fixed-content-host" class="fixed-content-host" />
+
         <ui:VisualElement name="editor-modal-overlay"
                           class="editor-modal-overlay hidden">
             <ui:VisualElement class="editor-modal-card">

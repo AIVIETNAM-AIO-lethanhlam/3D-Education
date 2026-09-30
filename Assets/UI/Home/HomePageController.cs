@@ -103,13 +103,19 @@ public class HomePageController : MonoBehaviour
             featuredModelsTitleLabel.text = vi ? "Mô hình nổi bật" : "Featured Models";
     }
 
-    private void OpenLoginPage() { Debug.Log("Mở trang đăng nhập");  SceneManager.LoadScene("AuthScene");  }
+    private void OpenLoginPage()
+    {
+        PlayerPrefs.SetString("open_auth_tab", "login");
+        PlayerPrefs.Save();
+        SceneManager.LoadScene("AuthScene");
+    }
+
     private void OpenRegisterPage()
     {
+        // AuthPageController reads this key and opens the Register tab.
         PlayerPrefs.SetString("open_auth_tab", "register");
         PlayerPrefs.Save();
-
-        // SceneManager.LoadScene("LoginScene");
+        SceneManager.LoadScene("AuthScene");
     }
     private void OpenModelList() { Debug.Log("Mở danh sách mô hình 3D"); /* SceneManager.LoadScene("ModelListScene"); */ }
     private void OpenPrivacyPolicy() { Debug.Log("Mở chính sách quyền riêng tư"); /* Application.OpenURL("URL của bạn"); */ }

@@ -53,6 +53,19 @@ width: 100%;
     height: 100%;
 }
 
+.lesson-page-content {
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.fixed-lesson-host {
+    display: none;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: rgb(247, 249, 253);
+}
+
 .lesson-scroll-view .unity-scroll-view__horizontal-scroller {
     display: none;
     height: 0;
@@ -60,14 +73,23 @@ width: 100%;
     visibility: hidden;
 }
 
+/* Preserve the scroller's layout calculation while hiding its visual track. */
 .lesson-scroll-view .unity-scroll-view__vertical-scroller {
+    opacity: 0;
     width: 0;
-    display: none;
+    min-width: 0;
+}
+
+.lesson-scroll-view .unity-scroll-view__content-viewport {
+    justify-content: flex-start;
 }
 
 .lesson-scroll-view .unity-scroll-view__content-container {
     width: 100%;
     min-width: 0;
+    flex-grow: 0;
+    flex-shrink: 0;
+    justify-content: flex-start;
 }
 
 /* The native YouTube WebView is positioned by ShowLessonPageController
@@ -191,10 +213,11 @@ width: 100%;
 
 .lesson-header {
     width: auto;
-    height: 106px;
+    height: auto;
 
-    /* Chừa khoảng trống cho camera/notch và đẩy header xuống dưới. */
-    padding-top: 42px;
+    /* Cùng khoảng cách trên với GeneralHeader: 54px mặc định;
+       controller áp dụng max(54, safe-area top + 32) khi chạy. */
+    padding-top: 54px;
     padding-right: 20px;
     padding-bottom: 12px;
     padding-left: 20px;
@@ -277,6 +300,12 @@ width: 100%;
 .lesson-main-title {
     font-size: 22px;
     color: rgb(8, 28, 70);
+
+    /* Long lesson titles wrap inside the screen. */
+    white-space: normal;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
 
     -unity-font-style: bold;
 
@@ -1061,7 +1090,7 @@ width: 100%;
 }
 
 .bottom-space {
-    height: 95px;
+    height: 24px;
 }
 
 
@@ -1244,6 +1273,12 @@ width: 100%;
 .resource-modal-message {
     margin-bottom: 10px;
 
+    /* Wrap long messages inside the popup card. */
+    white-space: normal;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
+
     color: rgb(102, 120, 150);
     font-size: 10px;
 }
@@ -1265,8 +1300,7 @@ width: 100%;
     min-height: 0;
 }
 
-.resource-file-list .unity-scroll-view__horizontal-scroller,
-.resource-file-list .unity-scroll-view__vertical-scroller {
+.resource-file-list .unity-scroll-view__horizontal-scroller {
     display: none;
 }
 
@@ -1290,9 +1324,14 @@ width: 100%;
     flex-grow: 1;
     flex-shrink: 1;
     margin-right: 8px;
+
+    /* File name + size are left-aligned (Button content is centered by default). */
+    align-items: flex-start;
 }
 
 .resource-file-name {
+    -unity-text-align: middle-left;
+    align-self: stretch;
     color: rgb(24, 49, 91);
     font-size: 11px;
     -unity-font-style: bold;
@@ -1300,6 +1339,8 @@ width: 100%;
 }
 
 .resource-file-size {
+    -unity-text-align: middle-left;
+    align-self: stretch;
     margin-top: 2px;
     color: rgb(120, 136, 163);
     font-size: 9px;
@@ -1351,11 +1392,13 @@ width: 100%;
 
 .pdf-viewer-header {
     width: 100%;
-    height: 86px;
-    min-height: 86px;
+    /* Same top spacing as GeneralHeader: 54px fallback; the controller
+       applies max(54, safe-area top + 32) at runtime. */
+    height: auto;
+    min-height: 106px;
     flex-shrink: 0;
 
-    padding-top: 34px;
+    padding-top: 54px;
     padding-left: 14px;
     padding-right: 14px;
     padding-bottom: 10px;
@@ -1507,4 +1550,21 @@ width: 100%;
 .video-fallback-label,
 .video-progress-track {
     display: none;
+}
+
+/* =========================================================
+   LOCKED EXERCISE FILE (student must submit the quiz first)
+   ========================================================= */
+
+.resource-file-locked {
+    border-color: rgb(247, 214, 160);
+    background-color: rgb(255, 250, 240);
+}
+
+.resource-file-locked .resource-file-size {
+    color: rgb(180, 100, 10);
+}
+
+.resource-file-locked .resource-download-button {
+    background-color: rgb(230, 126, 34);
 }

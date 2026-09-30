@@ -299,6 +299,10 @@ public class SupabaseRuntimeRestService : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Sends a request to Supabase. Refreshes the access token before the request
+    /// when it is about to expire, and retries once after an HTTP 401.
+    /// </summary>
     public IEnumerator SendJson(
         string method,
         string relativeUrl,
@@ -306,6 +310,48 @@ public class SupabaseRuntimeRestService : MonoBehaviour
         string preferHeader,
         Action<string> onSuccess,
         Action<string> onError)
+    {
+        yield return SupabaseTokenRefresher.EnsureFreshToken();
+
+        bool succeeded = false;
+        string result = null;
+        string error = null;
+        long statusCode = 0;
+
+        yield return SendJsonOnce(method, relativeUrl, jsonBody, preferHeader,
+            value => { succeeded = true; result = value; },
+            value => error = value,
+            code => statusCode = code);
+
+        if (!succeeded && statusCode == 401 && SupabaseSession.HasStoredSession)
+        {
+            bool refreshed = false;
+            yield return SupabaseTokenRefresher.RefreshSession(value => refreshed = value);
+
+            if (refreshed)
+            {
+                error = null;
+                yield return SendJsonOnce(method, relativeUrl, jsonBody, preferHeader,
+                    value => { succeeded = true; result = value; },
+                    value => error = value,
+                    code => statusCode = code);
+            }
+        }
+
+        if (succeeded)
+            onSuccess?.Invoke(result);
+        else
+            onError?.Invoke(error);
+    }
+
+    private IEnumerator SendJsonOnce(
+        string method,
+        string relativeUrl,
+        string jsonBody,
+        string preferHeader,
+        Action<string> onSuccess,
+        Action<string> onError,
+        Action<long> onStatus)
     {
         if (!IsConfigured(out string configError))
         {
@@ -335,6 +381,8 @@ public class SupabaseRuntimeRestService : MonoBehaviour
         }
 
         yield return request.SendWebRequest();
+
+        onStatus?.Invoke(request.responseCode);
 
         string responseText = request.downloadHandler?.text ?? string.Empty;
 

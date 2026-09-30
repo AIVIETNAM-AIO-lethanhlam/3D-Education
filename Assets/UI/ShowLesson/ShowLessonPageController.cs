@@ -100,6 +100,8 @@ public class ShowLessonPageController : MonoBehaviour
     private VisualElement videoWrapper;
     private VisualElement videoSection;
     private ScrollView lessonScrollView;
+    private VisualElement lessonPageContent;
+    private VisualElement fixedLessonHost;
     private VisualElement videoProgressFill;
     private VisualElement objectivesContainer;
     private VisualElement quizContainer;
@@ -113,6 +115,22 @@ public class ShowLessonPageController : MonoBehaviour
     private readonly List<LessonAssetView> documentAssets = new();
     private readonly List<LessonAssetView> quizAssets = new();
     private readonly List<LessonAssetView> modelAssets = new();
+
+    // Exercise PDFs (quiz_pdf) stay locked for students until the quiz linked
+    // to that PDF (quizzes.source_asset_id) has a submitted attempt.
+    private readonly HashSet<string> lockedExerciseAssetIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> completedExerciseAssetIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> quizOrderByAssetId = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<QuizStatusView> quizStatusViews = new();
+    private bool exerciseLockStateLoaded;
+    private bool exerciseLockCheckRunning;
+
+    private class QuizStatusView
+    {
+        public VisualElement Status;
+        public VisualElement Dot;
+        public Label Text;
+    }
     private readonly List<ClassModelSource> classModelSources = new();
 
     private LessonView currentLesson;
@@ -149,6 +167,7 @@ public class ShowLessonPageController : MonoBehaviour
 
         root = uiDocument.rootVisualElement;
         QueryElements();
+        SetupHeaderTopSpacing(root.Q<VisualElement>(className: "lesson-header"));
         FindYouTubeBridge();
         FindNativeWebViewComponent();
         RegisterEvents();
@@ -157,9 +176,108 @@ public class ShowLessonPageController : MonoBehaviour
         StartCoroutine(LoadLessonRoutine());
     }
 
+    // =========================================================
+    // HEADER TOP SPACING (same contract as GeneralHeaderController)
+    // USS fallback = 54px; at runtime: max(54, safe-area top + 32).
+    // =========================================================
+
+    private const float HeaderTopFallback = 54f;
+    private const float HeaderTopAfterSafeArea = 32f;
+    private VisualElement headerTopSpacingTarget;
+    private float lastHeaderTopPadding = float.NaN;
+
+    private void SetupHeaderTopSpacing(VisualElement header)
+    {
+        if (root == null)
+            return;
+
+        headerTopSpacingTarget = header;
+        lastHeaderTopPadding = float.NaN;
+        root.UnregisterCallback<GeometryChangedEvent>(OnHeaderRootGeometryChanged);
+        root.RegisterCallback<GeometryChangedEvent>(OnHeaderRootGeometryChanged);
+        ApplyHeaderTopSpacing();
+    }
+
+    private void TeardownHeaderTopSpacing()
+    {
+        if (root != null)
+            root.UnregisterCallback<GeometryChangedEvent>(OnHeaderRootGeometryChanged);
+    }
+
+    private void OnHeaderRootGeometryChanged(GeometryChangedEvent evt)
+    {
+        ApplyHeaderTopSpacing();
+    }
+
+    private void ApplyHeaderTopSpacing()
+    {
+        if (root == null || headerTopSpacingTarget == null)
+            return;
+
+        float panelHeight = root.resolvedStyle.height;
+        if (panelHeight <= 0f || float.IsNaN(panelHeight))
+            return;
+
+        float screenHeight = Mathf.Max(1f, Screen.height);
+        Rect safe = Screen.safeArea;
+
+        // Screen.safeArea is in screen pixels; USS padding uses panel pixels.
+        float topInset = Mathf.Max(0f,
+            (screenHeight - safe.yMax) / screenHeight * panelHeight);
+        float topPadding = Mathf.Max(
+            HeaderTopFallback, topInset + HeaderTopAfterSafeArea);
+
+        if (float.IsNaN(lastHeaderTopPadding) ||
+            Mathf.Abs(lastHeaderTopPadding - topPadding) > 0.25f)
+        {
+            headerTopSpacingTarget.style.paddingTop = topPadding;
+            // The full-screen PDF viewer header (lecture + exercise files)
+            // uses the same GeneralHeader top spacing.
+            if (pdfViewerHeader != null)
+                pdfViewerHeader.style.paddingTop = topPadding;
+            lastHeaderTopPadding = topPadding;
+        }
+    }
+
     private void OnDisable()
     {
+        TeardownHeaderTopSpacing();
         UnregisterEvents();
+    }
+
+    private void LateUpdate()
+    {
+        UpdateLessonContentHost();
+    }
+
+    private void UpdateLessonContentHost()
+    {
+        if (lessonScrollView == null || lessonPageContent == null || fixedLessonHost == null)
+            return;
+
+        bool isFixed = lessonPageContent.parent == fixedLessonHost;
+        float viewportHeight = isFixed
+            ? fixedLessonHost.layout.height
+            : lessonScrollView.contentViewport.layout.height;
+        float contentHeight = lessonPageContent.layout.height;
+        if (float.IsNaN(viewportHeight) || float.IsNaN(contentHeight)
+            || viewportHeight <= 0f || contentHeight <= 0f)
+            return;
+
+        if (!isFixed && contentHeight <= viewportHeight - 2f)
+        {
+            lessonScrollView.scrollOffset = Vector2.zero;
+            fixedLessonHost.Add(lessonPageContent);
+            fixedLessonHost.style.display = DisplayStyle.Flex;
+            lessonScrollView.style.display = DisplayStyle.None;
+        }
+        else if (isFixed && contentHeight > viewportHeight + 2f)
+        {
+            lessonScrollView.contentContainer.Add(lessonPageContent);
+            lessonScrollView.style.display = DisplayStyle.Flex;
+            fixedLessonHost.style.display = DisplayStyle.None;
+            lessonScrollView.scrollOffset = Vector2.zero;
+        }
     }
 
     private void Update()
@@ -230,6 +348,8 @@ public class ShowLessonPageController : MonoBehaviour
         videoWrapper = root.Q<VisualElement>("video-wrapper");
         videoSection = root.Q<VisualElement>("video-section");
         lessonScrollView = root.Q<ScrollView>("lesson-scroll-view");
+        lessonPageContent = root.Q<VisualElement>("lesson-page-content");
+        fixedLessonHost = root.Q<VisualElement>("fixed-lesson-host");
         videoProgressFill = root.Q<VisualElement>("video-progress-fill");
         objectivesContainer = root.Q<VisualElement>("objectives-container");
         quizContainer = root.Q<VisualElement>("quiz-container");
@@ -520,13 +640,75 @@ public class ShowLessonPageController : MonoBehaviour
 
         bool isTeacher = string.Equals(role, "teacher", StringComparison.OrdinalIgnoreCase);
         SetVisible(editLessonButton, isTeacher);
+
+        // The top-right report button was removed from the lesson header
+        // (2026-09-29). OpenReportSheetRoutine is kept in case it is needed again.
+    }
+
+    private Button reportContentButton;
+
+    /// <summary>Builds the list of reportable items of this lesson and opens the report sheet.</summary>
+    private IEnumerator OpenReportSheetRoutine()
+    {
+        if (currentLesson == null || string.IsNullOrWhiteSpace(currentLesson.id))
+            yield break;
+
+        List<ModerationReportSheet.Target> targets = new List<ModerationReportSheet.Target>
+        {
+            new ModerationReportSheet.Target
+            {
+                TargetType = "lesson",
+                LessonId = currentLesson.id,
+                Label = AppLanguageManager.T("Lesson (video, PDF)", "Bài học (video, PDF)")
+            }
+        };
+
+        // Quizzes of this lesson
+        string quizJson = null;
+        yield return SupabaseRestService.Get(
+            "quizzes?select=id,title&lesson_id=eq." + Uri.EscapeDataString(currentLesson.id),
+            json => quizJson = json,
+            error => Debug.LogWarning("[ShowLesson] Cannot load quizzes for report: " + error));
+
+        foreach (QuizMetadataView quiz in SupabaseModerationService.ParseArray<QuizMetadataViewList, QuizMetadataView>(quizJson, w => w.items))
+        {
+            if (quiz == null || string.IsNullOrWhiteSpace(quiz.id)) continue;
+            targets.Add(new ModerationReportSheet.Target
+            {
+                TargetType = "quiz",
+                LessonId = currentLesson.id,
+                QuizId = quiz.id,
+                Label = "Quiz: " + (string.IsNullOrWhiteSpace(quiz.title) ? "Quiz" : quiz.title)
+            });
+        }
+
+        // 3D models of this lesson
+        foreach (LessonAssetView asset in modelAssets)
+        {
+            if (asset == null || string.IsNullOrWhiteSpace(asset.id)) continue;
+            targets.Add(new ModerationReportSheet.Target
+            {
+                TargetType = "model_3d",
+                LessonId = currentLesson.id,
+                AssetId = asset.id,
+                Label = AppLanguageManager.T("3D: ", "Model 3D: ") + (asset.file_name ?? "model")
+            });
+        }
+
+        ModerationReportSheet.Show(root, this, targets);
     }
 
     private void HideScrollbars()
     {
         ScrollView lessonScroll = lessonScrollView ?? root.Q<ScrollView>("lesson-scroll-view");
         if (lessonScroll != null)
-            lessonScroll.verticalScrollerVisibility = ScrollerVisibility.Hidden;
+        {
+            lessonScroll.verticalScrollerVisibility = ScrollerVisibility.Auto;
+            lessonScroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+            lessonScroll.touchScrollBehavior = ScrollView.TouchScrollBehavior.Clamped;
+
+            lessonScroll.scrollOffset = Vector2.zero;
+        }
 
         if (resourceFileList != null)
             resourceFileList.verticalScrollerVisibility = ScrollerVisibility.Hidden;
@@ -579,6 +761,7 @@ public class ShowLessonPageController : MonoBehaviour
 
         RenderResourceButtons();
         RenderQuizzes();
+        StartCoroutine(LoadExerciseLockStateRoutine());
         RenderModelCard();
         InitializeVideo();
     }
@@ -733,6 +916,8 @@ public class ShowLessonPageController : MonoBehaviour
     private void RenderQuizzes()
     {
         quizContainer?.Clear();
+        quizStatusViews.Clear();
+        quizOrderByAssetId.Clear();
 
         bool hasQuizzes = quizAssets.Count > 0;
         SetVisible(quizContainer, hasQuizzes);
@@ -782,6 +967,10 @@ public class ShowLessonPageController : MonoBehaviour
             row.Add(info);
             row.Add(status);
             row.Add(arrow);
+
+            quizStatusViews.Add(new QuizStatusView { Status = status, Dot = dot, Text = statusText });
+            if (!string.IsNullOrWhiteSpace(asset.id))
+                quizOrderByAssetId[asset.id] = i;
 
             LessonAssetView captured = asset;
             int capturedIndex = i;
@@ -901,7 +1090,10 @@ public class ShowLessonPageController : MonoBehaviour
         }
     }
 
-    private void OpenResourceModal(string title, List<LessonAssetView> assets)
+    private void OpenResourceModal(
+        string title,
+        List<LessonAssetView> assets,
+        ICollection<string> lockedAssetIds = null)
     {
         if (resourceFileList == null || resourceModalOverlay == null) return;
 
@@ -925,17 +1117,30 @@ public class ShowLessonPageController : MonoBehaviour
             resourceModalMessage.text = assets.Count == 0
                 ? "No files are available."
                 : "Tap a file to view it, or tap Download to save it.";
+
+        bool anyLocked = false;
+        if (lockedAssetIds != null)
+            foreach (LessonAssetView asset in assets)
+                if (asset?.id != null && lockedAssetIds.Contains(asset.id))
+                    anyLocked = true;
+
+        if (anyLocked && resourceModalMessage != null)
+            resourceModalMessage.text =
+                "Complete the quiz first to unlock its exercise file. " +
+                "Tap a locked file to start the quiz.";
         if (downloadStatusLabel != null) downloadStatusLabel.text = string.Empty;
 
         foreach (LessonAssetView asset in assets)
-            resourceFileList.Add(CreateResourceFileRow(asset));
+            resourceFileList.Add(CreateResourceFileRow(
+                asset,
+                lockedAssetIds != null && asset?.id != null && lockedAssetIds.Contains(asset.id)));
 
         SetVisible(resourceModalOverlay, true);
         resourceModalOverlay.BringToFront();
         resourceModalOverlay.pickingMode = PickingMode.Position;
     }
 
-    private VisualElement CreateResourceFileRow(LessonAssetView asset)
+    private VisualElement CreateResourceFileRow(LessonAssetView asset, bool locked = false)
     {
         VisualElement row = new();
         row.AddToClassList("resource-file-row");
@@ -958,12 +1163,25 @@ public class ShowLessonPageController : MonoBehaviour
         open.Add(info);
 
         LessonAssetView captured = asset;
-        open.clicked += () => BeginOpenPdf(captured);
+        if (locked)
+        {
+            row.AddToClassList("resource-file-locked");
+            size.text = $"Locked · Complete Quiz {GetQuizOrder(captured) + 1:00} first";
+            open.tooltip = "Take the quiz to unlock this file";
+            open.clicked += () => OpenQuizForLockedExercise(captured);
+        }
+        else
+        {
+            open.clicked += () => BeginOpenPdf(captured);
+        }
 
         Button download = new();
-        download.text = "Download";
+        download.text = locked ? "Take Quiz" : "Download";
         download.AddToClassList("resource-download-button");
-        download.clicked += () => StartCoroutine(DownloadAssetRoutine(captured, download));
+        if (locked)
+            download.clicked += () => OpenQuizForLockedExercise(captured);
+        else
+            download.clicked += () => StartCoroutine(DownloadAssetRoutine(captured, download));
 
         row.Add(open);
         row.Add(download);
@@ -975,6 +1193,12 @@ public class ShowLessonPageController : MonoBehaviour
         if (asset == null)
         {
             SetDownloadStatus("This PDF record is invalid.");
+            return;
+        }
+
+        if (IsExerciseLocked(asset))
+        {
+            OpenQuizForLockedExercise(asset);
             return;
         }
 
@@ -1500,7 +1724,7 @@ canvas{
         // Android views are rendered above Unity. Use the header's actual bottom edge
         // as the top margin, and force left/right/bottom margins to zero so the PDF
         // reader occupies the ENTIRE remaining phone body.
-        float headerBottomPoints = 86f;
+        float headerBottomPoints = 106f;
         if (pdfViewerHeader != null)
         {
             Rect headerBounds = pdfViewerHeader.worldBound;
@@ -1523,6 +1747,12 @@ canvas{
         if (asset == null)
         {
             SetDownloadStatus("This file record is invalid.");
+            yield break;
+        }
+
+        if (IsExerciseLocked(asset))
+        {
+            SetDownloadStatus("Complete the quiz first to unlock this exercise file.");
             yield break;
         }
 
@@ -2027,7 +2257,226 @@ canvas{
 
     private void HandleExerciseFilesClicked()
     {
-        OpenResourceModal("Exercises", quizAssets);
+        if (!IsExerciseLockRequired())
+        {
+            OpenResourceModal("Exercises", quizAssets);
+            return;
+        }
+
+        StartCoroutine(OpenExercisesForStudentRoutine());
+    }
+
+    // =========================================================
+    // EXERCISE LOCK: students must submit the quiz before viewing
+    // or downloading the exercise PDF it was generated from.
+    // =========================================================
+
+    private bool IsExerciseLockRequired()
+    {
+        if (SupabaseSession.IsAdmin)
+            return false;
+
+        string role = PlayerPrefs.GetString(
+            "current_role",
+            showTeacherControls ? "teacher" : "student"
+        );
+
+        return !string.Equals(role, "teacher", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsExerciseLocked(LessonAssetView asset)
+    {
+        return asset != null &&
+               !string.IsNullOrWhiteSpace(asset.id) &&
+               IsExerciseLockRequired() &&
+               lockedExerciseAssetIds.Contains(asset.id);
+    }
+
+    private int GetQuizOrder(LessonAssetView asset)
+    {
+        if (asset?.id != null && quizOrderByAssetId.TryGetValue(asset.id, out int order))
+            return order;
+
+        return Mathf.Max(0, quizAssets.IndexOf(asset));
+    }
+
+    private void OpenQuizForLockedExercise(LessonAssetView asset)
+    {
+        if (asset == null)
+            return;
+
+        CloseResourceModal();
+        StartCoroutine(OpenQuizRoutine(asset, GetQuizOrder(asset)));
+    }
+
+    private IEnumerator OpenExercisesForStudentRoutine()
+    {
+        while (exerciseLockCheckRunning)
+            yield return null;
+
+        if (!exerciseLockStateLoaded)
+            yield return LoadExerciseLockStateRoutine();
+
+        // If the check failed, every exercise stays locked (fail closed).
+        OpenResourceModal("Exercises", quizAssets, lockedExerciseAssetIds);
+    }
+
+    private static string GetCurrentStudentId()
+    {
+        if (!string.IsNullOrWhiteSpace(SupabaseSession.UserId))
+            return SupabaseSession.UserId.Trim();
+
+        string id = PlayerPrefs.GetString("user_id", string.Empty);
+        if (string.IsNullOrWhiteSpace(id))
+            id = PlayerPrefs.GetString("current_user_id", string.Empty);
+        return id?.Trim() ?? string.Empty;
+    }
+
+    private IEnumerator LoadExerciseLockStateRoutine()
+    {
+        if (exerciseLockCheckRunning)
+            yield break;
+
+        exerciseLockCheckRunning = true;
+        exerciseLockStateLoaded = false;
+        lockedExerciseAssetIds.Clear();
+        completedExerciseAssetIds.Clear();
+
+        try
+        {
+            if (!IsExerciseLockRequired() || quizAssets.Count == 0)
+            {
+                exerciseLockStateLoaded = true;
+                yield break;
+            }
+
+            // Lock everything first; unlock only what is confirmed.
+            List<string> assetIds = new();
+            foreach (LessonAssetView asset in quizAssets)
+            {
+                if (asset == null || string.IsNullOrWhiteSpace(asset.id))
+                    continue;
+
+                lockedExerciseAssetIds.Add(asset.id);
+                if (Guid.TryParse(asset.id, out _))
+                    assetIds.Add(asset.id);
+            }
+
+            string studentId = GetCurrentStudentId();
+            if (assetIds.Count == 0 || !Guid.TryParse(studentId, out _))
+            {
+                Debug.LogWarning("[ShowLesson] Cannot verify quiz completion: missing asset or student id.");
+                exerciseLockStateLoaded = true;
+                yield break;
+            }
+
+            // 1) Which quiz belongs to which exercise PDF.
+            string quizResponse = null;
+            string quizError = null;
+            yield return restService.SendJson(
+                UnityWebRequest.kHttpVerbGET,
+                "rest/v1/quizzes?select=id,source_asset_id,is_published" +
+                "&source_asset_id=in.(" + UnityWebRequest.EscapeURL(string.Join(",", assetIds)) + ")",
+                null,
+                null,
+                value => quizResponse = value,
+                message => quizError = message
+            );
+
+            if (!string.IsNullOrWhiteSpace(quizError))
+            {
+                Debug.LogWarning("[ShowLesson] Cannot load quizzes for exercise lock: " + quizError);
+                yield break;
+            }
+
+            Dictionary<string, string> assetIdByQuizId = new(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> assetsWithQuiz = new(StringComparer.OrdinalIgnoreCase);
+            QuizMetadataViewList quizWrapper = ParseList<QuizMetadataViewList>(quizResponse);
+            if (quizWrapper?.items != null)
+            {
+                foreach (QuizMetadataView quiz in quizWrapper.items)
+                {
+                    // is_published is NOT required: quizzes are opened from the
+                    // lesson page even while unpublished.
+                    if (quiz == null ||
+                        !Guid.TryParse(quiz.id, out _) ||
+                        string.IsNullOrWhiteSpace(quiz.source_asset_id))
+                        continue;
+
+                    assetIdByQuizId[quiz.id] = quiz.source_asset_id;
+                    assetsWithQuiz.Add(quiz.source_asset_id);
+                }
+            }
+
+            // Strict rule: an exercise PDF is unlocked ONLY by a submitted
+            // attempt of its linked quiz. A PDF without a quiz stays locked.
+
+            if (assetIdByQuizId.Count > 0)
+            {
+                // 2) Which of those quizzes this student has submitted.
+                string attemptResponse = null;
+                string attemptError = null;
+                yield return restService.SendJson(
+                    UnityWebRequest.kHttpVerbGET,
+                    "rest/v1/quiz_attempts?select=quiz_id" +
+                    "&student_id=eq." + UnityWebRequest.EscapeURL(studentId) +
+                    "&status=eq.submitted" +
+                    "&quiz_id=in.(" + UnityWebRequest.EscapeURL(string.Join(",", assetIdByQuizId.Keys)) + ")",
+                    null,
+                    null,
+                    value => attemptResponse = value,
+                    message => attemptError = message
+                );
+
+                if (!string.IsNullOrWhiteSpace(attemptError))
+                {
+                    Debug.LogWarning("[ShowLesson] Cannot load quiz attempts for exercise lock: " + attemptError);
+                    yield break;
+                }
+
+                ExerciseQuizAttemptViewList attemptWrapper =
+                    ParseList<ExerciseQuizAttemptViewList>(attemptResponse);
+                if (attemptWrapper?.items != null)
+                {
+                    foreach (ExerciseQuizAttemptView attempt in attemptWrapper.items)
+                    {
+                        if (attempt?.quiz_id == null ||
+                            !assetIdByQuizId.TryGetValue(attempt.quiz_id, out string assetId))
+                            continue;
+
+                        lockedExerciseAssetIds.Remove(assetId);
+                        completedExerciseAssetIds.Add(assetId);
+                    }
+                }
+            }
+
+            exerciseLockStateLoaded = true;
+            UpdateQuizStatusViews();
+        }
+        finally
+        {
+            exerciseLockCheckRunning = false;
+        }
+    }
+
+    private void UpdateQuizStatusViews()
+    {
+        foreach (KeyValuePair<string, int> pair in quizOrderByAssetId)
+        {
+            if (pair.Value < 0 || pair.Value >= quizStatusViews.Count)
+                continue;
+
+            if (!completedExerciseAssetIds.Contains(pair.Key))
+                continue;
+
+            QuizStatusView view = quizStatusViews[pair.Value];
+            view.Status?.RemoveFromClassList("quiz-status-not-attempted");
+            view.Status?.AddToClassList("quiz-status-completed");
+            view.Dot?.RemoveFromClassList("quiz-status-dot-muted");
+            view.Dot?.AddToClassList("quiz-status-dot-success");
+            if (view.Text != null)
+                view.Text.text = "Completed";
+        }
     }
 
     private void HandleLaunchModelClicked()
@@ -2038,6 +2487,40 @@ canvas{
     private void HandleVrModeClicked()
     {
         BeginOpenModel("vr");
+    }
+
+    // Headset version of the VR classroom (built by 3D Education > VR > Build Headset VR Scene).
+    private const string HeadsetVrSceneName = "VRClassroomXRScene";
+
+    /// <summary>
+    /// Phone -> VRClassroomScene (joystick + touch).
+    /// Headset already running, or Editor toggle
+    /// "3D Education > VR > Use Headset VR Scene In Editor" -> VRClassroomXRScene.
+    /// </summary>
+    private string ResolveVrSceneName()
+    {
+        bool useHeadsetScene = UnityEngine.XR.XRSettings.isDeviceActive;
+
+#if UNITY_EDITOR
+        useHeadsetScene |= UnityEditor.EditorPrefs.GetBool(
+            "3DEducation.UseXRSceneInEditor", false);
+#endif
+
+        if (useHeadsetScene &&
+            Application.CanStreamedLevelBeLoaded(HeadsetVrSceneName))
+        {
+            return HeadsetVrSceneName;
+        }
+
+        if (useHeadsetScene)
+        {
+            Debug.LogWarning(
+                "[ShowLessonPageController] Headset VR scene requested but " +
+                HeadsetVrSceneName + " is not in Build Profiles. Opening the phone VR scene. " +
+                "Run 3D Education > VR > Add Headset VR Scene To Build Profiles.");
+        }
+
+        return vrSceneName;
     }
 
     private void HandleArModeClicked()
@@ -2291,7 +2774,7 @@ canvas{
                 break;
 
             case "vr":
-                destinationScene = vrSceneName;
+                destinationScene = ResolveVrSceneName();
                 break;
 
             case "3d":
@@ -3264,3 +3747,14 @@ public class QuizMetadataViewList
     public QuizMetadataView[] items;
 }
 
+[Serializable]
+public class ExerciseQuizAttemptView
+{
+    public string quiz_id;
+}
+
+[Serializable]
+public class ExerciseQuizAttemptViewList
+{
+    public ExerciseQuizAttemptView[] items;
+}

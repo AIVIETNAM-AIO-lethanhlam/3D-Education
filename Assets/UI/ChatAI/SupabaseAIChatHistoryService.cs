@@ -135,6 +135,29 @@ public static class SupabaseAIChatHistoryService
         }
     }
 
+    /// <summary>Deletes every AI chat message of this user (BUG-012 "New conversation").</summary>
+    public static IEnumerator DeleteAllMessages(
+        string userId,
+        Action<string> onError)
+    {
+        if (!Validate(out string error)) { onError?.Invoke(error); yield break; }
+
+        string url = SupabaseConfig.RestUrl.TrimEnd('/') +
+            "/ai_chat_messages?user_id=eq." + UnityWebRequest.EscapeURL(userId);
+
+        using (UnityWebRequest request = UnityWebRequest.Delete(url))
+        {
+            request.downloadHandler = new DownloadHandlerBuffer();
+            SetHeaders(request);
+            request.SetRequestHeader("Prefer", "return=minimal");
+            request.timeout = SupabaseConfig.RequestTimeoutSeconds;
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+                onError?.Invoke("History delete failed: " + ResponseError(request));
+        }
+    }
+
     public static IEnumerator DownloadImage(
         string path,
         Action<Texture2D> onSuccess,

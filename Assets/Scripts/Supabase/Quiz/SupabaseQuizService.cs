@@ -703,6 +703,19 @@ public class SupabaseQuizService : MonoBehaviour
                 if (error != null &&
                     !string.IsNullOrWhiteSpace(error.error))
                 {
+                    // BUG-016: Gemini quota / rate limit -> friendly message.
+                    if (responseCode == 429 ||
+                        error.gemini_http_status == 429 ||
+                        AIService.IsRateLimitError(error.error + " " + error.details))
+                    {
+                        Debug.LogWarning(
+                            "[SupabaseQuizService] Gemini rate limit: " +
+                            error.error + " | " + error.details);
+
+                        return "AI đang nhận quá nhiều yêu cầu nên chưa đọc được file quiz. " +
+                               "Vui lòng thử lại sau khoảng 1 phút.";
+                    }
+
                     string message = error.error;
 
                     if (!string.IsNullOrWhiteSpace(error.details))

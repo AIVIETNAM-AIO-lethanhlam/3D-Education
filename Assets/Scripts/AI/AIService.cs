@@ -1,11 +1,34 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
 public static class AIService
 {
+    /// <summary>
+    /// BUG-016: returned through onError when Gemini's quota / rate limit is hit
+    /// (HTTP 429, RESOURCE_EXHAUSTED...). Screens show a friendly message for it
+    /// instead of the raw provider error.
+    /// </summary>
+    public const string RateLimitError = "AI_RATE_LIMIT";
+
+    public static bool IsRateLimitError(string error)
+    {
+        if (string.IsNullOrWhiteSpace(error))
+            return false;
+
+        string value = error.ToLowerInvariant();
+        return value.Contains("ai_rate_limit") ||
+               value.Contains("429") ||
+               value.Contains("resource_exhausted") ||
+               value.Contains("resource has been exhausted") ||
+               value.Contains("quota") ||
+               value.Contains("rate limit") ||
+               value.Contains("too many requests");
+    }
+
     [Serializable]
     private class AIImagePayload
     {
@@ -34,6 +57,57 @@ public static class AIService
         public string imageBase64;
         public string imageMimeType;
         public AIImagePayload[] images;
+
+        // Previous turns of the conversation (oldest first), 2026-09.
+        public AIHistoryItem[] history;
+    }
+
+    /// <summary>One previous chat turn. role = "user" or "model".</summary>
+    [Serializable]
+    public class AIHistoryItem
+    {
+        public string role;
+        public string text;
+    }
+
+    private const int MaxHistoryItems = 12;
+    private static AIHistoryItem[] pendingHistory = Array.Empty<AIHistoryItem>();
+
+    /// <summary>
+    /// Sets the conversation history for the NEXT request only (it is consumed
+    /// by that request). Callers that do not set it send no history.
+    /// </summary>
+    public static void SetConversationHistory(IList<AIHistoryItem> items)
+    {
+        if (items == null || items.Count == 0)
+        {
+            pendingHistory = Array.Empty<AIHistoryItem>();
+            return;
+        }
+
+        int start = Mathf.Max(0, items.Count - MaxHistoryItems);
+        List<AIHistoryItem> result = new List<AIHistoryItem>();
+        for (int i = start; i < items.Count; i++)
+        {
+            AIHistoryItem item = items[i];
+            if (item == null || string.IsNullOrWhiteSpace(item.text))
+                continue;
+
+            result.Add(new AIHistoryItem
+            {
+                role = string.Equals(item.role, "user", StringComparison.OrdinalIgnoreCase) ? "user" : "model",
+                text = item.text.Trim()
+            });
+        }
+
+        pendingHistory = result.ToArray();
+    }
+
+    private static AIHistoryItem[] TakeHistory()
+    {
+        AIHistoryItem[] history = pendingHistory ?? Array.Empty<AIHistoryItem>();
+        pendingHistory = Array.Empty<AIHistoryItem>();
+        return history;
     }
 
     [Serializable]
@@ -222,7 +296,8 @@ public static class AIService
                 imageMimeType = !string.IsNullOrWhiteSpace(imageBase64)
                     ? imageMimeType.Trim()
                     : string.Empty,
-                images = images ?? Array.Empty<AIImagePayload>()
+                images = images ?? Array.Empty<AIImagePayload>(),
+                history = TakeHistory()
             };
 
         string json =
@@ -332,6 +407,12 @@ public static class AIService
                     request.responseCode
                 );
 
+            if (request.responseCode == 429 ||
+                IsRateLimitError(errorMessage))
+            {
+                errorMessage = RateLimitError;
+            }
+
             onError?.Invoke(errorMessage);
             yield break;
         }
@@ -407,7 +488,7 @@ public static class AIService
                 error
             );
 
-            onError?.Invoke(error);
+            onError?.Invoke(IsRateLimitError(error) ? RateLimitError : error);
             yield break;
         }
 

@@ -43,6 +43,10 @@ public static class SupabaseSession
     public static bool IsStudent =>
         Role.Trim().ToLowerInvariant() == "student";
 
+    /// <summary>Admin account (profiles.role = 'admin'). Signs in from the Teacher tab.</summary>
+    public static bool IsAdmin =>
+        Role.Trim().ToLowerInvariant() == "admin";
+
     public static void SaveAuthResponse(
         SupabaseAuthResponse response,
         string fallbackRole = "")
@@ -131,6 +135,29 @@ public static class SupabaseSession
         PlayerPrefs.Save();
     }
 
+    /// <summary>
+    /// Stores new tokens after a refresh without touching the cached profile
+    /// (role, name, avatar).
+    /// </summary>
+    public static void UpdateTokens(string accessToken, string refreshToken)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken))
+            return;
+
+        PlayerPrefs.SetString(AccessTokenKey, accessToken);
+
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+            PlayerPrefs.SetString(RefreshTokenKey, refreshToken);
+
+        PlayerPrefs.SetInt(LoggedInKey, 1);
+        PlayerPrefs.Save();
+    }
+
+    /// <summary>True when a refresh token is stored (used for auto-login).</summary>
+    public static bool HasStoredSession =>
+        !string.IsNullOrWhiteSpace(RefreshToken) &&
+        !string.IsNullOrWhiteSpace(UserId);
+
     public static void UpdateFullName(string fullName)
     {
         PlayerPrefs.SetString(
@@ -155,7 +182,12 @@ public static class SupabaseSession
 
     private static string NormalizeRole(string role)
     {
-        return role?.Trim().ToLowerInvariant() == "teacher"
+        string normalized = role?.Trim().ToLowerInvariant();
+
+        if (normalized == "admin")
+            return "admin";
+
+        return normalized == "teacher"
             ? "teacher"
             : "student";
     }

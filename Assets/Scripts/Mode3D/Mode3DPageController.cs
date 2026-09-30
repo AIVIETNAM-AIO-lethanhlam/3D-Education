@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -192,6 +193,18 @@ public class Mode3DPageController : MonoBehaviour
 
     private MaterialPropertyBlock propertyBlock;
 
+    // BUG-013: runtime lesson models are imported by glTFast, whose shaders use
+    // "baseColorFactor" (not URP "_BaseColor" / legacy "_Color").
+    private static readonly int GltfBaseColorId = Shader.PropertyToID("baseColorFactor");
+
+    // BUG-015: exploded view state (parts are collected after the model loads).
+    [SerializeField, Range(0.05f, 1f)] private float explodeDistanceFactor = 0.35f;
+    [SerializeField, Range(0.05f, 2f)] private float explodeDuration = 0.4f;
+    private readonly List<Transform> explodeParts = new List<Transform>();
+    private readonly Dictionary<Transform, Vector3> explodeRestPositions = new Dictionary<Transform, Vector3>();
+    private Coroutine explodeRoutine;
+    private readonly Dictionary<Transform, Vector3> explodeTargetPositions = new Dictionary<Transform, Vector3>();
+
     private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
     private static readonly int ColorId = Shader.PropertyToID("_Color");
 
@@ -251,6 +264,41 @@ public class Mode3DPageController : MonoBehaviour
             SaveCurrentPoseAsDefault();
     }
 
+    private Button modelReportButton;
+
+    private void AddModelReportButton()
+    {
+        bool isTeacher = string.Equals(
+            PlayerPrefs.GetString("current_role", "student"), "teacher", StringComparison.OrdinalIgnoreCase);
+
+        string assetId = PlayerPrefs.GetString("selected_model_asset_id", string.Empty);
+        string lessonId = PlayerPrefs.GetString("selected_model_lesson_id", string.Empty);
+        VisualElement infoCard = infoOverlay?.Q<VisualElement>(className: "info-card");
+
+        if (isTeacher || SupabaseSession.IsAdmin || modelReportButton != null || infoCard == null ||
+            !Guid.TryParse(assetId, out _) || !Guid.TryParse(lessonId, out _))
+            return;
+
+        ModerationReportSheet.EnsureStyles(root);
+        modelReportButton = ModerationReportSheet.CreateWideReportButton(
+            AppLanguageManager.T("Report inappropriate model", "Báo cáo model không phù hợp"),
+            () =>
+            {
+                infoOverlay?.AddToClassList("hidden");
+                ModerationReportSheet.Show(root, this, new[]
+                {
+                    new ModerationReportSheet.Target
+                    {
+                        TargetType = "model_3d",
+                        LessonId = lessonId,
+                        AssetId = assetId,
+                        Label = AppLanguageManager.T("3D Model", "Model 3D")
+                    }
+                });
+            });
+        infoCard.Add(modelReportButton);
+    }
+
     private void OnEnable()
     {
         if (uiDocument == null)
@@ -271,6 +319,9 @@ public class Mode3DPageController : MonoBehaviour
         backButton = root.Q<Button>("back-button");
         infoButton = root.Q<Button>("info-button");
         closeInfoButton = root.Q<Button>("close-info-button");
+
+        // Students can report this 3D model to the admin from the info panel (2026-09).
+        AddModelReportButton();
         captureButton = root.Q<Button>("capture-button");
         vrButton = root.Q<Button>("vr-button");
         resetButton = root.Q<Button>("reset-button");
@@ -577,6 +628,9 @@ public class Mode3DPageController : MonoBehaviour
 
     private IEnumerator FitRuntimeModelAfterAsyncLoad()
     {
+        // A new model is loading: forget the parts of the previous one.
+        ClearExplodeState();
+
         // Wait a few frames because renderer bounds can settle after async GLB import.
         for (int i = 0; i < 4; i++)
             yield return null;
@@ -1198,6 +1252,7 @@ public class Mode3DPageController : MonoBehaviour
         modelRoot.localScale = fittedScale;
 
         autoRotate = false;
+        RestoreExplodedParts();
         explodedView = false;
 
         SetButtonActive(autoRotateButton, false);
@@ -1227,15 +1282,178 @@ public class Mode3DPageController : MonoBehaviour
     private void ToggleExplodedView()
     {
         SelectBottomTool(layersFrame);
+
+        // BUG-015: nothing implemented ShowExplodedView/HideExplodedView, so the
+        // button only toggled its highlight. Move the model's parts directly.
+        if (explodeParts.Count == 0)
+            CollectExplodeParts();
+
+        if (explodeParts.Count < 2)
+        {
+            explodedView = false;
+            SetButtonActive(layersButton, false);
+            ShowToast("This model has no separate parts");
+            return;
+        }
+
         explodedView = !explodedView;
         SetButtonActive(layersButton, explodedView);
 
-        modelRoot?.BroadcastMessage(
-            explodedView ? "ShowExplodedView" : "HideExplodedView",
-            SendMessageOptions.DontRequireReceiver
-        );
+        if (explodeRoutine != null)
+            StopCoroutine(explodeRoutine);
+
+        explodeRoutine = StartCoroutine(AnimateExplode(explodedView));
 
         ShowToast(explodedView ? "Exploded view" : "Assembly view");
+    }
+
+    private void ClearExplodeState()
+    {
+        if (explodeRoutine != null)
+        {
+            StopCoroutine(explodeRoutine);
+            explodeRoutine = null;
+        }
+
+        explodeParts.Clear();
+        explodeRestPositions.Clear();
+        explodeTargetPositions.Clear();
+        explodedView = false;
+        SetButtonActive(layersButton, false);
+    }
+
+    private void CollectExplodeParts()
+    {
+        explodeParts.Clear();
+        explodeRestPositions.Clear();
+        explodeTargetPositions.Clear();
+
+        if (modelRoot == null)
+            return;
+
+        RefreshRenderers();
+
+        // glTF files usually wrap the parts in single-child nodes
+        // ("Scene", "RootNode", "Sketchfab_model"...). Walk down to the
+        // first level that really has several children.
+        Transform level = modelRoot;
+        while (level.childCount == 1 && level.GetComponent<Renderer>() == null)
+            level = level.GetChild(0);
+
+        if (level.childCount > 1)
+        {
+            foreach (Transform child in level)
+            {
+                if (child.GetComponentInChildren<Renderer>(true) != null)
+                    explodeParts.Add(child);
+            }
+        }
+
+        if (explodeParts.Count < 2)
+        {
+            explodeParts.Clear();
+            foreach (Renderer rendererItem in modelRoot.GetComponentsInChildren<Renderer>(true))
+            {
+                if (rendererItem == null || rendererItem.transform == modelRoot)
+                    continue;
+
+                // Skip a renderer whose parent part is already listed
+                // (it would be moved twice).
+                bool ancestorListed = false;
+                for (Transform p = rendererItem.transform.parent; p != null && p != modelRoot; p = p.parent)
+                {
+                    if (explodeParts.Contains(p))
+                    {
+                        ancestorListed = true;
+                        break;
+                    }
+                }
+
+                if (!ancestorListed)
+                    explodeParts.Add(rendererItem.transform);
+            }
+        }
+
+        foreach (Transform part in explodeParts)
+            explodeRestPositions[part] = part.localPosition;
+
+        // Compute every part's exploded position ONCE, while the model is
+        // assembled. Parts and their parents live under modelRoot, so these
+        // local positions stay correct when the model is rotated or zoomed.
+        if (!TryGetCombinedBounds(out Bounds bounds))
+            return;
+
+        float distance = bounds.size.magnitude * explodeDistanceFactor;
+
+        foreach (Transform part in explodeParts)
+        {
+            Renderer partRenderer = part.GetComponentInChildren<Renderer>();
+            Vector3 partCenter = partRenderer != null ? partRenderer.bounds.center : part.position;
+
+            Vector3 direction = partCenter - bounds.center;
+            if (direction.sqrMagnitude < 1e-8f)
+                direction = Vector3.up;
+
+            Vector3 worldOffset = direction.normalized * distance;
+            Vector3 localOffset = part.parent != null
+                ? part.parent.InverseTransformVector(worldOffset)
+                : worldOffset;
+
+            explodeTargetPositions[part] = part.localPosition + localOffset;
+        }
+    }
+
+    private void RestoreExplodedParts()
+    {
+        if (explodeRoutine != null)
+        {
+            StopCoroutine(explodeRoutine);
+            explodeRoutine = null;
+        }
+
+        foreach (KeyValuePair<Transform, Vector3> pair in explodeRestPositions)
+        {
+            if (pair.Key != null)
+                pair.Key.localPosition = pair.Value;
+        }
+    }
+
+    private IEnumerator AnimateExplode(bool explode)
+    {
+        var start = new Dictionary<Transform, Vector3>();
+        var target = new Dictionary<Transform, Vector3>();
+
+        foreach (Transform part in explodeParts)
+        {
+            if (part == null ||
+                !explodeRestPositions.TryGetValue(part, out Vector3 rest) ||
+                !explodeTargetPositions.TryGetValue(part, out Vector3 exploded))
+            {
+                continue;
+            }
+
+            start[part] = part.localPosition;
+            target[part] = explode ? exploded : rest;
+        }
+
+        for (float elapsed = 0f; elapsed < explodeDuration; elapsed += Time.unscaledDeltaTime)
+        {
+            float k = Mathf.SmoothStep(0f, 1f, elapsed / explodeDuration);
+            foreach (KeyValuePair<Transform, Vector3> pair in target)
+            {
+                if (pair.Key != null)
+                    pair.Key.localPosition = Vector3.Lerp(start[pair.Key], pair.Value, k);
+            }
+            yield return null;
+        }
+
+        foreach (KeyValuePair<Transform, Vector3> pair in target)
+        {
+            if (pair.Key != null)
+                pair.Key.localPosition = pair.Value;
+        }
+
+        explodeRoutine = null;
     }
 
     private void SetModelColor(Color color, Button selectedButton)
@@ -1253,16 +1471,26 @@ public class Mode3DPageController : MonoBehaviour
             if (rendererItem == null)
                 continue;
 
-            rendererItem.GetPropertyBlock(propertyBlock);
+            // BUG-013: set the colour per material slot and on every colour
+            // property the shader actually has (glTFast / URP Lit / legacy).
+            Material[] materials = rendererItem.sharedMaterials;
+            for (int slot = 0; slot < materials.Length; slot++)
+            {
+                Material material = materials[slot];
+                if (material == null)
+                    continue;
 
-            Material sharedMaterial = rendererItem.sharedMaterial;
+                rendererItem.GetPropertyBlock(propertyBlock, slot);
 
-            if (sharedMaterial != null && sharedMaterial.HasProperty(BaseColorId))
-                propertyBlock.SetColor(BaseColorId, color);
-            else
-                propertyBlock.SetColor(ColorId, color);
+                if (material.HasProperty(GltfBaseColorId))
+                    propertyBlock.SetColor(GltfBaseColorId, color);
+                if (material.HasProperty(BaseColorId))
+                    propertyBlock.SetColor(BaseColorId, color);
+                if (material.HasProperty(ColorId))
+                    propertyBlock.SetColor(ColorId, color);
 
-            rendererItem.SetPropertyBlock(propertyBlock);
+                rendererItem.SetPropertyBlock(propertyBlock, slot);
+            }
         }
 
         SetSelectedSwatch(selectedButton);
@@ -1436,9 +1664,15 @@ public class Mode3DPageController : MonoBehaviour
         if (toastLabel == null)
             return;
 
-        StopAllCoroutines();
-        StartCoroutine(ToastRoutine(message));
+        // Stop only the previous toast. StopAllCoroutines() also killed the
+        // exploded-view animation (and any other running coroutine).
+        if (toastRoutine != null)
+            StopCoroutine(toastRoutine);
+
+        toastRoutine = StartCoroutine(ToastRoutine(message));
     }
+
+    private Coroutine toastRoutine;
 
     private IEnumerator ToastRoutine(string message)
     {

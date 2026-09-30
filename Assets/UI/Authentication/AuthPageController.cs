@@ -9,6 +9,8 @@ using UnityEngine.UIElements;
 public class AuthPageController : MonoBehaviour
 {
     private const string MainHomeSceneName = "MainHomeScene";
+    private const string AdminSceneName = "AdminScene";
+    private const string AdminLoginEmailDomain = "@admin.local";
 
     private VisualElement root;
 
@@ -66,6 +68,12 @@ public class AuthPageController : MonoBehaviour
     private bool isRegistering;
 
     private PasswordRecoveryFlow passwordRecoveryFlow;
+
+    // Live password checklist under the register password field (2026-09).
+    private VisualElement registerPasswordRules;
+    private VisualElement ruleLengthRow;
+    private VisualElement ruleUppercaseRow;
+    private VisualElement ruleLettersNumbersRow;
 
     private void OnEnable()
     {
@@ -128,6 +136,8 @@ public class AuthPageController : MonoBehaviour
             root,
             ReturnFromPasswordRecovery);
 
+        BuildRegisterPasswordRules();
+
         AppLanguageManager.LanguageChanged += OnLanguageChanged;
 
         RegisterEvents();
@@ -185,6 +195,7 @@ public class AuthPageController : MonoBehaviour
         RegisterFocus(registerNameField, OnRegisterNameFocusIn, OnRegisterNameFocusOut);
         RegisterFocus(registerEmailField, OnRegisterEmailFocusIn, OnRegisterEmailFocusOut);
         RegisterFocus(registerPasswordField, OnRegisterPasswordFocusIn, OnRegisterPasswordFocusOut);
+        registerPasswordField?.RegisterValueChangedCallback(OnRegisterPasswordChanged);
     }
 
     private void UnregisterEvents()
@@ -215,6 +226,7 @@ public class AuthPageController : MonoBehaviour
         UnregisterFocus(registerNameField, OnRegisterNameFocusIn, OnRegisterNameFocusOut);
         UnregisterFocus(registerEmailField, OnRegisterEmailFocusIn, OnRegisterEmailFocusOut);
         UnregisterFocus(registerPasswordField, OnRegisterPasswordFocusIn, OnRegisterPasswordFocusOut);
+        registerPasswordField?.UnregisterValueChangedCallback(OnRegisterPasswordChanged);
     }
 
     private static void RegisterFocus(
@@ -270,6 +282,7 @@ public class AuthPageController : MonoBehaviour
                 T("Password", "Mật khẩu");
 
         passwordRecoveryFlow?.ApplyLanguage();
+        UpdateRegisterPasswordRules();
 
         if (!isSigningIn && signInButton != null)
             signInButton.text = T("Sign In", "Đăng nhập");
@@ -546,6 +559,12 @@ public class AuthPageController : MonoBehaviour
             return;
 
         string email = NormalizeEmail(loginEmailField?.value);
+
+        // Admin signs in from the Teacher tab with a username (e.g. "adminadmin1").
+        // Supabase Auth needs an email, so a username without "@" is mapped to
+        // the admin login domain.
+        if (!string.IsNullOrWhiteSpace(email) && !email.Contains("@"))
+            email += AdminLoginEmailDomain;
         string password = loginPasswordField?.value ?? string.Empty;
 
         ClearLoginMessage();
@@ -586,6 +605,15 @@ public class AuthPageController : MonoBehaviour
 
         SetLoginLoading(false);
 
+        if (!string.IsNullOrWhiteSpace(signInError) &&
+            signInError.ToLowerInvariant().Contains("email not confirmed"))
+        {
+            // Account exists but the email was never verified → send a new code and verify now.
+            pendingVerificationRole = selectedRole;
+            passwordRecoveryFlow?.OpenSignupVerification(email, true, OnSignupEmailVerified, OnLoginVerificationCancelled);
+            yield break;
+        }
+
         if (!string.IsNullOrWhiteSpace(signInError))
         {
             Debug.LogError($"Supabase sign-in failed: {signInError}");
@@ -610,19 +638,44 @@ public class AuthPageController : MonoBehaviour
             yield break;
         }
 
-        string actualRole = selectedRole;
+        // Save the session first, then read the authoritative role from
+        // public.profiles. user_metadata.role can be edited by the user, so it
+        // is no longer trusted for authorization (2026-09 security update).
+        SupabaseSession.SaveAuthResponse(
+            signInResponse,
+            selectedRole
+        );
 
-        string metadataRole =
-            signInResponse.user.user_metadata?.role;
+        string actualRole = null;
+        string roleError = null;
 
-        if (!string.IsNullOrWhiteSpace(metadataRole))
+        SetLoginLoading(true);
+        yield return SupabaseProfileService.SyncRoleFromProfile(
+            selectedRole,
+            role => actualRole = role,
+            error => roleError = error
+        );
+        SetLoginLoading(false);
+
+        if (string.IsNullOrWhiteSpace(actualRole))
         {
-            actualRole =
-                metadataRole.Trim().ToLowerInvariant();
+            SupabaseSession.Clear();
+            ShowLoginMessage(
+                T(
+                    "Cannot read your profile: " + roleError,
+                    "Không đọc được hồ sơ tài khoản: " + roleError),
+                AuthMessageType.Error
+            );
+
+            yield break;
         }
 
-        if (actualRole != selectedRole)
+        // Admin accounts sign in through the Teacher tab.
+        bool isAdminLogin = actualRole == "admin" && selectedRole == "teacher";
+
+        if (actualRole != selectedRole && !isAdminLogin)
         {
+            SupabaseSession.Clear();
             ShowLoginMessage(
                 T(
                     $"This account has role '{actualRole}', not '{selectedRole}'.",
@@ -632,11 +685,6 @@ public class AuthPageController : MonoBehaviour
 
             yield break;
         }
-
-        SupabaseSession.SaveAuthResponse(
-            signInResponse,
-            actualRole
-        );
 
         /*
          * Giữ các key cũ để những scene chưa refactor vẫn hoạt động.
@@ -681,6 +729,24 @@ public class AuthPageController : MonoBehaviour
             $"Email: {signInResponse.user.email}\n" +
             $"Role: {actualRole}"
         );
+
+        if (isAdminLogin)
+        {
+            if (!Application.CanStreamedLevelBeLoaded(AdminSceneName))
+            {
+                ShowLoginMessage(
+                    T(
+                        $"Scene {AdminSceneName} has not been added to Build Profiles.",
+                        $"Scene {AdminSceneName} chưa được thêm vào Build Profiles."),
+                    AuthMessageType.Error
+                );
+
+                yield break;
+            }
+
+            SceneManager.LoadScene(AdminSceneName);
+            yield break;
+        }
 
         if (!Application.CanStreamedLevelBeLoaded(MainHomeSceneName))
         {
@@ -727,13 +793,10 @@ public class AuthPageController : MonoBehaviour
             return;
         }
 
-        if (password.Length < 6)
+        if (!PasswordPolicy.IsValid(password))
         {
-            ShowRegisterMessage(
-                T("Password must contain at least 6 characters.", "Mật khẩu phải có ít nhất 6 ký tự."),
-                AuthMessageType.Error
-            );
-
+            ShowRegisterMessage(PasswordPolicy.ErrorMessage(password), AuthMessageType.Error);
+            UpdateRegisterPasswordRules();
             registerPasswordField?.Focus();
             return;
         }
@@ -756,15 +819,15 @@ public class AuthPageController : MonoBehaviour
     {
         SetRegisterLoading(true);
 
-        SupabaseAuthResponse signUpResponse = null;
+        SignUpOutcome outcome = null;
         string signUpError = null;
 
-        yield return SupabaseAuthService.SignUp(
+        yield return SupabaseAuthService.SignUpWithVerification(
             fullName,
             email,
             password,
             role,
-            response => signUpResponse = response,
+            value => outcome = value,
             error => signUpError = error
         );
 
@@ -773,35 +836,75 @@ public class AuthPageController : MonoBehaviour
         if (!string.IsNullOrWhiteSpace(signUpError))
         {
             Debug.LogError($"Supabase sign-up failed: {signUpError}");
-
-            ShowRegisterMessage(
-                TranslateSignUpError(signUpError),
-                AuthMessageType.Error
-            );
-
+            ShowRegisterMessage(TranslateSignUpError(signUpError), AuthMessageType.Error);
             yield break;
         }
 
-        if (signUpResponse?.user == null)
+        if (outcome == null)
         {
             ShowRegisterMessage(
                 T("No account information was returned by Supabase.", "Không nhận được thông tin tài khoản từ Supabase."),
-                AuthMessageType.Error
-            );
-
+                AuthMessageType.Error);
             yield break;
         }
 
-        Debug.Log(
-            "Đăng ký thành công\n" +
-            $"User ID: {signUpResponse.user.id}\n" +
-            $"Email: {signUpResponse.user.email}\n" +
-            $"Role: {role}"
-        );
+        if (outcome.AlreadyRegistered)
+        {
+            ShowRegisterMessage(
+                T("This email is already registered. Please sign in instead.", "Email này đã được đăng ký. Vui lòng đăng nhập."),
+                AuthMessageType.Error);
+            registerEmailField?.Focus();
+            yield break;
+        }
 
-        // Sau đăng ký, không giữ session signup.
+        pendingVerificationRole = role;
+
+        if (outcome.NeedsVerification)
+        {
+            // Step 2: confirm the email with the 6-digit code Supabase just sent.
+            Debug.Log($"Sign-up created, waiting for email verification: {email}");
+            passwordRecoveryFlow?.OpenSignupVerification(email, false, OnSignupEmailVerified, OnSignupVerificationCancelled);
+            yield break;
+        }
+
+        // "Confirm email" is disabled in Supabase → the account is already active.
+        Debug.LogWarning(
+            "[Auth] Supabase returned a session on sign-up: enable Authentication → Email → 'Confirm email' " +
+            "so new accounts must verify their email.");
+        FinishRegistration(email, T(
+            "Account created successfully. Please enter your password to sign in.",
+            "Đăng ký thành công. Vui lòng nhập mật khẩu để đăng nhập."));
+    }
+
+    private string pendingVerificationRole = "student";
+
+    private void OnSignupEmailVerified(SupabaseAuthResponse response)
+    {
+        string email = response?.user?.email ?? loginEmailField?.value ?? string.Empty;
+        FinishRegistration(email, T(
+            "Email verified! Your account is active. Please sign in.",
+            "Xác thực email thành công! Tài khoản đã được kích hoạt, vui lòng đăng nhập."));
+    }
+
+    private void OnSignupVerificationCancelled()
+    {
+        ShowRegisterTab();
+        ShowRegisterMessage(
+            T("Your email is not verified yet. You can verify it later when you sign in.",
+              "Email chưa được xác thực. Bạn có thể xác thực sau khi đăng nhập."),
+            AuthMessageType.Error);
+    }
+
+    private void OnLoginVerificationCancelled()
+    {
+        ShowLoginTab();
+    }
+
+    /// <summary>After sign-up (and email verification) go to the Login tab with the email filled in.</summary>
+    private void FinishRegistration(string email, string message)
+    {
+        // Never keep the sign-up / verification session: the user signs in normally.
         SupabaseSession.Clear();
-
 
         if (loginEmailField != null)
             loginEmailField.value = email;
@@ -809,7 +912,7 @@ public class AuthPageController : MonoBehaviour
         if (loginPasswordField != null)
             loginPasswordField.value = string.Empty;
 
-        if (role == "teacher")
+        if (pendingVerificationRole == "teacher")
             SelectLoginTeacher();
         else
             SelectLoginStudent();
@@ -817,16 +920,10 @@ public class AuthPageController : MonoBehaviour
         if (registerNameField != null) registerNameField.value = string.Empty;
         if (registerEmailField != null) registerEmailField.value = string.Empty;
         if (registerPasswordField != null) registerPasswordField.value = string.Empty;
+        UpdateRegisterPasswordRules();
 
         ShowLoginTab();
-
-        ShowLoginMessage(
-            T(
-                "Account created successfully. Please enter your password to sign in.",
-                "Đăng ký thành công. Vui lòng nhập mật khẩu để đăng nhập."),
-            AuthMessageType.Success
-        );
-
+        ShowLoginMessage(message, AuthMessageType.Success);
         loginPasswordField?.Focus();
     }
 
@@ -1023,7 +1120,8 @@ public class AuthPageController : MonoBehaviour
         }
 
         if (lowerError.Contains("password"))
-            return T("The password does not meet the system requirements.", "Mật khẩu không đáp ứng yêu cầu của hệ thống.");
+            return T("Password needs at least 8 characters, 1 uppercase letter, and both letters and numbers.",
+                     "Mật khẩu cần ít nhất 8 ký tự, có chữ in hoa, có cả chữ và số.");
 
         if (lowerError.Contains("rate limit") ||
             lowerError.Contains("too many requests"))
@@ -1076,6 +1174,75 @@ public class AuthPageController : MonoBehaviour
     private void OpenForgotPassword()
     {
         passwordRecoveryFlow?.Open(loginEmailField?.value ?? string.Empty);
+    }
+
+    // ---------------------------------------------------------------
+    // Register password checklist (8+ characters, uppercase, letters + numbers)
+    // ---------------------------------------------------------------
+
+    private void BuildRegisterPasswordRules()
+    {
+        if (registerPasswordContainer?.parent == null || registerPasswordRules != null)
+            return;
+
+        registerPasswordRules = new VisualElement { name = "register-password-rules" };
+        registerPasswordRules.AddToClassList("password-rules-card");
+        registerPasswordRules.style.marginTop = 0;
+        registerPasswordRules.style.marginBottom = 14;
+
+        ruleLengthRow = CreateRuleRow(false);
+        ruleUppercaseRow = CreateRuleRow(true);
+        ruleLettersNumbersRow = CreateRuleRow(false);
+        registerPasswordRules.Add(ruleLengthRow);
+        registerPasswordRules.Add(ruleUppercaseRow);
+        registerPasswordRules.Add(ruleLettersNumbersRow);
+
+        VisualElement parent = registerPasswordContainer.parent;
+        parent.Insert(parent.IndexOf(registerPasswordContainer) + 1, registerPasswordRules);
+        UpdateRegisterPasswordRules();
+    }
+
+    private static VisualElement CreateRuleRow(bool right)
+    {
+        VisualElement row = new VisualElement();
+        row.AddToClassList("password-rule");
+        if (right) row.AddToClassList("password-rule-right");
+
+        Label icon = new Label("○");
+        icon.AddToClassList("password-rule-icon");
+        row.Add(icon);
+
+        Label text = new Label();
+        text.AddToClassList("password-rule-text");
+        text.style.fontSize = 12;
+        row.Add(text);
+        return row;
+    }
+
+    private void OnRegisterPasswordChanged(ChangeEvent<string> evt)
+    {
+        UpdateRegisterPasswordRules();
+    }
+
+    private void UpdateRegisterPasswordRules()
+    {
+        if (registerPasswordRules == null)
+            return;
+
+        PasswordPolicy.Result result = PasswordPolicy.Evaluate(registerPasswordField?.value);
+        SetRule(ruleLengthRow, PasswordPolicy.RuleLengthText, result.HasLength);
+        SetRule(ruleUppercaseRow, PasswordPolicy.RuleUppercaseText, result.HasUppercase);
+        SetRule(ruleLettersNumbersRow, PasswordPolicy.RuleLettersNumbersText, result.HasLettersAndNumbers);
+    }
+
+    private static void SetRule(VisualElement row, string text, bool valid)
+    {
+        if (row == null) return;
+        row.EnableInClassList("password-rule--valid", valid);
+        Label icon = row.Q<Label>(className: "password-rule-icon");
+        if (icon != null) icon.text = valid ? "✓" : "○";
+        Label label = row.Q<Label>(className: "password-rule-text");
+        if (label != null) label.text = text;
     }
 
     private void ReturnFromPasswordRecovery(string recoveredEmail)

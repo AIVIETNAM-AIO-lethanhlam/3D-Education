@@ -10,6 +10,18 @@ public class SplashPageController : MonoBehaviour
     [SerializeField]
     private string nextSceneName = "HomeScene";
 
+    [Tooltip("Scene opened when a saved login session is still valid (auto-login).")]
+    [SerializeField]
+    private string loggedInSceneName = "MainHomeScene";
+
+    [Tooltip("Maximum seconds to wait for the auto-login token refresh.")]
+    [SerializeField]
+    [Min(1f)]
+    private float autoLoginTimeout = 8f;
+
+    private bool autoLoginFinished;
+    private bool autoLoginSucceeded;
+
     [Header("Splash Configuration")]
     [SerializeField]
     [Min(0.1f)]
@@ -107,13 +119,42 @@ public class SplashPageController : MonoBehaviour
         /*
          * Bắt đầu tải HomeScene sau khi Splash đã hiển thị.
          */
+        /*
+         * Auto-login: if a remembered session exists, refresh the token
+         * while the splash animation runs and open MainHomeScene directly.
+         */
+        autoLoginFinished = false;
+        autoLoginSucceeded = false;
+        StartCoroutine(TryAutoLogin());
+
+        float waitStart = Time.unscaledTime;
+        while (!autoLoginFinished &&
+               Time.unscaledTime - waitStart < autoLoginTimeout)
+        {
+            UpdateLoadingDots(Time.unscaledTime - waitStart);
+            yield return null;
+        }
+
+        // Admin accounts open the admin dashboard instead of MainHomeScene.
+        string loggedInTarget =
+            SupabaseSession.IsAdmin && Application.CanStreamedLevelBeLoaded("AdminScene")
+                ? "AdminScene"
+                : loggedInSceneName;
+
+        string targetScene =
+            autoLoginSucceeded &&
+            !string.IsNullOrWhiteSpace(loggedInTarget) &&
+            Application.CanStreamedLevelBeLoaded(loggedInTarget)
+                ? loggedInTarget
+                : nextSceneName;
+
         AsyncOperation loadOperation =
-            SceneManager.LoadSceneAsync(nextSceneName);
+            SceneManager.LoadSceneAsync(targetScene);
 
         if (loadOperation == null)
         {
             Debug.LogError(
-                $"Không thể tải Scene '{nextSceneName}'. " +
+                $"Không thể tải Scene '{targetScene}'. " +
                 "Hãy kiểm tra Build Profiles."
             );
 
@@ -157,6 +198,45 @@ public class SplashPageController : MonoBehaviour
         }
 
         loadOperation.allowSceneActivation = true;
+    }
+
+    private IEnumerator TryAutoLogin()
+    {
+        bool rememberLogin =
+            PlayerPrefs.GetInt("remember_login", 1) == 1;
+
+        if (!rememberLogin || !SupabaseSession.HasStoredSession)
+        {
+            autoLoginFinished = true;
+            yield break;
+        }
+
+        bool refreshed = false;
+        yield return SupabaseTokenRefresher.RefreshSession(
+            value => refreshed = value);
+
+        if (!refreshed)
+        {
+            // A rejected refresh token means the session was revoked/expired.
+            if (SupabaseTokenRefresher.LastRefreshWasRejected)
+                SupabaseSession.Clear();
+
+            autoLoginFinished = true;
+            yield break;
+        }
+
+        // Reload the profile so the cached role/name are up to date.
+        SupabaseProfile profile = null;
+        yield return SupabaseProfileService.GetCurrentProfile(
+            value => profile = value,
+            _ => { });
+
+        autoLoginSucceeded = SupabaseSession.IsLoggedIn;
+        autoLoginFinished = true;
+
+        Debug.Log(autoLoginSucceeded
+            ? $"[Splash] Auto-login OK. Role: {SupabaseSession.Role}"
+            : "[Splash] Auto-login skipped.");
     }
 
     private void UpdateProgressBar(float progress)

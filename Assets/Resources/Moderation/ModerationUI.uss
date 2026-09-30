@@ -1,0 +1,233 @@
+/* Shared styles for report sheets / report buttons (2026-09).
+   Loaded at runtime with Resources.Load<StyleSheet>("Moderation/ModerationUI"). */
+
+.mod-overlay {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.45);
+    justify-content: flex-end;
+}
+
+.mod-sheet {
+    background-color: rgb(255, 255, 255);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    padding: 10px 20px 30px 20px;
+    max-height: 88%;
+}
+
+.mod-sheet-handle {
+    width: 40px;
+    height: 4px;
+    align-self: center;
+    margin-bottom: 12px;
+    border-radius: 2px;
+    background-color: rgb(216, 225, 240);
+}
+
+.mod-title {
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: rgb(10, 31, 70);
+    white-space: normal;
+    margin-bottom: 4px;
+}
+
+.mod-description {
+    font-size: 13px;
+    color: rgb(92, 107, 142);
+    white-space: normal;
+    margin-bottom: 12px;
+}
+
+.mod-section-label {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgb(92, 107, 142);
+    margin-top: 6px;
+    margin-bottom: 8px;
+}
+
+.mod-chip-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.mod-chip {
+    margin: 0 8px 8px 0;
+    padding: 7px 12px;
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 16px;
+    background-color: rgb(255, 255, 255);
+    font-size: 12px;
+    color: rgb(28, 46, 84);
+}
+
+.mod-chip--selected {
+    background-color: rgb(0, 70, 180);
+    border-color: rgb(0, 70, 180);
+    color: rgb(255, 255, 255);
+    -unity-font-style: bold;
+}
+
+.mod-radio {
+    flex-direction: row;
+    align-items: center;
+    margin: 0 0 8px 0;
+    padding: 11px 14px;
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 12px;
+    background-color: rgb(255, 255, 255);
+}
+
+.mod-radio--selected {
+    border-color: rgb(0, 70, 180);
+    background-color: rgb(236, 242, 251);
+}
+
+.mod-radio-dot {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    border-width: 2px;
+    border-color: rgb(177, 193, 220);
+    border-radius: 9px;
+    background-color: rgb(255, 255, 255);
+}
+
+.mod-radio--selected .mod-radio-dot {
+    border-width: 5px;
+    border-color: rgb(0, 70, 180);
+}
+
+.mod-radio-label {
+    flex-grow: 1;
+    flex-shrink: 1;
+    font-size: 14px;
+    color: rgb(10, 31, 70);
+    white-space: normal;
+}
+
+.mod-textfield {
+    margin: 4px 0 12px 0;
+}
+
+.mod-textfield .unity-text-field__input,
+.mod-textfield .unity-base-text-field__input {
+    min-height: 70px;
+    padding: 10px 12px;
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    border-radius: 12px;
+    background-color: rgb(247, 249, 253);
+    font-size: 13px;
+    color: rgb(10, 31, 70);
+    white-space: normal;
+    -unity-text-align: upper-left;
+}
+
+.mod-button-row {
+    flex-direction: row;
+    margin-top: 4px;
+}
+
+.mod-button {
+    flex-grow: 1;
+    height: 50px;
+    margin: 0;
+    border-width: 0;
+    border-radius: 25px;
+    font-size: 15px;
+    -unity-font-style: bold;
+}
+
+.mod-button--primary { background-color: rgb(0, 70, 180); color: rgb(255, 255, 255); }
+.mod-button--danger { background-color: rgb(217, 51, 64); color: rgb(255, 255, 255); }
+.mod-button--secondary {
+    background-color: rgb(255, 255, 255);
+    color: rgb(0, 70, 180);
+    border-width: 1px;
+    border-color: rgb(216, 225, 240);
+    margin-right: 10px;
+}
+
+.mod-button:disabled { opacity: 0.55; }
+
+.mod-status {
+    margin-top: 8px;
+    font-size: 12px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    color: rgb(92, 107, 142);
+}
+
+.mod-status--error { color: rgb(217, 51, 64); }
+
+.mod-toast {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 110px;
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background-color: rgb(26, 36, 61);
+}
+
+.mod-toast-icon {
+    width: 22px;
+    height: 22px;
+    margin-right: 10px;
+    background-image: url("project://database/Assets/UI/Images/Icons/check-white.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.mod-toast-label {
+    flex-shrink: 1;
+    font-size: 13px;
+    color: rgb(255, 255, 255);
+    white-space: normal;
+}
+
+/* Round report (flag) button added to existing page headers */
+.mod-report-button {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    margin: 0 0 0 8px;
+    padding: 0;
+    border-width: 0;
+    border-radius: 20px;
+    background-color: rgb(254, 236, 238);
+    align-items: center;
+    justify-content: center;
+}
+
+.mod-report-icon {
+    width: 20px;
+    height: 20px;
+    background-image: url("project://database/Assets/UI/Images/Icons/alert.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* Wide report button (e.g. inside Mode3D info panel) */
+.mod-report-wide {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    height: 46px;
+    margin: 12px 0 0 0;
+    border-width: 0;
+    border-radius: 14px;
+    background-color: rgb(254, 236, 238);
+    color: rgb(217, 51, 64);
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.mod-report-wide .mod-report-icon {
+    margin-right: 8px;
+}

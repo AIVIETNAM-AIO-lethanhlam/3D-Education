@@ -232,6 +232,7 @@ public class MyClassesPageController : MonoBehaviour
         courseIcon.AddToClassList($"icon-course-dynamic-{theme}");
         iconShell.Add(courseIcon);
         header.Add(iconShell);
+        ApplyCoverImage(data.cover_image_url, iconShell, courseIcon);
 
         VisualElement info = new VisualElement();
         info.AddToClassList("teacher-course-info");
@@ -294,9 +295,13 @@ public class MyClassesPageController : MonoBehaviour
 
         VisualElement stats = new VisualElement();
         stats.AddToClassList("teacher-stats-row");
-        stats.Add(CreateStatBox("icon-stat-students", "0", T("Students", "Học sinh")));
-        stats.Add(CreateStatBox("icon-stat-modules", "0", T("Active Modules", "Học phần")));
-        stats.Add(CreateStatBox("icon-stat-score", "0%", T("Avg Score", "Điểm TB")));
+        string studentsText = Mathf.Max(0, data.student_count).ToString();
+        if (data.pending_count > 0)
+            studentsText += $" (+{data.pending_count})";
+
+        stats.Add(CreateStatBox("icon-stat-students", studentsText, T("Students", "Học sinh")));
+        stats.Add(CreateStatBox("icon-stat-modules", Mathf.Max(0, data.active_module_count).ToString(), T("Active Modules", "Học phần")));
+        stats.Add(CreateStatBox("icon-stat-score", $"{Mathf.RoundToInt(Mathf.Clamp(data.average_score, 0f, 100f))}%", T("Avg Score", "Điểm TB")));
         card.Add(stats);
 
         VisualElement divider = new VisualElement();
@@ -316,6 +321,24 @@ public class MyClassesPageController : MonoBehaviour
         card.Add(manageButton);
 
         return card;
+    }
+
+    /// <summary>Shows the uploaded class cover (if any) instead of the theme icon.</summary>
+    private void ApplyCoverImage(string coverUrl, VisualElement iconShell, VisualElement courseIcon)
+    {
+        if (string.IsNullOrWhiteSpace(coverUrl) || iconShell == null)
+            return;
+
+        StartCoroutine(SupabaseCoverStorageService.LoadCover(coverUrl, texture =>
+        {
+            if (iconShell.panel == null)
+                return;
+
+            iconShell.style.backgroundImage = new StyleBackground(texture);
+            iconShell.style.backgroundSize = new BackgroundSize(BackgroundSizeType.Cover);
+            if (courseIcon != null)
+                courseIcon.style.display = DisplayStyle.None;
+        }));
     }
 
     private static VisualElement CreateStatBox(
@@ -645,6 +668,31 @@ public class MyClassesPageController : MonoBehaviour
             );
         }
 
+        // Real progress = completed published lessons / published lessons,
+        // computed by student_enrolled_classes_view from lesson_progress.
+        string progressJson = null;
+        yield return SupabaseRestService.Get(
+            "student_enrolled_classes_view?select=class_id,progress_percent",
+            json => progressJson = json,
+            error => Debug.LogWarning("[MyClasses] Không tải được tiến độ: " + error)
+        );
+
+        if (!string.IsNullOrWhiteSpace(progressJson) &&
+            TryParseArray(progressJson, out StudentProgressRow[] progressRows, out _))
+        {
+            Dictionary<string, float> progressByClass =
+                new(StringComparer.OrdinalIgnoreCase);
+
+            foreach (StudentProgressRow row in progressRows)
+                if (row != null && !string.IsNullOrWhiteSpace(row.class_id))
+                    progressByClass[row.class_id] = row.progress_percent;
+
+            foreach (StudentEnrolledClass item in studentClasses)
+                if (item != null &&
+                    progressByClass.TryGetValue(item.class_id ?? string.Empty, out float value))
+                    item.progress_percent = value;
+        }
+
         Debug.Log(
             $"[MyClasses] Student classes built: " +
             $"{studentClasses.Count}"
@@ -791,6 +839,7 @@ public class MyClassesPageController : MonoBehaviour
             $"icon-course-dynamic-{theme}");
         iconShell.Add(courseIcon);
         header.Add(iconShell);
+        ApplyCoverImage(data.cover_image_url, iconShell, courseIcon);
 
         VisualElement info = new VisualElement();
         info.AddToClassList("student-course-info");
@@ -1321,6 +1370,13 @@ public class MyClassesPageController : MonoBehaviour
     private class ArrayWrapper<T>
     {
         public T[] items;
+    }
+
+    [Serializable]
+    private class StudentProgressRow
+    {
+        public string class_id;
+        public float progress_percent;
     }
 
     [Serializable]

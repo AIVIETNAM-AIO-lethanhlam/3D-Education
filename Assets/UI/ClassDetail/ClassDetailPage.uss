@@ -12,14 +12,17 @@
 .class-header {
     width: 100%;
     flex-shrink: 0;
-    padding-top: 24px; 
+    /* Same top spacing as GeneralHeader (54px fallback; the controller
+       applies max(54, safe-area top + 32) at runtime). */
+    padding-top: 54px;
     padding-left: 20px;
     padding-right: 20px;
     padding-bottom: 17px;
     background-color: rgb(25, 91, 207);
 }
 
-.safe-top-space { height: 24px; }
+/* Top spacing now lives in .class-header padding-top (GeneralHeader contract). */
+.safe-top-space { height: 0; }
 
 .header-navigation {
     min-height: 50px;
@@ -312,10 +315,17 @@
     background-color: rgb(247, 249, 253);
 }
 
-.content-scroll-view .unity-scroll-view__vertical-scroller,
-.content-scroll-view .unity-scroller--vertical {
+.fixed-content-host {
     display: none;
-    width: 0;
+    flex-grow: 1;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+    background-color: rgb(247, 249, 253);
+}
+
+.syllabus-content, .labs-content, .student-list-content {
+    flex-shrink: 0;
 }
 
 .syllabus-content {
@@ -1227,4 +1237,135 @@
     color: white;
     font-size: 11px;
     -unity-font-style: bold;
+}
+
+
+/* ===== Join requests (teacher, 2026-09) ===== */
+.join-request-section-label {
+    margin-top: 4px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: rgb(126, 139, 162);
+    -unity-font-style: bold;
+}
+
+.join-request-card {
+    border-color: rgb(250, 204, 120);
+    background-color: rgb(255, 250, 238);
+}
+
+.join-request-actions {
+    flex-direction: column;
+    align-items: stretch;
+    margin-left: 8px;
+}
+
+.join-request-approve-button,
+.join-request-reject-button {
+    height: 28px;
+    min-width: 76px;
+    margin: 2px 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-width: 0;
+    border-radius: 14px;
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+.join-request-approve-button {
+    background-color: rgb(25, 91, 207);
+    color: white;
+}
+
+.join-request-reject-button {
+    background-color: rgb(238, 241, 247);
+    color: rgb(190, 49, 68);
+}
+
+/* ===== Lesson draft / publish (teacher, 2026-09) ===== */
+.lesson-draft-badge {
+    background-color: rgb(255, 243, 214);
+    color: rgb(166, 102, 0);
+}
+
+.lesson-publish-toggle {
+    height: 26px;
+    min-width: 54px;
+    margin-right: 4px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-width: 0;
+    border-radius: 13px;
+    background-color: rgb(238, 241, 247);
+    color: rgb(31, 51, 88);
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+.lesson-publish-toggle-draft {
+    background-color: rgb(25, 91, 207);
+    color: white;
+}
+
+/* ===== 3D model structure status (2026-09) ===== */
+.model-detail-status {
+    margin-top: 3px;
+    font-size: 10px;
+    color: rgb(126, 139, 162);
+    white-space: normal;
+}
+
+.model-detail-status-generated { color: rgb(22, 138, 83); }
+.model-detail-status-processing { color: rgb(166, 102, 0); }
+.model-detail-status-failed { color: rgb(190, 49, 68); }
+
+.model-analyze-button {
+    align-self: flex-start;
+    height: 24px;
+    margin-top: 4px;
+    margin-left: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-width: 0;
+    border-radius: 12px;
+    background-color: rgb(232, 240, 255);
+    color: rgb(27, 92, 207);
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+/* ===== Reported lesson under admin review (teacher, 2026-09) ===== */
+.lesson-moderation-row {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.lesson-moderation-badge {
+    background-color: rgb(242, 237, 255);
+    color: rgb(115, 64, 204);
+    margin-right: 6px;
+}
+
+.lesson-explain-button {
+    height: 22px;
+    margin: 2px 0 0 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-width: 0;
+    border-radius: 11px;
+    background-color: rgb(115, 64, 204);
+    color: rgb(255, 255, 255);
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+/* Hide the scrollbar of the main content (touch scrolling still works). */
+.content-scroll-view .unity-scroll-view__vertical-scroller,
+.content-scroll-view .unity-scroll-view__horizontal-scroller {
+    display: none;
+    width: 0;
+    height: 0;
 }

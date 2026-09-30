@@ -1370,52 +1370,165 @@ public class CreateLessonPageController : MonoBehaviour
         }
     }
 
+    private bool isGeneratingWithAi;
+
     private void HandleGenerateWithAi()
     {
         string title = lessonTitleField?.value?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(title))
         {
-            SetLabel(detailsErrorLabel, "Enter a lesson title before generating content.");
+            SetLabel(detailsErrorLabel, T("Enter a lesson title before generating content.", "Nhập tên bài học trước khi tạo nội dung."));
             return;
         }
 
+        if (isGeneratingWithAi)
+            return;
+
+        StartCoroutine(GenerateLessonContentRoutine(title));
+    }
+
+    /// <summary>
+    /// Calls the generate-lesson-content Edge Function (Gemini) to draft the
+    /// description and learning objectives. Falls back to the local template
+    /// when the AI service is unavailable.
+    /// </summary>
+    private IEnumerator GenerateLessonContentRoutine(string title)
+    {
         // Read the current SettingScene language at the exact moment the user
-        // generates content. This prevents content generated in an older
-        // language from being kept after the application language changes.
+        // generates content.
         bool generateInVietnamese = AppLanguageManager.IsVietnamese;
 
-        string generatedDescription = generateInVietnamese
-            ? $"Bài học giới thiệu {title}, giải thích các khái niệm cốt lõi và hướng dẫn học sinh thực hành trước khi tự vận dụng."
-            : $"This lesson introduces {title}, explains the core concepts, and gives students guided practice before applying the topic independently.";
+        isGeneratingWithAi = true;
+        generateAiButton?.SetEnabled(false);
+        SetLabel(detailsErrorLabel, T("Generating with AI...", "Đang tạo nội dung bằng AI..."));
 
-        string[] generatedObjectives = generateInVietnamese
-            ? new[]
+        yield return SupabaseTokenRefresher.EnsureFreshToken();
+
+        string chapterTitle = PlayerPrefs.GetString("selected_chapter_title", string.Empty);
+        string body =
+            "{\"title\":\"" + EscapeJsonForAi(title) + "\"," +
+            "\"chapter_title\":\"" + EscapeJsonForAi(chapterTitle) + "\"," +
+            "\"language\":\"" + (generateInVietnamese ? "vi" : "en") + "\"," +
+            "\"objective_count\":3}";
+
+        string description = null;
+        List<string> objectives = null;
+        string error = null;
+
+        using (UnityWebRequest request = new UnityWebRequest(
+                   SupabaseConfig.FunctionsUrl + "/generate-lesson-content",
+                   UnityWebRequest.kHttpVerbPOST))
+        {
+            request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(body));
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.timeout = 60;
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.SetRequestHeader("apikey", SupabaseConfig.PublishableKey);
+            request.SetRequestHeader("Authorization", "Bearer " + SupabaseSession.AccessToken);
+
+            yield return request.SendWebRequest();
+
+            string text = request.downloadHandler?.text ?? string.Empty;
+            GeneratedLessonContent response = null;
+            try
             {
-                $"Giải thích các khái niệm cơ bản của {title}",
-                $"Vận dụng các nguyên lý chính của {title} trong hoạt động thực hành"
+                if (!string.IsNullOrWhiteSpace(text))
+                    response = JsonUtility.FromJson<GeneratedLessonContent>(text);
             }
-            : new[]
+            catch (Exception exception)
             {
-                $"Explain the fundamental concepts of {title}",
-                $"Apply the main principles of {title} in a practical activity"
-            };
+                error = exception.Message;
+            }
 
-        // Pressing the AI button means regenerate. Always replace the previous
-        // generated description/objectives so stale English text cannot remain
-        // when SettingScene is currently Vietnamese (and vice versa).
+            if (request.result == UnityWebRequest.Result.Success &&
+                response != null && response.success &&
+                !string.IsNullOrWhiteSpace(response.description))
+            {
+                description = response.description.Trim();
+                objectives = new List<string>();
+                if (response.objectives != null)
+                {
+                    foreach (string objective in response.objectives)
+                        if (!string.IsNullOrWhiteSpace(objective))
+                            objectives.Add(objective.Trim());
+                }
+            }
+            else
+            {
+                error = response?.error ?? error ?? request.error ?? ("HTTP " + request.responseCode);
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(description) || objectives == null || objectives.Count == 0)
+        {
+            Debug.LogWarning("[CreateLesson] AI generation failed, using template: " + error);
+            BuildTemplateLessonContent(title, generateInVietnamese, out description, out objectives);
+            SetLabel(detailsErrorLabel, T(
+                "AI is busy right now, a template was filled in. You can edit it or try again.",
+                "AI đang bận, đã điền nội dung mẫu. Bạn có thể sửa hoặc thử lại."));
+        }
+        else
+        {
+            ClearLabel(detailsErrorLabel);
+        }
+
+        // Pressing the AI button means regenerate: always replace the previous content.
         if (lessonDescriptionField != null)
-            lessonDescriptionField.value = generatedDescription;
+            lessonDescriptionField.value = description;
 
         objectivesContainer?.Clear();
         objectiveFields.Clear();
 
-        foreach (string generatedObjective in generatedObjectives)
+        foreach (string generatedObjective in objectives)
         {
             AddObjective();
             objectiveFields[^1].SetValueWithoutNotify(generatedObjective);
         }
 
-        ClearLabel(detailsErrorLabel);
+        isGeneratingWithAi = false;
+        generateAiButton?.SetEnabled(true);
+    }
+
+    private static void BuildTemplateLessonContent(
+        string title,
+        bool vietnamese,
+        out string description,
+        out List<string> objectives)
+    {
+        description = vietnamese
+            ? $"Bài học giới thiệu {title}, giải thích các khái niệm cốt lõi và hướng dẫn học sinh thực hành trước khi tự vận dụng."
+            : $"This lesson introduces {title}, explains the core concepts, and gives students guided practice before applying the topic independently.";
+
+        objectives = vietnamese
+            ? new List<string>
+            {
+                $"Giải thích các khái niệm cơ bản của {title}",
+                $"Vận dụng các nguyên lý chính của {title} trong hoạt động thực hành"
+            }
+            : new List<string>
+            {
+                $"Explain the fundamental concepts of {title}",
+                $"Apply the main principles of {title} in a practical activity"
+            };
+    }
+
+    private static string EscapeJsonForAi(string value)
+    {
+        return (value ?? string.Empty)
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("\n", " ")
+            .Replace("\r", " ")
+            .Replace("\t", " ");
+    }
+
+    [Serializable]
+    private class GeneratedLessonContent
+    {
+        public bool success;
+        public string description;
+        public string[] objectives;
+        public string error;
     }
 
     private void PickDocuments()
@@ -2164,6 +2277,10 @@ public class CreateLessonPageController : MonoBehaviour
 
             existingQuizId = quizResult.quiz_id;
 
+            yield return RestoreQuizPdfDisplayNameRoutine(
+                quizResult.lesson_asset_id,
+                selectedExercisePath);
+
             Debug.Log(
                 "[CreateLessonPageController] Quiz update pipeline completed. " +
                 $"Quiz ID: {quizResult.quiz_id}, " +
@@ -2550,6 +2667,10 @@ public class CreateLessonPageController : MonoBehaviour
 
             completedUploads++;
 
+            yield return RestoreQuizPdfDisplayNameRoutine(
+                quizResult.lesson_asset_id,
+                selectedExercisePath);
+
             Debug.Log(
                 "[CreateLessonPageController] Quiz create pipeline completed. " +
                 $"Quiz ID: {quizResult.quiz_id}, " +
@@ -2646,6 +2767,36 @@ public class CreateLessonPageController : MonoBehaviour
 
         if (saveProgressLabel != null)
             saveProgressLabel.text = L(text);
+    }
+
+    // parse-quiz-pdf stores an ASCII-only file_name (Vietnamese letters become
+    // "_"). Restore the original, human-readable name for display; the R2
+    // storage_path is left untouched.
+    private IEnumerator RestoreQuizPdfDisplayNameRoutine(string assetId, string localPdfPath)
+    {
+        if (runtimeRestService == null ||
+            string.IsNullOrWhiteSpace(assetId) ||
+            string.IsNullOrWhiteSpace(localPdfPath))
+            yield break;
+
+        string originalName = Path.GetFileName(localPdfPath);
+        if (string.IsNullOrWhiteSpace(originalName))
+            yield break;
+
+        originalName = originalName.Normalize(System.Text.NormalizationForm.FormC);
+
+        string error = null;
+        yield return runtimeRestService.SendJson(
+            "PATCH",
+            $"rest/v1/lesson_assets?id=eq.{UnityWebRequest.EscapeURL(assetId)}",
+            JsonUtility.ToJson(new QuizPdfFileNamePatch { file_name = originalName }),
+            "return=minimal",
+            _ => { },
+            message => error = message
+        );
+
+        if (!string.IsNullOrWhiteSpace(error))
+            Debug.LogWarning("[CreateLessonPageController] Could not restore quiz PDF file name: " + error);
     }
 
     private void FailSaving(string message)
@@ -2804,3 +2955,9 @@ public class QuizDeadlineUpdatePayload
     public string closes_at;
 }
 #endregion
+
+[Serializable]
+public class QuizPdfFileNamePatch
+{
+    public string file_name;
+}

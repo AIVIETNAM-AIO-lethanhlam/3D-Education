@@ -109,6 +109,12 @@ public sealed class PasswordRecoveryFlow : IDisposable
     private float keyboardBaselineRootHeight;
     private int keyboardHiddenTicks;
 
+    // Sign-up email verification mode (2026-09): the verify-code form is reused
+    // to confirm a new account's email with the 6-digit code Supabase sends.
+    private bool signupMode;
+    private Action<SupabaseAuthResponse> signupVerified;
+    private Action signupCancelled;
+
     private int resendSecondsRemaining;
     private int verifyLockSecondsRemaining;
     private int failedVerifyAttempts;
@@ -192,6 +198,9 @@ public sealed class PasswordRecoveryFlow : IDisposable
         }
 
         ClearRecoveryState();
+        signupMode = false;
+        signupVerified = null;
+        signupCancelled = null;
 
         string normalizedEmail = NormalizeEmail(suggestedEmail);
         if (forgotEmailField != null)
@@ -202,6 +211,96 @@ public sealed class PasswordRecoveryFlow : IDisposable
         root.AddToClassList("recovery-active");
         SetStep(Step.ForgotPassword);
         forgotEmailField?.Focus();
+    }
+
+    /// <summary>
+    /// Shows the 6-digit code form to confirm a new account's email.
+    /// sendCodeNow = true requests a fresh code first (e.g. login of an unconfirmed account).
+    /// </summary>
+    public void OpenSignupVerification(
+        string email,
+        bool sendCodeNow,
+        Action<SupabaseAuthResponse> onVerified,
+        Action onCancelled)
+    {
+        if (!HasRequiredUi())
+        {
+            Debug.LogError("Verification UI is incomplete. Ensure AuthPage.uxml contains the verify-code form.");
+            return;
+        }
+
+        ClearRecoveryState();
+        signupMode = true;
+        signupVerified = onVerified;
+        signupCancelled = onCancelled;
+        recoveryEmail = NormalizeEmail(email);
+
+        if (maskedEmailLabel != null)
+            maskedEmailLabel.text = MaskEmail(recoveryEmail);
+
+        authLoginForm?.AddToClassList("form-hidden");
+        authRegisterForm?.AddToClassList("form-hidden");
+        root.AddToClassList("recovery-active");
+        ClearOtpFields();
+        SetStep(Step.VerifyCode);
+
+        if (sendCodeNow)
+        {
+            host.StartCoroutine(ResendSignupCodeCoroutine());
+        }
+        else
+        {
+            StartResendCooldown();
+            ShowMessage(
+                verifyMessageLabel,
+                L("Enter the code we emailed you to activate your account.",
+                  "Nhập mã đã gửi tới email để kích hoạt tài khoản."),
+                MessageType.Success);
+        }
+
+        otpFields[0]?.Focus();
+    }
+
+    private IEnumerator ResendSignupCodeCoroutine()
+    {
+        isSendingCode = true;
+        resendCodeButton?.SetEnabled(false);
+
+        string error = null;
+        bool success = false;
+        yield return SupabaseAuthService.ResendSignupCode(recoveryEmail, () => success = true, message => error = message);
+
+        isSendingCode = false;
+        resendCodeButton?.SetEnabled(true);
+
+        if (!success || !string.IsNullOrWhiteSpace(error))
+        {
+            ShowMessage(verifyMessageLabel, TranslateRecoverySendError(error), MessageType.Error);
+            UpdateResendButton();
+            yield break;
+        }
+
+        failedVerifyAttempts = 0;
+        verifyLockSecondsRemaining = 0;
+        ClearOtpFields();
+        StartResendCooldown();
+        ShowMessage(
+            verifyMessageLabel,
+            L("A new verification code has been sent.", "Mã xác minh mới đã được gửi."),
+            MessageType.Success);
+        otpFields[0]?.Focus();
+    }
+
+    private void CancelSignupVerification()
+    {
+        Action callback = signupCancelled;
+        root.RemoveFromClassList("recovery-active");
+        SetStep(Step.None);
+        ClearRecoveryState();
+        signupMode = false;
+        signupVerified = null;
+        signupCancelled = null;
+        callback?.Invoke();
     }
 
     public void ApplyLanguage()
@@ -462,6 +561,11 @@ public sealed class PasswordRecoveryFlow : IDisposable
                 break;
 
             case Step.VerifyCode:
+                if (signupMode)
+                {
+                    CancelSignupVerification();
+                    break;
+                }
                 SetStep(Step.ForgotPassword);
                 forgotEmailField?.Focus();
                 break;
@@ -684,11 +788,23 @@ public sealed class PasswordRecoveryFlow : IDisposable
         if (isSendingCode || resendSecondsRemaining > 0 || string.IsNullOrWhiteSpace(recoveryEmail))
             return;
 
+        if (signupMode)
+        {
+            host.StartCoroutine(ResendSignupCodeCoroutine());
+            return;
+        }
+
         host.StartCoroutine(SendRecoveryCodeCoroutine(recoveryEmail, true));
     }
 
     private void UseDifferentEmail()
     {
+        if (signupMode)
+        {
+            CancelSignupVerification();
+            return;
+        }
+
         recoveryAccessToken = string.Empty;
         ClearOtpFields();
         ClearMessage(verifyMessageLabel);
@@ -721,11 +837,22 @@ public sealed class PasswordRecoveryFlow : IDisposable
         SupabaseAuthResponse response = null;
         string error = null;
 
-        yield return SupabaseAuthService.VerifyRecoveryCode(
-            recoveryEmail,
-            code,
-            value => response = value,
-            message => error = message);
+        if (signupMode)
+        {
+            yield return SupabaseAuthService.VerifySignupCode(
+                recoveryEmail,
+                code,
+                value => response = value,
+                message => error = message);
+        }
+        else
+        {
+            yield return SupabaseAuthService.VerifyRecoveryCode(
+                recoveryEmail,
+                code,
+                value => response = value,
+                message => error = message);
+        }
 
         isVerifyingCode = false;
         SetButtonLoading(verifyCodeButton, false, L("Verify code", "Xác minh mã"));
@@ -755,6 +882,20 @@ public sealed class PasswordRecoveryFlow : IDisposable
 
             UpdateVerifyButtonState();
             otpFields[0]?.Focus();
+            yield break;
+        }
+
+        if (signupMode)
+        {
+            // Email confirmed: leave the verify form and hand the result to AuthPageController.
+            Action<SupabaseAuthResponse> callback = signupVerified;
+            root.RemoveFromClassList("recovery-active");
+            SetStep(Step.None);
+            ClearRecoveryState();
+            signupMode = false;
+            signupVerified = null;
+            signupCancelled = null;
+            callback?.Invoke(response);
             yield break;
         }
 
@@ -869,6 +1010,10 @@ public sealed class PasswordRecoveryFlow : IDisposable
         SetRuleState(ruleLowercase, rules.HasLowercase);
         SetRuleState(ruleNumber, rules.HasNumber);
         SetRuleState(ruleSpecial, rules.HasSpecial);
+
+        // Lowercase / special characters are no longer required (2026-09 password policy).
+        if (ruleLowercase != null) ruleLowercase.style.display = DisplayStyle.None;
+        if (ruleSpecial != null) ruleSpecial.style.display = DisplayStyle.None;
 
         bool hasConfirm = !string.IsNullOrEmpty(confirm);
         bool matches = hasConfirm && string.Equals(password, confirm, StringComparison.Ordinal);
@@ -1109,6 +1254,12 @@ public sealed class PasswordRecoveryFlow : IDisposable
         ClearMessage(forgotMessageLabel);
         ClearMessage(verifyMessageLabel);
         ClearMessage(resetMessageLabel);
+
+        // BUG-003: an interrupted request (screen closed while sending) must
+        // never leave the recovery inputs disabled for the next attempt.
+        forgotEmailField?.SetEnabled(true);
+        SetOtpEnabled(true);
+        SetResetInputsEnabled(true);
 
         SetInputState(forgotEmailContainer, false, false);
         SetInputState(newPasswordContainer, false, false);
@@ -1575,11 +1726,10 @@ public sealed class PasswordRecoveryFlow : IDisposable
         public bool HasNumber;
         public bool HasSpecial;
 
+        // Same rules as sign-up (PasswordPolicy): 8+ chars, 1 uppercase, letters and numbers.
         public bool AllValid =>
             HasLength &&
             HasUppercase &&
-            HasLowercase &&
-            HasNumber &&
-            HasSpecial;
+            HasNumber;
     }
 }

@@ -427,9 +427,17 @@ public class ChatPageController : MonoBehaviour
         localTypingState = false;
     }
 
+    // BUG-008: the keyboard probe makes several Android (JNI) calls; running it
+    // every frame added main-thread work while typing. 10 times per second is enough.
+    private float nextKeyboardLayoutTime;
+
     private void Update()
     {
-        UpdateKeyboardLayout();
+        if (Time.unscaledTime >= nextKeyboardLayoutTime)
+        {
+            nextKeyboardLayoutTime = Time.unscaledTime + 0.1f;
+            UpdateKeyboardLayout();
+        }
         MaybeLoadMoreGalleryImages();
         if (activeVoiceCall != null &&
             string.Equals(activeVoiceCall.status, "accepted", StringComparison.OrdinalIgnoreCase))
@@ -1705,7 +1713,7 @@ public class ChatPageController : MonoBehaviour
                 : T("Notifications On", "Đã bật thông báo");
         UpdateNotificationMenuVisual();
         if (reportProblemMenuLabel != null)
-            reportProblemMenuLabel.text = T("Report a Problem", "Báo cáo sự cố");
+            reportProblemMenuLabel.text = T("Report user", "Báo cáo người dùng");
 
         if (reportTitleLabel != null)
             reportTitleLabel.text = T("Report conversation?", "Báo cáo cuộc trò chuyện?");
@@ -3170,9 +3178,78 @@ public class ChatPageController : MonoBehaviour
             stateDot.style.display = notificationsMuted ? DisplayStyle.Flex : DisplayStyle.None;
     }
 
+    // ---- Report to Admin (2026-09): reason + optional description ----
+    private string selectedChatReportReason = "harassment";
+    private TextField chatReportDescriptionField;
+    private Label chatReportStatusLabel;
+    private bool chatReportSending;
+    private bool chatReportFormBuilt;
+
+    private void BuildChatReportForm()
+    {
+        if (chatReportFormBuilt || reportOverlay == null)
+            return;
+
+        VisualElement sheet = reportOverlay.Q<VisualElement>(className: "report-bottom-sheet");
+        VisualElement actions = sheet?.Q<VisualElement>(className: "report-actions-row");
+        if (sheet == null || actions == null)
+            return;
+
+        ModerationReportSheet.EnsureStyles(root);
+        int insertIndex = sheet.IndexOf(actions);
+
+        VisualElement form = new VisualElement { name = "chat-report-form" };
+        form.style.alignSelf = Align.Stretch;
+        form.style.marginBottom = 8;
+
+        List<VisualElement> radios = new List<VisualElement>();
+        foreach (string reason in SupabaseModerationService.ChatReasons)
+        {
+            string captured = reason;
+            VisualElement radio = ModerationReportSheet.CreateRadio(SupabaseModerationService.ChatReasonLabel(reason));
+            radio.RegisterCallback<ClickEvent>(_ =>
+            {
+                selectedChatReportReason = captured;
+                foreach (VisualElement r in radios) r.EnableInClassList("mod-radio--selected", r == radio);
+            });
+            radios.Add(radio);
+            form.Add(radio);
+        }
+        radios[0].AddToClassList("mod-radio--selected");
+
+        chatReportDescriptionField = new TextField { multiline = true, maxLength = 1000 };
+        chatReportDescriptionField.AddToClassList("mod-textfield");
+        chatReportDescriptionField.textEdition.placeholder = T(
+            "Describe what happened (optional)",
+            "Mô tả sự việc (không bắt buộc)");
+        form.Add(chatReportDescriptionField);
+
+        chatReportStatusLabel = new Label(string.Empty);
+        chatReportStatusLabel.AddToClassList("mod-status");
+        form.Add(chatReportStatusLabel);
+
+        sheet.Insert(insertIndex, form);
+        chatReportFormBuilt = true;
+    }
+
     private void HandleReportProblemMenuClicked()
     {
         SetMoreMenuVisible(false);
+        BuildChatReportForm();
+
+        if (reportTitleLabel != null)
+            reportTitleLabel.text = T("Report this user to Admin", "Báo cáo người dùng tới Admin");
+        if (reportDescriptionLabel != null)
+            reportDescriptionLabel.text = T(
+                "Admin will review the recent messages of this conversation and send a warning if there is a violation. The other person will not know who reported.",
+                "Admin sẽ xem các tin nhắn gần đây của cuộc trò chuyện và gửi cảnh cáo nếu có vi phạm. Người bị báo cáo không biết ai đã báo cáo.");
+        if (chatReportStatusLabel != null)
+        {
+            chatReportStatusLabel.text = string.Empty;
+            chatReportStatusLabel.RemoveFromClassList("mod-status--error");
+        }
+        reportConfirmButton?.SetEnabled(true);
+
         if (reportOverlay != null)
             reportOverlay.EnableInClassList("visible", true);
     }
@@ -3185,10 +3262,54 @@ public class ChatPageController : MonoBehaviour
 
     private void HandleReportConfirmClicked()
     {
-        // UI is complete; connect this callback to your report table/API later.
-        Debug.Log($"[ChatPageController] Report confirmed for conversation {conversationId}.");
-        if (reportOverlay != null)
-            reportOverlay.EnableInClassList("visible", false);
+        if (chatReportSending)
+            return;
+
+        if (!Guid.TryParse(conversationId, out _) || !Guid.TryParse(partnerUserId, out _))
+        {
+            if (chatReportStatusLabel != null)
+            {
+                chatReportStatusLabel.AddToClassList("mod-status--error");
+                chatReportStatusLabel.text = T("This conversation is not ready yet.", "Cuộc trò chuyện chưa sẵn sàng.");
+            }
+            return;
+        }
+
+        chatReportSending = true;
+        reportConfirmButton?.SetEnabled(false);
+        if (chatReportStatusLabel != null)
+        {
+            chatReportStatusLabel.RemoveFromClassList("mod-status--error");
+            chatReportStatusLabel.text = T("Sending...", "Đang gửi...");
+        }
+
+        // Messages are NOT hidden or deleted; the server stores a snapshot for the admin.
+        StartCoroutine(SupabaseModerationService.SubmitChatReport(
+            conversationId,
+            partnerUserId,
+            selectedChatReportReason,
+            chatReportDescriptionField?.value,
+            () =>
+            {
+                chatReportSending = false;
+                reportConfirmButton?.SetEnabled(true);
+                if (chatReportDescriptionField != null) chatReportDescriptionField.value = string.Empty;
+                if (reportOverlay != null)
+                    reportOverlay.EnableInClassList("visible", false);
+                ModerationReportSheet.ShowToast(root, this, T(
+                    "Report sent to Admin. You will be notified when it is handled.",
+                    "Đã gửi báo cáo tới Admin. Bạn sẽ nhận thông báo khi báo cáo được xử lý."));
+            },
+            error =>
+            {
+                chatReportSending = false;
+                reportConfirmButton?.SetEnabled(true);
+                if (chatReportStatusLabel != null)
+                {
+                    chatReportStatusLabel.AddToClassList("mod-status--error");
+                    chatReportStatusLabel.text = T("Cannot send report: ", "Không gửi được báo cáo: ") + error;
+                }
+            }));
     }
 
     private void HandleAttachmentClicked()

@@ -4,6 +4,7 @@
 
     <ui:VisualElement name="show-lesson-page" class="show-lesson-page">
         <ui:ScrollView name="lesson-scroll-view" class="lesson-scroll-view" mode="Vertical" horizontal-scroller-visibility="Hidden">
+            <ui:VisualElement name="lesson-page-content" class="lesson-page-content">
             <ui:VisualElement class="lesson-header">
                 <ui:Button name="back-button" class="circle-button header-back-button">
                     <ui:VisualElement class="button-icon icon-back"/>
@@ -84,7 +85,10 @@
                 </ui:Button>
                 <ui:VisualElement class="bottom-space"/>
             </ui:VisualElement>
+            </ui:VisualElement>
         </ui:ScrollView>
+
+        <ui:VisualElement name="fixed-lesson-host" class="fixed-lesson-host"/>
 
 
         <ui:VisualElement name="pdf-viewer-overlay" class="pdf-viewer-overlay hidden">

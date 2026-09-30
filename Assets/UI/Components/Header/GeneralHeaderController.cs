@@ -524,6 +524,12 @@ public class GeneralHeaderController : IDisposable
         ApplyResponsiveInsets();
     }
 
+    /// <summary>Shows/hides the red dot on the notification bell (unread notifications).</summary>
+    public void SetNotificationDotVisible(bool visible)
+    {
+        SetVisible(notificationDot, visible);
+    }
+
     public void SetCustomClass(
         string className,
         bool enabled = true)

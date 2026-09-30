@@ -39,15 +39,7 @@
             <ui:VisualElement class="board-shadow" />
             <ui:VisualElement class="glass-board">
                 <ui:VisualElement class="board-highlight" />
-                <ui:VisualElement class="marker marker-1">
-                    <ui:Label text="1" />
-                </ui:VisualElement>
-                <ui:VisualElement class="marker marker-2">
-                    <ui:Label text="2" />
-                </ui:VisualElement>
-                <ui:VisualElement class="marker marker-3">
-                    <ui:Label text="3" />
-                </ui:VisualElement>
+                <!-- BUG-017: decorative "1 / 2 / 3" markers from the prototype removed. -->
             </ui:VisualElement>
 
             <ui:VisualElement name="model-interaction-area"

@@ -225,6 +225,17 @@ public class VRPageController : MonoBehaviour
     private ScrollView aiChatMessages;
     private VisualElement aiChatMessageContainer;
     private TextField aiChatInput;
+
+    // BUG-010 / BUG-016: one AI request at a time; the input stays editable.
+    private bool isAwaitingAIChat;
+
+    // BUG-001: lift the AI chat above the Android soft keyboard.
+    private Coroutine aiChatKeyboardRoutine;
+    private float aiChatBaselineScreenHeight;
+    private bool aiChatKeyboardWasOpen;
+    private StyleEnum<Justify> aiChatOriginalJustify;
+    private StyleLength aiChatOriginalPaddingBottom;
+    private bool aiChatOriginalStyleSaved;
     private Label aiChatTyping;
     private Label aiChatContext;
 
@@ -423,6 +434,8 @@ public class VRPageController : MonoBehaviour
     private void OnDisable()
     {
         IsWorldInputBlocked = false;
+        isAwaitingAIChat = false;
+        StopAIChatKeyboardMonitor();
         detailInputStateCaptured = false;
 
         startupStabilizing = false;
@@ -3900,11 +3913,164 @@ public class VRPageController : MonoBehaviour
         if (fixedJoystickObject != null)
             fixedJoystickObject.SetActive(false);
 
+        StartAIChatKeyboardMonitor();
+
         aiChatInput?.Focus();
+    }
+
+    // =========================================================
+    // BUG-001: keep the AI chat composer above the soft keyboard
+    // =========================================================
+
+    private void StartAIChatKeyboardMonitor()
+    {
+        StopAIChatKeyboardMonitor();
+
+        if (aiChatOverlay != null)
+        {
+            // Remember the inline layout (the code-built overlay centres the panel inline).
+            aiChatOriginalJustify = aiChatOverlay.style.justifyContent;
+            aiChatOriginalPaddingBottom = aiChatOverlay.style.paddingBottom;
+            aiChatOriginalStyleSaved = true;
+        }
+
+        aiChatBaselineScreenHeight = Screen.height;
+        aiChatKeyboardWasOpen = false;
+        aiChatKeyboardRoutine = StartCoroutine(AIChatKeyboardMonitorRoutine());
+    }
+
+    private void StopAIChatKeyboardMonitor()
+    {
+        if (aiChatKeyboardRoutine != null)
+        {
+            StopCoroutine(aiChatKeyboardRoutine);
+            aiChatKeyboardRoutine = null;
+        }
+
+        aiChatKeyboardWasOpen = false;
+
+        if (aiChatOverlay != null && aiChatOriginalStyleSaved)
+        {
+            // Restore the original inline layout.
+            aiChatOverlay.style.justifyContent = aiChatOriginalJustify;
+            aiChatOverlay.style.paddingBottom = aiChatOriginalPaddingBottom;
+        }
+
+        if (aiChatPanel != null)
+            aiChatPanel.style.maxHeight = StyleKeyword.Null;
+    }
+
+    private IEnumerator AIChatKeyboardMonitorRoutine()
+    {
+        WaitForSecondsRealtime wait = new WaitForSecondsRealtime(0.1f);
+
+        while (aiChatOverlay != null &&
+               aiChatOverlay.style.display != DisplayStyle.None)
+        {
+            ApplyAIChatKeyboardInset();
+            yield return wait;
+        }
+
+        aiChatKeyboardRoutine = null;
+    }
+
+    private void ApplyAIChatKeyboardInset()
+    {
+        if (aiChatOverlay == null || root == null)
+            return;
+
+        float rootHeight = root.resolvedStyle.height;
+        if (rootHeight <= 0f || float.IsNaN(rootHeight))
+            return;
+
+        float inset = GetAIChatKeyboardOverlapFraction() * rootHeight;
+        bool open = inset > 1f;
+
+        if (open)
+        {
+            aiChatOverlay.style.justifyContent = Justify.FlexEnd;
+            aiChatOverlay.style.paddingBottom = inset + 8f;
+        }
+        else if (aiChatOriginalStyleSaved)
+        {
+            aiChatOverlay.style.justifyContent = aiChatOriginalJustify;
+            aiChatOverlay.style.paddingBottom = aiChatOriginalPaddingBottom;
+        }
+
+        if (aiChatPanel != null)
+        {
+            aiChatPanel.style.maxHeight = open
+                ? new StyleLength(Mathf.Max(160f, rootHeight - inset - 24f))
+                : new StyleLength(StyleKeyword.Null);
+        }
+
+        if (open && !aiChatKeyboardWasOpen && aiChatMessages != null)
+        {
+            aiChatMessages.schedule.Execute(() =>
+            {
+                aiChatMessages.scrollOffset =
+                    new Vector2(0f, aiChatMessages.verticalScroller.highValue);
+            }).ExecuteLater(60);
+        }
+
+        aiChatKeyboardWasOpen = open;
+    }
+
+    /// <summary>Fraction (0..1) of the Unity view height covered by the soft keyboard.</summary>
+    private float GetAIChatKeyboardOverlapFraction()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            using AndroidJavaClass unityPlayer =
+                new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+            using AndroidJavaObject activity =
+                unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+            using AndroidJavaObject window =
+                activity.Call<AndroidJavaObject>("getWindow");
+            using AndroidJavaObject decorView =
+                window.Call<AndroidJavaObject>("getDecorView");
+            using AndroidJavaObject visibleFrame =
+                new AndroidJavaObject("android.graphics.Rect");
+
+            decorView.Call("getWindowVisibleDisplayFrame", visibleFrame);
+
+            int decorHeight = decorView.Call<int>("getHeight");
+            int visibleBottom = visibleFrame.Get<int>("bottom");
+            float obscured = Mathf.Max(0, decorHeight - visibleBottom);
+
+            // Ignore the navigation / gesture bar.
+            if (decorHeight > 0 && obscured > decorHeight * 0.15f)
+            {
+                float obscuredFraction = obscured / decorHeight;
+
+                // If Android already shrank the Unity view (adjustResize),
+                // only the remaining part still overlaps the UI.
+                float viewFraction = aiChatBaselineScreenHeight > 0f
+                    ? Mathf.Clamp01(Screen.height / aiChatBaselineScreenHeight)
+                    : 1f;
+                float resizedFraction = 1f - viewFraction;
+                float overlap = Mathf.Max(0f, obscuredFraction - resizedFraction);
+                return viewFraction > 0.01f ? Mathf.Clamp01(overlap / viewFraction) : 0f;
+            }
+
+            return 0f;
+        }
+        catch (Exception)
+        {
+            // Fall back to TouchScreenKeyboard.area below.
+        }
+#endif
+        if (TouchScreenKeyboard.isSupported && TouchScreenKeyboard.visible)
+            return Mathf.Clamp01(TouchScreenKeyboard.area.height / Mathf.Max(1f, Screen.height));
+
+        return 0f;
     }
 
     private void CloseAIChat()
     {
+        StopAIChatKeyboardMonitor();
+
         if (aiChatOverlay != null)
         {
             if (!aiChatOverlay.ClassListContains(HiddenClass))
@@ -3945,7 +4111,7 @@ public class VRPageController : MonoBehaviour
 
     private void SendAIChatMessage()
     {
-        if (aiChatInput == null)
+        if (aiChatInput == null || isAwaitingAIChat)
             return;
 
         string userText =
@@ -3961,14 +4127,15 @@ public class VRPageController : MonoBehaviour
     private IEnumerator SendAIChatMessageRoutine(
         string userText)
     {
+        isAwaitingAIChat = true;
+
         if (sendAIChatButton != null)
             sendAIChatButton.SetEnabled(false);
 
+        // BUG-010: the input is no longer disabled while the AI answers
+        // (it looked "locked" for up to a minute); only sending is blocked.
         if (aiChatInput != null)
-        {
-            aiChatInput.SetEnabled(false);
             aiChatInput.value = string.Empty;
-        }
 
         AddAIChatBubble(
             userText,
@@ -4019,7 +4186,11 @@ public class VRPageController : MonoBehaviour
             bool retryable =
                 IsRetryableAIChatError(requestError);
 
-            if (!retryable || attempt >= maxAttempts)
+            // BUG-016: a quota / rate-limit error is not fixed by retrying
+            // within seconds; retrying only burns more quota.
+            if (!retryable ||
+                attempt >= maxAttempts ||
+                AIService.IsRateLimitError(requestError))
             {
                 break;
             }
@@ -4052,7 +4223,13 @@ public class VRPageController : MonoBehaviour
                 "[VRPageController] VR AI chat failed: " +
                 requestError);
 
-            if (!string.IsNullOrWhiteSpace(requestError) &&
+            if (AIService.IsRateLimitError(requestError))
+            {
+                answer =
+                    "Trợ lý AI đang tiếp nhận nhiều yêu cầu, " +
+                    "vui lòng thử lại sau khoảng 30 giây.";
+            }
+            else if (!string.IsNullOrWhiteSpace(requestError) &&
                 requestError.IndexOf(
                     "too long",
                     StringComparison.OrdinalIgnoreCase) >= 0)
@@ -4087,13 +4264,15 @@ public class VRPageController : MonoBehaviour
 
         if (sendAIChatButton != null)
             sendAIChatButton.SetEnabled(true);
+
+        isAwaitingAIChat = false;
     }
 
     private static bool IsRetryableAIChatError(
         string error)
     {
         if (string.IsNullOrWhiteSpace(error))
-            return true;
+            return false;
 
         string value = error.ToLowerInvariant();
 

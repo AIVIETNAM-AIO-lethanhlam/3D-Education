@@ -32,6 +32,8 @@ public class ClassDetailPageController : MonoBehaviour
     private VisualElement syllabusContent;
     private VisualElement labsContent;
     private VisualElement studentListContent;
+    private ScrollView contentScrollView;
+    private VisualElement fixedContentHost;
 
     private VisualElement studentCardList;
     private VisualElement studentListLoadingState;
@@ -80,6 +82,7 @@ public class ClassDetailPageController : MonoBehaviour
     private R2StorageService r2StorageService;
     private bool isCreatingChapter;
     private bool isTeacher;
+    private string teacherAverageScoreText = "--";
     private bool isEditMode;
     private Action modalConfirmAction;
 
@@ -90,6 +93,8 @@ public class ClassDetailPageController : MonoBehaviour
     private readonly List<ChapterData> chapters = new();
     private readonly List<Class3DModelData> class3DModels = new();
     private readonly List<ClassMemberStudent> enrolledStudents = new();
+    private readonly List<ClassMemberStudent> pendingRequests = new();
+    private bool isRespondingToRequest;
     private bool isLoading3DModels;
     private bool isLoadingStudents;
     private bool hasLoadedStudents;
@@ -182,6 +187,7 @@ public class ClassDetailPageController : MonoBehaviour
         root = uiDocument.rootVisualElement;
 
         CacheUIReferences();
+        SetupHeaderTopSpacing(root.Q<VisualElement>("class-header"));
 
         AppLanguageManager.LanguageChanged += OnLanguageChanged;
 
@@ -203,8 +209,68 @@ public class ClassDetailPageController : MonoBehaviour
         }
     }
 
+    // =========================================================
+    // HEADER TOP SPACING (same contract as GeneralHeaderController)
+    // USS fallback = 54px; at runtime: max(54, safe-area top + 32).
+    // =========================================================
+
+    private const float HeaderTopFallback = 54f;
+    private const float HeaderTopAfterSafeArea = 32f;
+    private VisualElement headerTopSpacingTarget;
+    private float lastHeaderTopPadding = float.NaN;
+
+    private void SetupHeaderTopSpacing(VisualElement header)
+    {
+        if (root == null)
+            return;
+
+        headerTopSpacingTarget = header;
+        lastHeaderTopPadding = float.NaN;
+        root.UnregisterCallback<GeometryChangedEvent>(OnHeaderRootGeometryChanged);
+        root.RegisterCallback<GeometryChangedEvent>(OnHeaderRootGeometryChanged);
+        ApplyHeaderTopSpacing();
+    }
+
+    private void TeardownHeaderTopSpacing()
+    {
+        if (root != null)
+            root.UnregisterCallback<GeometryChangedEvent>(OnHeaderRootGeometryChanged);
+    }
+
+    private void OnHeaderRootGeometryChanged(GeometryChangedEvent evt)
+    {
+        ApplyHeaderTopSpacing();
+    }
+
+    private void ApplyHeaderTopSpacing()
+    {
+        if (root == null || headerTopSpacingTarget == null)
+            return;
+
+        float panelHeight = root.resolvedStyle.height;
+        if (panelHeight <= 0f || float.IsNaN(panelHeight))
+            return;
+
+        float screenHeight = Mathf.Max(1f, Screen.height);
+        Rect safe = Screen.safeArea;
+
+        // Screen.safeArea is in screen pixels; USS padding uses panel pixels.
+        float topInset = Mathf.Max(0f,
+            (screenHeight - safe.yMax) / screenHeight * panelHeight);
+        float topPadding = Mathf.Max(
+            HeaderTopFallback, topInset + HeaderTopAfterSafeArea);
+
+        if (float.IsNaN(lastHeaderTopPadding) ||
+            Mathf.Abs(lastHeaderTopPadding - topPadding) > 0.25f)
+        {
+            headerTopSpacingTarget.style.paddingTop = topPadding;
+            lastHeaderTopPadding = topPadding;
+        }
+    }
+
     private void OnDisable()
     {
+        TeardownHeaderTopSpacing();
         AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         UnregisterEvents();
 
@@ -278,6 +344,9 @@ public class ClassDetailPageController : MonoBehaviour
 
         studentListContent =
             root.Q<VisualElement>("student-list-content");
+
+        contentScrollView = root.Q<ScrollView>("content-scroll-view");
+        fixedContentHost = root.Q<VisualElement>("fixed-content-host");
 
         studentCardList =
             root.Q<VisualElement>("student-card-list");
@@ -564,10 +633,11 @@ public class ClassDetailPageController : MonoBehaviour
 
     private void ConfigureContentScrolling()
     {
-        ScrollView scrollView = root.Q<ScrollView>("content-scroll-view");
+        ScrollView scrollView = contentScrollView;
         if (scrollView == null)
             return;
 
+        // Hide the vertical scrollbar; touch/drag scrolling still works.
         scrollView.verticalScrollerVisibility = ScrollerVisibility.Hidden;
         scrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
 
@@ -575,6 +645,49 @@ public class ClassDetailPageController : MonoBehaviour
         // chapters fit on screen. Clamped prevents this overscroll while
         // preserving normal scrolling when the lesson list is actually long.
         scrollView.touchScrollBehavior = ScrollView.TouchScrollBehavior.Clamped;
+
+        scrollView.scrollOffset = Vector2.zero;
+    }
+
+    private void LateUpdate()
+    {
+        UpdateContentHost();
+    }
+
+    private void UpdateContentHost()
+    {
+        if (contentScrollView == null || fixedContentHost == null)
+            return;
+
+        VisualElement active = !syllabusContent.ClassListContains(HiddenClass)
+            ? syllabusContent
+            : !labsContent.ClassListContains(HiddenClass)
+                ? labsContent : studentListContent;
+
+        bool isFixed = active.parent == fixedContentHost;
+        float viewportHeight = isFixed
+            ? fixedContentHost.layout.height
+            : contentScrollView.contentViewport.layout.height;
+        float contentHeight = active.layout.height;
+        if (float.IsNaN(viewportHeight) || float.IsNaN(contentHeight)
+            || viewportHeight <= 0f || contentHeight <= 0f)
+            return;
+
+        if (!isFixed && contentHeight <= viewportHeight - 2f)
+        {
+            // No ScrollView is involved while the tab fits on screen.
+            contentScrollView.scrollOffset = Vector2.zero;
+            fixedContentHost.Add(active);
+            fixedContentHost.style.display = DisplayStyle.Flex;
+            contentScrollView.style.display = DisplayStyle.None;
+        }
+        else if (isFixed && contentHeight > viewportHeight + 2f)
+        {
+            contentScrollView.contentContainer.Add(active);
+            contentScrollView.style.display = DisplayStyle.Flex;
+            fixedContentHost.style.display = DisplayStyle.None;
+            contentScrollView.scrollOffset = Vector2.zero;
+        }
     }
 
     // =========================================================
@@ -829,10 +942,15 @@ public class ClassDetailPageController : MonoBehaviour
         if (moduleCountLabel != null)
             moduleCountLabel.text = Mathf.Max(0, stats.lesson_count).ToString();
 
-        // Teachers always see the completed class score. A student's value is
-        // loaded from submitted quiz attempts after all class lessons are known.
+        // Teachers see the real class average from class_detail_stats_view
+        // (all submitted quiz attempts). A student's value is loaded from their
+        // own submitted quiz attempts after all class lessons are known.
+        teacherAverageScoreText = stats.has_average_score
+            ? $"{Mathf.RoundToInt(Mathf.Clamp(stats.average_score, 0f, 100f))}%"
+            : "--";
+
         if (averageScoreLabel != null && isTeacher)
-            averageScoreLabel.text = "100%";
+            averageScoreLabel.text = teacherAverageScoreText;
 
         // Students need the teacher user id to open the same direct conversation
         // and to display the unread-message badge on the teacher chat icon.
@@ -1191,6 +1309,9 @@ public class ClassDetailPageController : MonoBehaviour
         yield return Load3DModelsForCurrentClass();
     }
 
+    // Lesson ids with an open moderation case (teacher only, loaded once per scene).
+    private HashSet<string> openCaseLessonIds;
+
     private IEnumerator LoadLessonsForChapter(
         ChapterData chapter
     )
@@ -1244,6 +1365,21 @@ public class ClassDetailPageController : MonoBehaviour
         if (records == null)
             yield break;
 
+        // Lessons whose lesson / quiz / 3D model is waiting for the teacher's explanation (2026-09).
+        if (isTeacher && openCaseLessonIds == null)
+        {
+            HashSet<string> ids = new HashSet<string>();
+            yield return SupabaseModerationService.GetMyOpenCases(
+                cases =>
+                {
+                    if (cases == null) return;
+                    foreach (ModerationCaseRecord c in cases)
+                        if (c != null && !string.IsNullOrWhiteSpace(c.lesson_id)) ids.Add(c.lesson_id);
+                },
+                e => Debug.LogWarning("[ClassDetail] Cannot load moderation cases: " + e));
+            openCaseLessonIds = ids;
+        }
+
         foreach (LessonRecord record in records)
         {
             if (record == null ||
@@ -1260,7 +1396,12 @@ public class ClassDetailPageController : MonoBehaviour
                         ? "Untitled Lesson"
                         : record.title.Trim(),
                     IsComplete = false,
-                    Has3DContent = false
+                    Has3DContent = false,
+                    Status = string.IsNullOrWhiteSpace(record.status)
+                        ? "published"
+                        : record.status.Trim().ToLowerInvariant(),
+                    ModerationHidden = record.moderation_hidden ||
+                                       (openCaseLessonIds != null && openCaseLessonIds.Contains(record.id))
                 }
             );
         }
@@ -1591,6 +1732,34 @@ public class ClassDetailPageController : MonoBehaviour
             information.Add(badge);
         }
 
+        if (isTeacher && lesson.ModerationHidden)
+        {
+            // Reported by a student: hidden until the admin reviews the teacher's explanation.
+            VisualElement moderationRow = new();
+            moderationRow.AddToClassList("lesson-moderation-row");
+
+            Label moderationBadge = new(T("Reported · hidden from students", "Bị báo cáo · tạm ẩn với học sinh"));
+            moderationBadge.AddToClassList("lesson-badge");
+            moderationBadge.AddToClassList("lesson-moderation-badge");
+            moderationRow.Add(moderationBadge);
+
+            Button explainButton = new() { text = T("Explain", "Giải trình") };
+            explainButton.AddToClassList("lesson-explain-button");
+            explainButton.RegisterCallback<ClickEvent>(evt => evt.StopPropagation());
+            explainButton.clicked += () => SceneHistory.LoadScene("NotificationScene");
+            moderationRow.Add(explainButton);
+
+            information.Add(moderationRow);
+        }
+
+        if (isTeacher && !lesson.IsPublished)
+        {
+            Label draftBadge = new(T("Draft - hidden from students", "Bản nháp - học sinh chưa thấy"));
+            draftBadge.AddToClassList("lesson-badge");
+            draftBadge.AddToClassList("lesson-draft-badge");
+            information.Add(draftBadge);
+        }
+
         if (isTeacher)
             row.Add(dragHandle);
 
@@ -1616,6 +1785,21 @@ public class ClassDetailPageController : MonoBehaviour
                     () => ShowDeleteLessonModal(chapter, lesson)
                 );
 
+            Button publishButton = new()
+            {
+                text = lesson.IsPublished
+                    ? T("Hide", "Ẩn")
+                    : T("Publish", "Đăng")
+            };
+            publishButton.AddToClassList("lesson-publish-toggle");
+            publishButton.EnableInClassList("lesson-publish-toggle-draft", !lesson.IsPublished);
+            publishButton.tooltip = lesson.IsPublished
+                ? T("Move back to draft (students cannot see it)", "Chuyển về nháp (học sinh không thấy)")
+                : T("Publish this lesson to students", "Đăng bài học cho học sinh");
+            publishButton.clicked += () =>
+                StartCoroutine(ToggleLessonPublishRoutine(lesson, publishButton));
+
+            editActions.Add(publishButton);
             editActions.Add(editButton);
             editActions.Add(deleteButton);
             row.Add(editActions);
@@ -1628,6 +1812,37 @@ public class ClassDetailPageController : MonoBehaviour
         });
 
         return row;
+    }
+
+    private IEnumerator ToggleLessonPublishRoutine(
+        LessonData lesson,
+        Button button)
+    {
+        if (lesson == null || lessonService == null || !Guid.TryParse(lesson.Id, out _))
+            yield break;
+
+        string targetStatus = lesson.IsPublished ? "draft" : "published";
+        button?.SetEnabled(false);
+
+        string error = null;
+        yield return lessonService.UpdateLessonStatus(
+            lesson.Id,
+            targetStatus,
+            null,
+            message => error = message);
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            Debug.LogError("[ClassDetail] Unable to change lesson status: " + error);
+            button?.SetEnabled(true);
+            yield break;
+        }
+
+        lesson.Status = targetStatus;
+        RenderChapterList();
+
+        // Lesson count in the header only counts published lessons.
+        yield return LoadClassInformationFromSupabase();
     }
 
     private Button CreateAddLessonButton(
@@ -1792,7 +2007,7 @@ public class ClassDetailPageController : MonoBehaviour
 
         if (isTeacher)
         {
-            averageScoreLabel.text = "100%";
+            averageScoreLabel.text = teacherAverageScoreText;
             yield break;
         }
 
@@ -1993,7 +2208,9 @@ public class ClassDetailPageController : MonoBehaviour
                             mime_type = asset.mime_type,
                             file_extension = asset.file_extension,
                             file_size_bytes = asset.file_size_bytes,
-                            display_order = asset.display_order
+                            display_order = asset.display_order,
+                            detail_status = asset.detail_status,
+                            detail_error = asset.detail_error
                         }
                     );
                 }
@@ -2077,6 +2294,31 @@ public class ClassDetailPageController : MonoBehaviour
         information.Add(context);
         information.Add(badge);
 
+        // Structure-analysis status (AI part descriptions used in AR/VR/3D view).
+        string detailStatus = (model.detail_status ?? "not_generated").Trim().ToLowerInvariant();
+        Label detailLabel = new(GetModelDetailStatusText(detailStatus));
+        detailLabel.AddToClassList("model-detail-status");
+        detailLabel.AddToClassList("model-detail-status-" + detailStatus.Replace('_', '-'));
+        if (!string.IsNullOrWhiteSpace(model.detail_error))
+            detailLabel.tooltip = model.detail_error;
+        information.Add(detailLabel);
+
+        if (isTeacher && detailStatus != "processing")
+        {
+            Button analyzeButton = new()
+            {
+                text = detailStatus == "generated"
+                    ? T("Re-analyze with AI", "Phân tích lại bằng AI")
+                    : T("Analyze structure", "Phân tích cấu trúc")
+            };
+            analyzeButton.AddToClassList("model-analyze-button");
+            // Do not open the viewer when the button is pressed.
+            analyzeButton.RegisterCallback<ClickEvent>(evt => evt.StopPropagation());
+            analyzeButton.clicked += () =>
+                StartCoroutine(RegenerateModelDetailsRoutine(model, analyzeButton, detailLabel));
+            information.Add(analyzeButton);
+        }
+
         Label arrow = new("›");
         arrow.AddToClassList("model-card-arrow");
 
@@ -2087,6 +2329,46 @@ public class ClassDetailPageController : MonoBehaviour
         card.RegisterCallback<ClickEvent>(_ => Open3DModel(model));
 
         return card;
+    }
+
+    private static string GetModelDetailStatusText(string status)
+    {
+        switch (status)
+        {
+            case "generated":
+                return T("Structure info ready", "Đã có thông tin cấu trúc");
+            case "processing":
+                return T("Analyzing structure...", "Đang phân tích cấu trúc...");
+            case "failed":
+                return T("Structure analysis failed", "Phân tích cấu trúc thất bại");
+            default:
+                return T("No structure info yet", "Chưa có thông tin cấu trúc");
+        }
+    }
+
+    private IEnumerator RegenerateModelDetailsRoutine(
+        Class3DModelData model,
+        Button button,
+        Label statusLabel)
+    {
+        if (model == null || lessonService == null || !Guid.TryParse(model.asset_id, out _))
+            yield break;
+
+        button?.SetEnabled(false);
+        if (statusLabel != null)
+            statusLabel.text = GetModelDetailStatusText("processing");
+
+        string error = null;
+        yield return lessonService.GenerateModelDetails(
+            model.asset_id,
+            () => { },
+            message => error = message);
+
+        if (!string.IsNullOrWhiteSpace(error))
+            Debug.LogWarning("[ClassDetail] Model analysis failed: " + error);
+
+        // Reload so the card shows the saved status (generated / failed).
+        yield return Load3DModelsForCurrentClass();
     }
 
     private void Open3DModel(Class3DModelData model)
@@ -2453,6 +2735,7 @@ public class ClassDetailPageController : MonoBehaviour
         isLoadingStudents = true;
         hasLoadedStudents = false;
         enrolledStudents.Clear();
+        pendingRequests.Clear();
         studentCardList?.Clear();
 
         SetVisible(studentListLoadingState, true);
@@ -2518,6 +2801,29 @@ public class ClassDetailPageController : MonoBehaviour
             }
         }
 
+        // Teachers also see join requests waiting for approval (private classes).
+        if (isTeacher)
+        {
+            ClassMemberStudent[] pending = null;
+            string pendingError = null;
+
+            yield return SupabaseClassService.GetClassPendingRequests(
+                classId,
+                result => pending = result,
+                message => pendingError = message
+            );
+
+            if (!string.IsNullOrWhiteSpace(pendingError))
+                Debug.LogWarning("[ClassDetail] Unable to load join requests: " + pendingError);
+
+            if (pending != null)
+            {
+                foreach (ClassMemberStudent request in pending)
+                    if (request != null && Guid.TryParse(request.id, out _))
+                        pendingRequests.Add(request);
+            }
+        }
+
         isLoadingStudents = false;
         hasLoadedStudents = true;
         RenderStudentCards();
@@ -2557,7 +2863,11 @@ public class ClassDetailPageController : MonoBehaviour
 
         SetVisible(studentListLoadingState, false);
         SetVisible(studentListErrorState, false);
-        SetVisible(studentListEmptyState, enrolledStudents.Count == 0);
+        SetVisible(
+            studentListEmptyState,
+            enrolledStudents.Count == 0 && pendingRequests.Count == 0);
+
+        RenderPendingRequests();
 
         int onlineCount = 0;
         string currentUserId = GetCurrentUserId();
@@ -2644,6 +2954,122 @@ public class ClassDetailPageController : MonoBehaviour
 
         if (studentCountLabel != null)
             studentCountLabel.text = enrolledStudents.Count.ToString();
+    }
+
+    // =========================================================
+    // JOIN REQUESTS (teacher)
+    // =========================================================
+
+    private void RenderPendingRequests()
+    {
+        if (!isTeacher || studentCardList == null || pendingRequests.Count == 0)
+            return;
+
+        Label header = new(
+            AppLanguageManager.IsVietnamese
+                ? $"YÊU CẦU THAM GIA ({pendingRequests.Count})"
+                : $"JOIN REQUESTS ({pendingRequests.Count})");
+        header.AddToClassList("join-request-section-label");
+        studentCardList.Add(header);
+
+        foreach (ClassMemberStudent request in pendingRequests)
+            studentCardList.Add(CreateJoinRequestCard(request));
+
+        Label enrolledHeader = new(T("ENROLLED STUDENTS", "HỌC SINH ĐÃ THAM GIA"));
+        enrolledHeader.AddToClassList("join-request-section-label");
+        studentCardList.Add(enrolledHeader);
+    }
+
+    private VisualElement CreateJoinRequestCard(ClassMemberStudent request)
+    {
+        string fullName =
+            request.profiles != null &&
+            !string.IsNullOrWhiteSpace(request.profiles.full_name)
+                ? request.profiles.full_name.Trim()
+                : T("Student", "Học sinh");
+
+        VisualElement card = new();
+        card.AddToClassList("student-card");
+        card.AddToClassList("join-request-card");
+
+        VisualElement avatarWrap = new();
+        avatarWrap.AddToClassList("student-avatar-wrap");
+        VisualElement avatar = new();
+        avatar.AddToClassList("student-avatar");
+        Label initials = new(GetInitials(fullName));
+        initials.AddToClassList("student-avatar-initials");
+        avatar.Add(initials);
+        avatarWrap.Add(avatar);
+
+        VisualElement information = new();
+        information.AddToClassList("student-information");
+        Label nameLabel = new(fullName);
+        nameLabel.AddToClassList("student-name-label");
+        Label requestLabel = new(
+            TryParseSupabaseDate(request.joined_at, out DateTime requested)
+                ? T($"Requested {requested.ToLocalTime():dd/MM/yyyy}",
+                    $"Gửi yêu cầu {requested.ToLocalTime():dd/MM/yyyy}")
+                : T("Waiting for approval", "Đang chờ duyệt"));
+        requestLabel.AddToClassList("student-enrollment-label");
+        information.Add(nameLabel);
+        information.Add(requestLabel);
+
+        VisualElement actions = new();
+        actions.AddToClassList("join-request-actions");
+
+        Button approveButton = new() { text = T("Approve", "Duyệt") };
+        approveButton.AddToClassList("join-request-approve-button");
+
+        Button rejectButton = new() { text = T("Reject", "Từ chối") };
+        rejectButton.AddToClassList("join-request-reject-button");
+
+        approveButton.clicked += () =>
+            StartCoroutine(RespondToJoinRequest(request, true, approveButton, rejectButton));
+        rejectButton.clicked += () =>
+            StartCoroutine(RespondToJoinRequest(request, false, approveButton, rejectButton));
+
+        actions.Add(approveButton);
+        actions.Add(rejectButton);
+
+        card.Add(avatarWrap);
+        card.Add(information);
+        card.Add(actions);
+        return card;
+    }
+
+    private IEnumerator RespondToJoinRequest(
+        ClassMemberStudent request,
+        bool approve,
+        Button approveButton,
+        Button rejectButton)
+    {
+        if (isRespondingToRequest || request == null)
+            yield break;
+
+        isRespondingToRequest = true;
+        approveButton?.SetEnabled(false);
+        rejectButton?.SetEnabled(false);
+
+        string error = null;
+        yield return SupabaseClassService.RespondJoinRequest(
+            request.id,
+            approve,
+            null,
+            message => error = message);
+
+        isRespondingToRequest = false;
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            Debug.LogError("[ClassDetail] Unable to respond to join request: " + error);
+            approveButton?.SetEnabled(true);
+            rejectButton?.SetEnabled(true);
+            ShowStudentListError(T("Cannot update the request: ", "Không cập nhật được yêu cầu: ") + error);
+            yield break;
+        }
+
+        // Reload both lists so counts and cards are correct.
+        yield return LoadStudentsForCurrentClass();
     }
 
     private VisualElement CreateStudentCard(
@@ -2942,9 +3368,22 @@ public class ClassDetailPageController : MonoBehaviour
 
         // The three tabs share a single ScrollView. Do not carry an offset
         // from a long tab into a short one (which would show blank space).
-        ScrollView scrollView = root.Q<ScrollView>("content-scroll-view");
-        if (scrollView != null)
-            scrollView.scrollOffset = Vector2.zero;
+        if (contentScrollView != null && fixedContentHost != null)
+        {
+            if (syllabusContent.parent == fixedContentHost && syllabusContent != activeContent)
+                contentScrollView.contentContainer.Add(syllabusContent);
+            if (labsContent.parent == fixedContentHost && labsContent != activeContent)
+                contentScrollView.contentContainer.Add(labsContent);
+            if (studentListContent.parent == fixedContentHost && studentListContent != activeContent)
+                contentScrollView.contentContainer.Add(studentListContent);
+
+            if (activeContent.parent != fixedContentHost)
+            {
+                contentScrollView.style.display = DisplayStyle.Flex;
+                fixedContentHost.style.display = DisplayStyle.None;
+            }
+            contentScrollView.scrollOffset = Vector2.zero;
+        }
     }
 
     // =========================================================
@@ -3642,6 +4081,16 @@ public class LessonData
 
     public bool IsComplete;
     public bool Has3DContent;
+
+    // lessons.status: draft | published | archived. Students only receive
+    // published lessons (enforced by RLS on public.lessons).
+    public string Status = "published";
+
+    // Reported lesson under admin review (hidden from students).
+    public bool ModerationHidden;
+
+    public bool IsPublished =>
+        string.Equals(Status, "published", System.StringComparison.OrdinalIgnoreCase);
 }
 
 public enum ChapterStatus

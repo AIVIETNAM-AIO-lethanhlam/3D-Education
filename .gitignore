@@ -1,33 +1,98 @@
-# Unity generated folders
-[Ll]ibrary/
-[Tt]emp/
-[Oo]bj/
-[Ll]ogs/
-UserSettings/
+# =========================================================
+# Unity generated folders (project root only)
+# =========================================================
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]serSettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
 
-# Build
-[Bb]uild/
-[Bb]uilds/
+# Asset meta data should only be ignored when the corresponding asset is also ignored
+!/[Aa]ssets/**/*.meta
 
-# IDE
+# Addressables / StreamingAssets build output
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Uncomment if Asset Store Tools are ever imported
+# /[Aa]ssets/AssetStoreTools*
+
+# =========================================================
+# Builds (APK / AAB / exported projects)
+# =========================================================
+/[Bb]uild/
+/[Bb]uilds/
+*.apk
+*.aab
+*.unitypackage
+*.app
+crashlytics-build.properties
+sysinfo.txt
+
+# Unity debug symbols
+*.pidb
+*.pdb
+*.mdb
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# =========================================================
+# IDE / editor files
+# =========================================================
 .vs/
 .vscode/
+.idea/
+.consulo/
 .vsconfig
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.booproj
+*.svd
+*.opendb
+*.VC.db
+ExportedObj/
 
+# OS files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================================================
 # Unity Version Control / Plastic SCM
+# =========================================================
 .plastic/
 .utmp/
+ignore.conf
 
+# =========================================================
 # Node
+# =========================================================
 node_modules/
 
+# =========================================================
 # Environment variables / secrets
+# =========================================================
 **/.env
 **/.env.*
 !**/.env.example
 !**/.env.template
+Backend/model_analysis_worker/cloudrun-env.yaml
 
+# =========================================================
 # Python
+# =========================================================
 **/__pycache__/
 *.py[cod]
 *$py.class
@@ -37,8 +102,15 @@ node_modules/
 .mypy_cache/
 .ruff_cache/
 
-# Visual Studio generated files
-*.csproj
-*.sln
-*.slnx
-Backend/model_analysis_worker/cloudrun-env.yaml
+# =========================================================
+# Local-only editor helper (serves /Screenshots on localhost for the report)
+# =========================================================
+/[Aa]ssets/Scripts/Dev/
+/[Aa]ssets/Scripts/Dev.meta
+
+# =========================================================
+# Local backups / screenshots (not part of the project)
+# =========================================================
+_claude_backup_*/
+_backup_*/
+/Screenshots/

@@ -1,25 +1,26 @@
 using System;
 using System.Collections;
 using System.IO;
-using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
 /// <summary>
-/// Upload file trực tiếp lên Cloudflare R2 bằng S3 API.
-/// 
-/// Fix quan trọng:
-/// - lesson-models dùng Public Development URL riêng của chính bucket lesson-models.
-/// - Không dùng customDomainOrCdn cũ cho model nữa.
-/// - Callback trả đúng public URL theo bucket.
+/// Uploads files to Cloudflare R2 WITHOUT keeping R2 access keys in the app.
+///
+/// Flow (2026-09 security update):
+/// 1. Ask the Supabase Edge Function "r2-upload-url" for a presigned PUT URL.
+///    The function checks that the caller is a teacher, that the object key
+///    starts with the caller's user id and that the caller teaches the class.
+/// 2. PUT the file bytes directly to that URL (valid for 15 minutes).
+/// 3. Return the public URL of the object (same behaviour as before).
+///
+/// The public signature of UploadFile is unchanged, so existing callers
+/// (CreateLessonPageController, ARUIManagerUIToolkit) keep working.
 /// </summary>
 public class CloudflareR2StorageService : MonoBehaviour
 {
-    [Header("Cloudflare R2 Credentials")]
-    [SerializeField] private string accountId = "YOUR_CLOUDFLARE_ACCOUNT_ID";
-    [SerializeField] private string accessKeyId = "YOUR_R2_ACCESS_KEY_ID";
-    [SerializeField] private string secretAccessKey = "YOUR_R2_SECRET_ACCESS_KEY";
+    private const string UploadUrlFunctionName = "r2-upload-url";
 
     [Header("Public Domains")]
     [Tooltip("Public Development URL/custom domain của bucket lesson-models.")]
@@ -28,6 +29,9 @@ public class CloudflareR2StorageService : MonoBehaviour
 
     [Tooltip("Public URL/domain dùng cho các bucket khác nếu project đang cần.")]
     [SerializeField] private string customDomainOrCdn = string.Empty;
+
+    [Tooltip("Upload timeout in seconds for large GLB/PDF files.")]
+    [SerializeField, Min(30)] private int uploadTimeoutSeconds = 300;
 
     public string LessonModelsPublicDomain =>
         lessonModelsPublicDomain?.Trim().TrimEnd('/') ?? string.Empty;
@@ -60,15 +64,17 @@ public class CloudflareR2StorageService : MonoBehaviour
             yield break;
         }
 
-        if (string.IsNullOrWhiteSpace(accountId) ||
-            string.IsNullOrWhiteSpace(accessKeyId) ||
-            string.IsNullOrWhiteSpace(secretAccessKey))
+        if (!SupabaseSession.IsLoggedIn)
         {
-            onError?.Invoke("Cloudflare R2 credentials are missing.");
+            onError?.Invoke("Không có phiên đăng nhập hợp lệ. Hãy đăng nhập lại.");
             yield break;
         }
 
+        bucketName = bucketName.Trim();
         objectKey = NormalizeObjectKey(objectKey);
+        contentType = string.IsNullOrWhiteSpace(contentType)
+            ? "application/octet-stream"
+            : contentType.Trim();
 
         byte[] payloadBytes;
         try
@@ -81,88 +87,48 @@ public class CloudflareR2StorageService : MonoBehaviour
             yield break;
         }
 
-        string host = $"{accountId.Trim()}.r2.cloudflarestorage.com";
-        string encodedObjectKey = EncodeObjectKeyForRequest(objectKey);
-        string canonicalUri = $"/{bucketName.Trim()}/{encodedObjectKey}";
-        string url = $"https://{host}{canonicalUri}";
+        // Make sure the access token is still valid before calling the function.
+        yield return SupabaseTokenRefresher.EnsureFreshToken();
 
-        DateTime now = DateTime.UtcNow;
-        string amzDate = now.ToString("yyyyMMddTHHmmssZ");
-        string dateStamp = now.ToString("yyyyMMdd");
-        const string region = "auto";
-        const string service = "s3";
+        // ---------- 1. Request a presigned PUT URL ----------
+        string uploadUrl = null;
+        string requestError = null;
 
-        string payloadHash = ComputeSHA256Hex(payloadBytes);
+        yield return RequestUploadUrl(
+            bucketName,
+            objectKey,
+            contentType,
+            url => uploadUrl = url,
+            error => requestError = error);
 
-        using UnityWebRequest www =
-            new UnityWebRequest(url, UnityWebRequest.kHttpVerbPUT);
-
-        www.uploadHandler = new UploadHandlerRaw(payloadBytes);
-        www.downloadHandler = new DownloadHandlerBuffer();
-
-        www.SetRequestHeader("Content-Type", contentType);
-        // Do not set Host manually. UnityWebRequest/Android's HTTP stack adds
-        // it from the request URL. It is still part of the AWS canonical
-        // headers above, but setting this restricted header can fail on device.
-        www.SetRequestHeader("x-amz-date", amzDate);
-        www.SetRequestHeader("x-amz-content-sha256", payloadHash);
-
-        string canonicalHeaders =
-            $"content-type:{contentType}\n" +
-            $"host:{host}\n" +
-            $"x-amz-content-sha256:{payloadHash}\n" +
-            $"x-amz-date:{amzDate}\n";
-
-        const string signedHeaders =
-            "content-type;host;x-amz-content-sha256;x-amz-date";
-
-        string canonicalRequest =
-            $"PUT\n{canonicalUri}\n\n" +
-            $"{canonicalHeaders}\n" +
-            $"{signedHeaders}\n" +
-            $"{payloadHash}";
-
-        string credentialScope =
-            $"{dateStamp}/{region}/{service}/aws4_request";
-
-        string stringToSign =
-            $"AWS4-HMAC-SHA256\n" +
-            $"{amzDate}\n" +
-            $"{credentialScope}\n" +
-            $"{ComputeSHA256Hex(Encoding.UTF8.GetBytes(canonicalRequest))}";
-
-        byte[] signingKey =
-            GetSignatureKey(
-                secretAccessKey.Trim(),
-                dateStamp,
-                region,
-                service);
-
-        string signature =
-            ComputeHmacHex(signingKey, stringToSign);
-
-        string authorizationHeader =
-            $"AWS4-HMAC-SHA256 Credential={accessKeyId.Trim()}/{credentialScope}, " +
-            $"SignedHeaders={signedHeaders}, Signature={signature}";
-
-        www.SetRequestHeader("Authorization", authorizationHeader);
-
-        yield return www.SendWebRequest();
-
-        if (www.result != UnityWebRequest.Result.Success)
+        if (!string.IsNullOrWhiteSpace(requestError) || string.IsNullOrWhiteSpace(uploadUrl))
         {
-            string detail =
-                www.downloadHandler != null
-                    ? www.downloadHandler.text
-                    : www.error;
-
-            onError?.Invoke(
-                $"R2 Upload Error ({www.responseCode}): {detail}");
+            onError?.Invoke(string.IsNullOrWhiteSpace(requestError)
+                ? "Không nhận được URL upload từ server."
+                : requestError);
             yield break;
         }
 
-        string resultUrl =
-            BuildPublicUrl(bucketName, objectKey);
+        // ---------- 2. Upload bytes directly to R2 ----------
+        using (UnityWebRequest www = new UnityWebRequest(uploadUrl, UnityWebRequest.kHttpVerbPUT))
+        {
+            www.uploadHandler = new UploadHandlerRaw(payloadBytes);
+            www.downloadHandler = new DownloadHandlerBuffer();
+            www.timeout = uploadTimeoutSeconds;
+            // Content-Type is part of the presigned signature, so it must match.
+            www.SetRequestHeader("Content-Type", contentType);
+
+            yield return www.SendWebRequest();
+
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                string detail = www.downloadHandler != null ? www.downloadHandler.text : www.error;
+                onError?.Invoke($"R2 Upload Error ({www.responseCode}): {detail}");
+                yield break;
+            }
+        }
+
+        string resultUrl = BuildPublicUrl(bucketName, objectKey);
 
         Debug.Log(
             "[CloudflareR2StorageService] Upload success." +
@@ -173,24 +139,68 @@ public class CloudflareR2StorageService : MonoBehaviour
         onSuccess?.Invoke(resultUrl);
     }
 
-    private string BuildPublicUrl(
+    private IEnumerator RequestUploadUrl(
         string bucketName,
-        string objectKey)
+        string objectKey,
+        string contentType,
+        Action<string> onSuccess,
+        Action<string> onError)
+    {
+        string endpoint = $"{SupabaseConfig.FunctionsUrl}/{UploadUrlFunctionName}";
+
+        UploadUrlRequest payload = new UploadUrlRequest
+        {
+            bucket = bucketName,
+            key = objectKey,
+            content_type = contentType
+        };
+
+        using UnityWebRequest request = new UnityWebRequest(endpoint, UnityWebRequest.kHttpVerbPOST);
+        request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(JsonUtility.ToJson(payload)));
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.timeout = SupabaseConfig.RequestTimeoutSeconds;
+        request.SetRequestHeader("Content-Type", "application/json");
+        request.SetRequestHeader("Accept", "application/json");
+        request.SetRequestHeader("apikey", SupabaseConfig.PublishableKey);
+        request.SetRequestHeader("Authorization", $"Bearer {SupabaseSession.AccessToken}");
+
+        yield return request.SendWebRequest();
+
+        string text = request.downloadHandler?.text ?? string.Empty;
+        UploadUrlResponse response = null;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(text))
+                response = JsonUtility.FromJson<UploadUrlResponse>(text);
+        }
+        catch
+        {
+            // handled below
+        }
+
+        if (request.result != UnityWebRequest.Result.Success || response == null || !response.success)
+        {
+            string message = !string.IsNullOrWhiteSpace(response?.error)
+                ? response.error
+                : (string.IsNullOrWhiteSpace(text) ? request.error : text);
+            onError?.Invoke($"Không lấy được URL upload R2 ({request.responseCode}): {message}");
+            yield break;
+        }
+
+        onSuccess?.Invoke(response.upload_url);
+    }
+
+    private string BuildPublicUrl(string bucketName, string objectKey)
     {
         string publicBase;
 
-        if (string.Equals(
-                bucketName,
-                "lesson-models",
-                StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(bucketName, "lesson-models", StringComparison.OrdinalIgnoreCase))
         {
             publicBase = LessonModelsPublicDomain;
         }
         else
         {
-            publicBase =
-                customDomainOrCdn?.Trim().TrimEnd('/')
-                ?? string.Empty;
+            publicBase = customDomainOrCdn?.Trim().TrimEnd('/') ?? string.Empty;
         }
 
         // If no public domain is configured for a non-model bucket,
@@ -206,32 +216,12 @@ public class CloudflareR2StorageService : MonoBehaviour
         if (string.IsNullOrWhiteSpace(value))
             return string.Empty;
 
-        return value
-            .Replace("\\", "/")
-            .Trim()
-            .TrimStart('/');
-    }
-
-    private static string EncodeObjectKeyForRequest(string objectKey)
-    {
-        string[] segments =
-            NormalizeObjectKey(objectKey)
-                .Split('/');
-
-        for (int i = 0; i < segments.Length; i++)
-        {
-            segments[i] =
-                UnityWebRequest.EscapeURL(segments[i])
-                    .Replace("+", "%20");
-        }
-
-        return string.Join("/", segments);
+        return value.Replace("\\", "/").Trim().TrimStart('/');
     }
 
     /// <summary>
     /// Native file pickers normally return a regular cache path on Android.
     /// Also accept file:// URIs in case a picker/platform version returns one.
-    /// content:// URIs must be copied to a local cache path by the picker first.
     /// </summary>
     private static string NormalizeLocalFilePath(string path)
     {
@@ -251,76 +241,19 @@ public class CloudflareR2StorageService : MonoBehaviour
         }
     }
 
-    private static string ComputeSHA256Hex(byte[] data)
+    [Serializable]
+    private class UploadUrlRequest
     {
-        using SHA256 sha256 = SHA256.Create();
-        byte[] hash = sha256.ComputeHash(data);
-
-        StringBuilder sb =
-            new StringBuilder(hash.Length * 2);
-
-        foreach (byte b in hash)
-            sb.AppendFormat("{0:x2}", b);
-
-        return sb.ToString();
+        public string bucket;
+        public string key;
+        public string content_type;
     }
 
-    private static string ComputeHmacHex(
-        byte[] key,
-        string data)
+    [Serializable]
+    private class UploadUrlResponse
     {
-        using HMACSHA256 hmac =
-            new HMACSHA256(key);
-
-        byte[] hash =
-            hmac.ComputeHash(
-                Encoding.UTF8.GetBytes(data));
-
-        StringBuilder sb =
-            new StringBuilder(hash.Length * 2);
-
-        foreach (byte b in hash)
-            sb.AppendFormat("{0:x2}", b);
-
-        return sb.ToString();
-    }
-
-    private static byte[] HmacSHA256(
-        byte[] key,
-        byte[] data)
-    {
-        using HMACSHA256 hmac =
-            new HMACSHA256(key);
-
-        return hmac.ComputeHash(data);
-    }
-
-    private static byte[] GetSignatureKey(
-        string key,
-        string dateStamp,
-        string regionName,
-        string serviceName)
-    {
-        byte[] kSecret =
-            Encoding.UTF8.GetBytes("AWS4" + key);
-
-        byte[] kDate =
-            HmacSHA256(
-                kSecret,
-                Encoding.UTF8.GetBytes(dateStamp));
-
-        byte[] kRegion =
-            HmacSHA256(
-                kDate,
-                Encoding.UTF8.GetBytes(regionName));
-
-        byte[] kService =
-            HmacSHA256(
-                kRegion,
-                Encoding.UTF8.GetBytes(serviceName));
-
-        return HmacSHA256(
-            kService,
-            Encoding.UTF8.GetBytes("aws4_request"));
+        public bool success;
+        public string upload_url;
+        public string error;
     }
 }

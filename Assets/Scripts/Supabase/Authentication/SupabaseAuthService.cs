@@ -44,6 +44,154 @@ public static class SupabaseAuthService
             onError);
     }
 
+    // =========================================================
+    // SIGN-UP WITH EMAIL VERIFICATION (2026-09)
+    // =========================================================
+
+    /// <summary>
+    /// Creates the account. When "Confirm email" is enabled in Supabase Auth,
+    /// Supabase sends a 6-digit code ({{ .Token }} in the "Confirm signup"
+    /// template) and returns the user WITHOUT a session → NeedsVerification.
+    /// </summary>
+    public static IEnumerator SignUpWithVerification(
+        string fullName,
+        string email,
+        string password,
+        string role,
+        Action<SignUpOutcome> onSuccess,
+        Action<string> onError)
+    {
+        SignUpRequest payload = new SignUpRequest
+        {
+            email = NormalizeEmail(email),
+            password = password,
+            data = new SignUpUserMetadata
+            {
+                full_name = NormalizePlainText(fullName),
+                display_name = NormalizePlainText(fullName),
+                role = NormalizeRole(role),
+                avatar_url = string.Empty
+            }
+        };
+
+        string responseText = null;
+        string requestError = null;
+
+        yield return SendRawAuthRequest(
+            UnityWebRequest.kHttpVerbPOST,
+            "/signup",
+            JsonUtility.ToJson(payload),
+            null,
+            value => responseText = value,
+            error => requestError = error);
+
+        if (!string.IsNullOrWhiteSpace(requestError))
+        {
+            onError?.Invoke(requestError);
+            yield break;
+        }
+
+        SignUpOutcome outcome = new SignUpOutcome();
+
+        try
+        {
+            SupabaseAuthResponse session = JsonUtility.FromJson<SupabaseAuthResponse>(responseText ?? "{}");
+            if (session != null && !string.IsNullOrWhiteSpace(session.access_token))
+            {
+                // "Confirm email" is disabled: Supabase created a session immediately.
+                outcome.Session = session;
+                outcome.UserId = session.user?.id;
+            }
+            else
+            {
+                SignUpUserResponse user = JsonUtility.FromJson<SignUpUserResponse>(responseText ?? "{}");
+                outcome.UserId = user?.id;
+                // Supabase hides whether an email exists: an already-registered email
+                // comes back as a user with an empty identities list.
+                outcome.AlreadyRegistered = user != null && (user.identities == null || user.identities.Length == 0);
+                outcome.NeedsVerification = !outcome.AlreadyRegistered;
+            }
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("Cannot parse Supabase sign-up response: " + exception.Message);
+            onError?.Invoke("Supabase trả về dữ liệu đăng ký không hợp lệ.");
+            yield break;
+        }
+
+        onSuccess?.Invoke(outcome);
+    }
+
+    /// <summary>Verifies the 6-digit sign-up code. Returns a session on success.</summary>
+    public static IEnumerator VerifySignupCode(
+        string email,
+        string code,
+        Action<SupabaseAuthResponse> onSuccess,
+        Action<string> onError)
+    {
+        VerifyRecoveryRequest payload = new VerifyRecoveryRequest
+        {
+            email = NormalizeEmail(email),
+            token = (code ?? string.Empty).Trim(),
+            type = "signup"
+        };
+
+        string responseText = null;
+        string requestError = null;
+
+        yield return SendRawAuthRequest(
+            UnityWebRequest.kHttpVerbPOST,
+            "/verify",
+            JsonUtility.ToJson(payload),
+            null,
+            value => responseText = value,
+            error => requestError = error);
+
+        if (!string.IsNullOrWhiteSpace(requestError))
+        {
+            onError?.Invoke(requestError);
+            yield break;
+        }
+
+        SupabaseAuthResponse response = null;
+        try { response = JsonUtility.FromJson<SupabaseAuthResponse>(responseText ?? "{}"); }
+        catch (Exception exception) { Debug.LogError("Cannot parse sign-up verification response: " + exception.Message); }
+
+        if (response == null || string.IsNullOrWhiteSpace(response.access_token))
+        {
+            onError?.Invoke("invalid otp");
+            yield break;
+        }
+
+        onSuccess?.Invoke(response);
+    }
+
+    /// <summary>Sends a new sign-up confirmation code to an unconfirmed email.</summary>
+    public static IEnumerator ResendSignupCode(
+        string email,
+        Action onSuccess,
+        Action<string> onError)
+    {
+        ResendRequest payload = new ResendRequest
+        {
+            type = "signup",
+            email = NormalizeEmail(email)
+        };
+
+        bool succeeded = false;
+
+        yield return SendRawAuthRequest(
+            UnityWebRequest.kHttpVerbPOST,
+            "/resend",
+            JsonUtility.ToJson(payload),
+            null,
+            _ => succeeded = true,
+            onError);
+
+        if (succeeded)
+            onSuccess?.Invoke();
+    }
+
     public static IEnumerator SignIn(
         string email,
         string password,
@@ -1016,6 +1164,13 @@ public static class SupabaseAuthService
     [Serializable]
     private sealed class RecoveryRequest
     {
+        public string email;
+    }
+
+    [Serializable]
+    private sealed class ResendRequest
+    {
+        public string type;
         public string email;
     }
 

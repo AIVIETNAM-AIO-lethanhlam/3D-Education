@@ -1643,16 +1643,60 @@ public class CreateClassPageController : MonoBehaviour
     {
 #if UNITY_EDITOR
         OpenImagePickerInEditor();
+#elif UNITY_ANDROID || UNITY_IOS
+        OpenImagePickerOnDevice();
 #else
-        /*
-         * Trên Android, Unity UI Toolkit không tự mở thư viện ảnh.
-         * Sau này có thể tích hợp NativeGallery.
-         */
-        Debug.Log(
-            "Cần tích hợp NativeGallery để chọn ảnh trên Android."
-        );
+        Debug.Log("Cover image picking is not supported on this platform.");
 #endif
     }
+
+#if !UNITY_EDITOR && (UNITY_ANDROID || UNITY_IOS)
+    /// <summary>Opens the native file picker (NativeFilePicker plugin) for PNG/JPG images.</summary>
+    private void OpenImagePickerOnDevice()
+    {
+        if (NativeFilePicker.IsFilePickerBusy())
+            return;
+
+        string[] imageTypes =
+        {
+            NativeFilePicker.ConvertExtensionToFileType("png"),
+            NativeFilePicker.ConvertExtensionToFileType("jpg"),
+            NativeFilePicker.ConvertExtensionToFileType("jpeg")
+        };
+
+        NativeFilePicker.PickFile(path =>
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return;
+
+            try
+            {
+                System.IO.FileInfo info = new System.IO.FileInfo(path);
+                if (info.Exists && info.Length > 10 * 1024 * 1024)
+                {
+                    Debug.LogWarning("Cover image is larger than 10 MB.");
+                    return;
+                }
+
+                byte[] imageBytes = System.IO.File.ReadAllBytes(path);
+                Texture2D texture = new Texture2D(2, 2);
+
+                if (!texture.LoadImage(imageBytes))
+                {
+                    Destroy(texture);
+                    Debug.LogError("Không thể đọc ảnh cover đã chọn.");
+                    return;
+                }
+
+                SetUploadedCover(texture);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError($"Lỗi khi tải cover image: {exception.Message}");
+            }
+        }, imageTypes);
+    }
+#endif
 
 #if UNITY_EDITOR
     private void OpenImagePickerInEditor()
@@ -2399,14 +2443,14 @@ public class CreateClassPageController : MonoBehaviour
 
         SetCreateClassLoading(true);
 
-        StartCoroutine(
+        StartCoroutine(UploadCoverThen(coverImageUrl =>
             SupabaseClassService.CreateClass(
                 className: courseName,
                 description: courseDescription,
                 classCode: courseCode,
                 visibility: visibility,
                 coverTemplate: selectedTemplateClass,
-                coverImageUrl: string.Empty,
+                coverImageUrl: coverImageUrl,
                 categoryId: selectedCategoryId,
                 onSuccess: createdClass =>
                 {
@@ -2447,7 +2491,35 @@ public class CreateClassPageController : MonoBehaviour
                     );
                 }
             )
-        );
+        ));
+    }
+
+    /// <summary>
+    /// Uploads the selected cover image (if any) to Supabase Storage, then runs
+    /// the create request with its public URL. Without an image the template is used.
+    /// </summary>
+    private IEnumerator UploadCoverThen(Func<string, IEnumerator> createRequest)
+    {
+        string coverUrl = string.Empty;
+
+        if (selectedCoverTexture != null)
+        {
+            string uploadError = null;
+
+            yield return SupabaseCoverStorageService.UploadCover(
+                selectedCoverTexture,
+                url => coverUrl = url,
+                error => uploadError = error);
+
+            if (!string.IsNullOrWhiteSpace(uploadError))
+            {
+                // The class can still be created with its template cover.
+                Debug.LogWarning("[CreateClass] " + uploadError);
+                coverUrl = string.Empty;
+            }
+        }
+
+        yield return createRequest(coverUrl);
     }
 
     private void SetCreateClassLoading(bool loading)

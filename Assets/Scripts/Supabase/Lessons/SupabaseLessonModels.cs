@@ -40,6 +40,8 @@ public class LessonRecord
     public string youtube_url;
     public bool has_video;
     public string status;
+    // True while an admin reviews a report about this lesson (hidden from students).
+    public bool moderation_hidden;
     public string created_at;
     public string updated_at;
 }
@@ -59,6 +61,10 @@ public class LessonAssetRecord
     public long file_size_bytes;
     public int display_order;
     public string created_at;
+
+    // Structure analysis state (model_3d only): not_generated | processing | generated | failed
+    public string detail_status;
+    public string detail_error;
 }
 
 [Serializable]
@@ -124,5 +130,7 @@ public class Class3DModelData
     public string file_extension;
     public long file_size_bytes;
     public int display_order;
+    public string detail_status;
+    public string detail_error;
 }
 

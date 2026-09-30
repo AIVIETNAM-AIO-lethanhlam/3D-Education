@@ -14,6 +14,12 @@ public class SupabaseClass
     public string visibility;
     public string cover_image_url;
     public string cover_template;
+
+    // Filled only when read from teacher_class_overview (2026-09).
+    public int student_count;
+    public int active_module_count;
+    public float average_score;
+    public int pending_count;
 }
 
 [Serializable]

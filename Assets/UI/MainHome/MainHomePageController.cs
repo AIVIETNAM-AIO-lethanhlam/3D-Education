@@ -191,7 +191,10 @@ public class MainHomePageController : MonoBehaviour
             userName: fullName,
             showNotification: true,
             showProfile: true,
-            showNotificationDot: true);
+            showNotificationDot: false);
+
+        // Red dot only when there are unread notifications (2026-09).
+        StartCoroutine(RefreshNotificationDot());
 
         headerController.SetBottomBorderVisible(false);
         headerController.NotificationClicked += OpenNotifications;
@@ -1383,7 +1386,28 @@ public class MainHomePageController : MonoBehaviour
 
     private void OpenNotifications()
     {
-        Debug.Log("Mở trang thông báo.");
+        const string sceneName = "NotificationScene";
+
+        if (!Application.CanStreamedLevelBeLoaded(sceneName))
+        {
+            Debug.LogError($"{sceneName} chưa được thêm vào Build Profiles / Scene List.");
+            return;
+        }
+
+        SceneHistory.LoadScene(sceneName);
+    }
+
+    private System.Collections.IEnumerator RefreshNotificationDot()
+    {
+        if (!SupabaseSession.IsLoggedIn)
+            yield break;
+
+        int unread = 0;
+        yield return SupabaseModerationService.GetUnreadNotificationCount(
+            count => unread = count,
+            error => Debug.LogWarning("[MainHome] Cannot load notifications: " + error));
+
+        headerController?.SetNotificationDotVisible(unread > 0);
     }
 
     private void OpenProfile()

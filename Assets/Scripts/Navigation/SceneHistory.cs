@@ -11,6 +11,22 @@ public static class SceneHistory
     private static bool initialized;
     private static string currentSceneName = string.Empty;
 
+    // Set when a scene load was requested and not finished yet. Prevents two
+    // controllers (e.g. a page + BottomNavigationController) from loading
+    // scenes in the same frame (double navigation / broken back history).
+    private static string pendingSceneName = string.Empty;
+    private static int pendingSinceFrame = -1;
+
+    public static bool IsLoadPending =>
+        !string.IsNullOrEmpty(pendingSceneName) &&
+        Time.frameCount - pendingSinceFrame < 120;
+
+    private static void MarkPending(string sceneName)
+    {
+        pendingSceneName = sceneName ?? string.Empty;
+        pendingSinceFrame = Time.frameCount;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void RuntimeInitialize()
     {
@@ -51,8 +67,12 @@ public static class SceneHistory
             return false;
         }
 
+        if (IsLoadPending)
+            return false;
+
         Push(activeScene);
         currentSceneName = sceneName;
+        MarkPending(sceneName);
 
         SceneManager.LoadScene(sceneName);
         return true;
@@ -205,6 +225,9 @@ public static class SceneHistory
         Scene previousScene,
         Scene nextScene)
     {
+        pendingSceneName = string.Empty;
+        pendingSinceFrame = -1;
+
         if (nextScene.IsValid())
             currentSceneName = nextScene.name;
 

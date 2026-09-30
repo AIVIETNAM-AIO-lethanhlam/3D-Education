@@ -156,7 +156,6 @@
 
                         <ui:TextField
                             name="date-of-birth-field"
-                            value="03/15/1999"
                             class="input-field"
                             label="" />
 

@@ -131,16 +131,34 @@
     flex-grow: 0;
     flex-shrink: 0;
 
+    align-items: center;
+    justify-content: center;
+
     margin-left: 10px;
     padding: 0;
 
     background-color: rgb(238, 244, 253);
     border-radius: 16px;
+}
 
-    font-size: 17px;
-    color: rgb(83, 105, 147);
+.privacy-section-arrow-icon {
+    width: 14px;
+    height: 14px;
 
-    -unity-text-align: middle-center;
+    background-image: url("project://database/Assets/UI/Images/Icons/arrow-down.png");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(83, 105, 147);
+}
+
+/* Open section: only the icon changes to arrow-up.png and the
+   circle turns a slightly darker grey (icon stays visible). */
+.privacy-section-arrow--expanded {
+    background-color: rgb(214, 222, 235);
+}
+
+.privacy-section-arrow--expanded .privacy-section-arrow-icon {
+    background-image: url("project://database/Assets/UI/Images/Icons/arrow-up.png");
+    -unity-background-image-tint-color: rgb(55, 75, 115);
 }
 
 .privacy-section-content {
@@ -170,91 +188,104 @@
     -unity-text-align: upper-left;
 }
 
-/* =========================================================
-   SCROLL HINT
-   ========================================================= */
-
-.scroll-hint {
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-
-    margin-top: 12px;
-    margin-bottom: 10px;
-}
-
-.scroll-hint-icon {
-    margin-right: 8px;
-
-    font-size: 16px;
-    color: rgb(90, 109, 147);
-}
-
-.scroll-hint-text {
-    font-size: 13px;
-    color: rgb(91, 107, 142);
-}
-
 .privacy-scroll-bottom-space {
-    height: 26px;
+    height: 20px;
 }
 
 /* =========================================================
    CONSENT PANEL
+   Raised card above the bottom edge. The controller adds the
+   device safe-area inset (gesture bar) to padding-bottom.
    ========================================================= */
 
 .privacy-consent-panel {
     flex-shrink: 0;
 
-    padding-top: 14px;
-    padding-right: 18px;
-    padding-bottom: 15px;
-    padding-left: 18px;
+    padding-top: 16px;
+    padding-right: 20px;
+    padding-bottom: 28px;
+    padding-left: 20px;
 
     background-color: rgb(255, 255, 255);
 
     border-top-width: 1px;
     border-top-color: rgb(216, 225, 240);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+}
+
+.privacy-consent-row {
+    flex-direction: row;
+    align-items: center;
+
+    margin-bottom: 14px;
+    padding-top: 10px;
+    padding-right: 14px;
+    padding-bottom: 10px;
+    padding-left: 14px;
+
+    background-color: rgb(244, 247, 252);
+
+    border-width: 1px;
+    border-color: rgb(222, 229, 241);
+    border-radius: 14px;
 }
 
 .privacy-consent-toggle {
-    min-height: 32px;
+    flex-grow: 1;
+    flex-shrink: 1;
 
     margin: 0;
-    margin-bottom: 12px;
     padding: 0;
 
-    font-size: 13px;
+    font-size: 14px;
     -unity-font-style: bold;
 
     color: rgb(28, 46, 84);
 }
 
 .privacy-consent-toggle .unity-toggle__input {
-    width: 26px;
-    height: 26px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    align-items: center;
+}
 
-    margin-right: 10px;
+.privacy-consent-toggle .unity-toggle__checkmark {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+
+    flex-shrink: 0;
+
+    margin-right: 12px;
 
     background-color: rgb(255, 255, 255);
 
     border-width: 2px;
-    border-color: rgb(216, 225, 240);
-    border-radius: 13px;
-}
-
-.privacy-consent-toggle:checked .unity-toggle__input {
-    background-color: rgb(0, 70, 180);
-    border-color: rgb(0, 70, 180);
+    border-color: rgb(177, 193, 220);
+    border-radius: 12px;
 }
 
 .privacy-consent-toggle:checked .unity-toggle__checkmark {
+    background-color: rgb(0, 70, 180);
+    border-color: rgb(0, 70, 180);
     -unity-background-image-tint-color: rgb(255, 255, 255);
+}
+
+.privacy-consent-toggle .unity-toggle__text {
+    flex-shrink: 1;
+
+    margin: 0;
+
+    font-size: 14px;
+    color: rgb(28, 46, 84);
+
+    white-space: normal;
 }
 
 .accept-continue-button {
     width: 100%;
-    height: 54px;
+    height: 52px;
 
     margin: 0;
     padding: 0;
@@ -262,7 +293,7 @@
     background-color: rgb(0, 70, 180);
 
     border-width: 0;
-    border-radius: 27px;
+    border-radius: 26px;
 
     font-size: 15px;
     -unity-font-style: bold;
@@ -270,8 +301,9 @@
 }
 
 .accept-continue-button:disabled {
-    background-color: rgb(241, 244, 249);
-    color: rgb(176, 184, 201);
+    background-color: rgb(228, 233, 242);
+    color: rgb(150, 160, 181);
+    opacity: 1;
 }
 
 /* =========================================================
@@ -292,4 +324,32 @@
 
 .accept-continue-button:active:enabled {
     opacity: 0.72;
+}
+
+/* =========================================================
+   HEADER (PrivacyScene only - class added by the controller)
+   Smaller title that can wrap to 2 lines; the 2 lines stay
+   within the 42px height of the back button and are centred
+   with it.
+   ========================================================= */
+
+.privacy-header .page-header-layout {
+    align-items: center;
+}
+
+.privacy-header .page-header-information {
+    min-height: 42px;
+    justify-content: center;
+}
+
+.privacy-header .header-page-title-label {
+    font-size: 16px;
+    white-space: normal;
+    overflow: visible;
+    -unity-text-align: middle-left;
+    -unity-paragraph-spacing: 0;
+}
+
+.privacy-header .header-subtitle-container {
+    display: none;
 }

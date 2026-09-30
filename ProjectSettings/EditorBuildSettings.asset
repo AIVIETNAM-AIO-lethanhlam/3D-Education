@@ -5,9 +5,6 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/VRMode/Scene/VRScene.unity
-    guid: 0a965b04e48eb304b97811670b38c5a7
   - enabled: 1
     path: Assets/Scenes/SplashScene.unity
     guid: f3af9cb6dfa139c46a7e83618ab16d18
@@ -23,6 +20,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/PrivacyScene.unity
     guid: aa903634e26c34d4da20d6a268f8fce1
+  - enabled: 1
+    path: Assets/Scenes/AdminScene.unity
+    guid: d1fdc3b4dfe6408294d72642d2e75f3d
+  - enabled: 1
+    path: Assets/Scenes/NotificationScene.unity
+    guid: 54e90c6e8ec64f69bdf92235cca499c9
   - enabled: 1
     path: Assets/Scenes/SettingScene.unity
     guid: d8f29c23b8730ce468e539fc28081d76
@@ -68,6 +71,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/VRModeNew/Scene/VRClassroomScene.unity
     guid: ef1d567e60eeaf24c973ef335667d9f3
+  - enabled: 1
+    path: Assets/VRModeNew/Scene/VRClassroomXRScene.unity
+    guid: e54f94f22cde56240b7ccfaba4e7207b
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: ac4a33b71edaaed4a8cf7efbca392c0b, type: 2}
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: bdc425842afcfcf4f83ed3deeca353d0, type: 2}

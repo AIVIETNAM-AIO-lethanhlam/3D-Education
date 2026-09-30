@@ -69,3 +69,28 @@ public class SupabaseErrorResponse
     public string details;
     public string hint;
 }
+
+/// <summary>Result of SupabaseAuthService.SignUpWithVerification (2026-09).</summary>
+public class SignUpOutcome
+{
+    public bool NeedsVerification;
+    public bool AlreadyRegistered;
+    public string UserId;
+    public SupabaseAuthResponse Session;   // only when "Confirm email" is disabled
+}
+
+[Serializable]
+public class SignUpIdentity
+{
+    public string id;
+    public string provider;
+}
+
+[Serializable]
+public class SignUpUserResponse
+{
+    public string id;
+    public string email;
+    public string email_confirmed_at;
+    public SignUpIdentity[] identities;
+}

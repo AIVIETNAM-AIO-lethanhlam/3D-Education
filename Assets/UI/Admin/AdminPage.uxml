@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/UI/Admin/AdminPage.uss"/>
+
+    <!-- Admin dashboard (2026-09). Content is built by AdminPageController. -->
+    <ui:VisualElement name="admin-root" class="adm-root">
+        <ui:VisualElement name="admin-main" class="adm-main"/>
+        <ui:VisualElement name="admin-nav" class="adm-nav"/>
+        <ui:VisualElement name="admin-overlay-layer" picking-mode="Ignore" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0;"/>
+    </ui:VisualElement>
+</ui:UXML>

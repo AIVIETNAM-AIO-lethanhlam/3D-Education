@@ -293,10 +293,16 @@ public class BottomNavigationController : IDisposable
             return;
         }
 
+        // The page controller may already have started the navigation from
+        // its own HomeClicked/MyClassesClicked/... handler in this frame.
+        if (SceneHistory.IsLoadPending)
+            return;
+
         Debug.Log(
             $"Bottom Navigation: {currentSceneName} -> {sceneName}");
 
-        SceneManager.LoadScene(
+        // Use SceneHistory so the Back button works and double loads are blocked.
+        SceneHistory.LoadScene(
             sceneName);
     }
 

@@ -1,0 +1,521 @@
+/* =====================================================================
+   Admin + Notification pages – matches Figma "3D Education – Admin Role"
+   (frames A1–A4, B1–B4). Figma frames are 390 px wide, the app panel is
+   430 px wide, so every Figma value is multiplied by 1.1 here.
+   ===================================================================== */
+
+.adm-root {
+    flex-grow: 1;
+    flex-direction: column;
+    background-color: rgb(245, 247, 251);
+    color: rgb(10, 31, 70);
+    -unity-font-definition: resource("Fonts/Inter_24pt-Regular");
+}
+.adm-main { flex-grow: 1; flex-direction: column; }
+
+/* ---------- font weights ---------- */
+.adm-bold { -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+.adm-semibold { -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+
+/* ---------- text colours ---------- */
+.adm-text--red { color: rgb(217, 51, 64); }
+.adm-text--amber { color: rgb(217, 140, 0); }
+.adm-text--purple { color: rgb(115, 64, 204); }
+.adm-text--blue { color: rgb(0, 70, 180); }
+.adm-text--green { color: rgb(30, 138, 76); }
+.adm-text--gray { color: rgb(92, 107, 142); }
+
+/* ---------- hero (A1) ---------- */
+.adm-hero {
+    flex-shrink: 0;
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 66px 18px 20px 18px;   /* same top spacing as the white headers */
+    background-color: rgb(0, 70, 180);
+}
+.adm-hero-text { flex-grow: 1; flex-shrink: 1; min-height: 42px; justify-content: center; margin-right: 13px; }
+.adm-hero-caption { font-size: 14px; margin: 0; padding: 0; color: rgb(196, 214, 250); }
+.adm-hero-title { font-size: 22px; padding: 0; margin: 2px 0 0 0; color: rgb(255, 255, 255); -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+.adm-hero-avatar {
+    width: 42px; height: 42px; min-width: 42px;
+    border-radius: 21px;
+    background-color: rgb(46, 110, 214);
+    align-items: center; justify-content: center;
+}
+.adm-hero-avatar-label { font-size: 16px; margin: 0; padding: 0; color: rgb(255, 255, 255); -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+
+/* ---------- white header (A2, A3, B1–B4) ---------- */
+.adm-header {
+    flex-shrink: 0;
+    flex-direction: row;
+    align-items: center;
+    padding: 66px 18px 14px 18px;   /* same top spacing as the blue hero */
+    background-color: rgb(255, 255, 255);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(228, 233, 242);
+}
+.adm-header-text {
+    flex-grow: 1; flex-shrink: 1;
+    height: 42px;                 /* same height as the round buttons */
+    justify-content: center;
+    margin: 0 13px 0 13px;
+}
+.adm-header-text--noback { margin-left: 0; }
+.adm-header-title {
+    font-size: 18px;
+    margin: 0; padding: 0;
+    color: rgb(10, 31, 70);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -unity-font-definition: resource("Fonts/Inter_24pt-Bold");
+}
+.adm-header-title--large { font-size: 18px; }
+.adm-header-sub {
+    font-size: 13px;
+    margin: 2px 0 0 0; padding: 0;
+    color: rgb(92, 107, 142);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.adm-header-spacer { width: 42px; min-width: 42px; height: 42px; }
+
+.adm-circle-button {
+    width: 42px; height: 42px; min-width: 42px; max-width: 42px;
+    min-height: 42px; max-height: 42px;
+    flex-shrink: 0;
+    margin: 0; padding: 0;
+    border-width: 0;
+    border-radius: 21px;
+    background-color: rgb(234, 241, 251);
+    align-items: center; justify-content: center;
+}
+.adm-circle-button .adm-icon { width: 24px; height: 24px; -unity-background-image-tint-color: rgb(10, 31, 70); }
+.adm-circle-button--action .adm-icon { width: 16px; height: 16px; -unity-background-image-tint-color: rgb(0, 70, 180); }
+
+/* ---------- scroll + layout ---------- */
+.adm-scroll { flex-grow: 1; }
+.adm-scroll .unity-scroll-view__content-container { padding: 18px 18px 26px 18px; }
+.adm-scroll .unity-scroller { display: none; }
+.adm-scroll--tight .unity-scroll-view__content-container { padding-top: 13px; }
+
+.adm-section-title { font-size: 17px; color: rgb(10, 31, 70); margin: 9px 0 13px 0; -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+.adm-section-label { font-size: 12px; color: rgb(92, 107, 142); letter-spacing: 0.5px; margin-bottom: 9px; -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-body { font-size: 14px; color: rgb(10, 31, 70); white-space: normal; }
+.adm-body--strong { -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-caption { font-size: 13px; color: rgb(92, 107, 142); white-space: normal; }
+.adm-caption--small { font-size: 12px; }
+.adm-row { flex-direction: row; align-items: center; }
+.adm-row--between { justify-content: space-between; }
+.adm-row--wrap { flex-wrap: wrap; }
+.adm-grow { flex-grow: 1; flex-shrink: 1; }
+.adm-gap { height: 11px; }
+
+/* ---------- cards ---------- */
+.adm-card {
+    margin-bottom: 15px;
+    padding: 18px;
+    border-width: 1px;
+    border-color: rgb(221, 227, 238);
+    border-radius: 15px;
+    background-color: rgb(255, 255, 255);
+}
+.adm-card--compact { padding: 15px; }
+.adm-card--tap:active { background-color: rgb(248, 250, 254); }
+.adm-card--soft { background-color: rgb(234, 241, 251); border-color: rgb(234, 241, 251); }
+.adm-card--amber { background-color: rgb(255, 243, 214); border-color: rgb(255, 243, 214); }
+.adm-card--purple { background-color: rgb(241, 235, 255); border-color: rgb(241, 235, 255); }
+.adm-card--red { background-color: rgb(253, 235, 237); border-color: rgb(253, 235, 237); }
+.adm-card--unread { background-color: rgb(250, 252, 255); border-color: rgb(191, 209, 242); }
+
+/* ---------- A1 stats ---------- */
+.adm-stat-row { flex-direction: row; margin-bottom: 13px; }
+.adm-stat-card {
+    flex-grow: 1; flex-basis: 0;
+    margin: 0;
+    padding: 15px;
+    border-width: 1px;
+    border-color: rgb(221, 227, 238);
+    border-radius: 15px;
+    background-color: rgb(255, 255, 255);
+}
+.adm-stat-card--right { margin-left: 12px; }
+.adm-stat-value { font-size: 26px; margin-top: 12px; -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+.adm-stat-label { font-size: 13px; color: rgb(92, 107, 142); white-space: normal; margin-top: 4px; }
+
+/* ---------- A1 to-do items ---------- */
+.adm-task {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-width: 1px;
+    border-color: rgb(221, 227, 238);
+    border-radius: 15px;
+    background-color: rgb(255, 255, 255);
+}
+.adm-task:active { background-color: rgb(248, 250, 254); }
+.adm-task-text { flex-grow: 1; flex-shrink: 1; margin-left: 13px; margin-right: 8px; }
+.adm-task-title { font-size: 15px; color: rgb(10, 31, 70); white-space: normal; -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-task-sub { font-size: 13px; color: rgb(92, 107, 142); white-space: normal; margin-top: 2px; }
+.adm-chevron { font-size: 20px; color: rgb(140, 152, 178); }
+
+/* ---------- icon boxes ---------- */
+.adm-icon-box {
+    width: 44px; height: 44px; min-width: 44px;
+    border-radius: 11px;
+    align-items: center; justify-content: center;
+    margin-right: 13px;
+}
+.adm-icon-box--small { width: 35px; height: 35px; min-width: 35px; border-radius: 9px; margin-right: 0; }
+.adm-icon-box--stat { width: 42px; height: 42px; min-width: 42px; border-radius: 11px; margin-right: 0; }
+.adm-icon-box--content { width: 53px; height: 53px; min-width: 53px; border-radius: 13px; margin-right: 15px; }
+.adm-icon-box--sheet { width: 57px; height: 57px; min-width: 57px; border-radius: 15px; margin: 0; align-self: center; }
+.adm-icon-box--large { width: 72px; height: 72px; min-width: 72px; border-radius: 36px; margin-right: 0; align-self: center; }
+.adm-task .adm-icon-box { margin-right: 0; }
+.adm-icon-box--red { background-color: rgb(253, 235, 237); }
+.adm-icon-box--amber { background-color: rgb(255, 243, 214); }
+.adm-icon-box--purple { background-color: rgb(241, 235, 255); }
+.adm-icon-box--blue { background-color: rgb(234, 241, 251); }
+.adm-icon-box--green { background-color: rgb(230, 247, 237); }
+.adm-icon-box--solid-blue { background-color: rgb(47, 128, 237); }
+.adm-icon-box--solid-orange { background-color: rgb(242, 140, 40); }
+.adm-icon-box--solid-green { background-color: rgb(46, 158, 107); }
+
+.adm-icon { width: 20px; height: 20px; -unity-background-scale-mode: scale-to-fit; }
+.adm-icon-box--small .adm-icon { width: 16px; height: 16px; }
+.adm-icon-box--stat .adm-icon { width: 24px; height: 24px; }
+.adm-icon-box--content .adm-icon { width: 24px; height: 24px; }
+.adm-icon-box--sheet .adm-icon { width: 26px; height: 26px; }
+.adm-icon-box--large .adm-icon { width: 36px; height: 36px; }
+
+/* tinted glyph icons (white PNGs) */
+.adm-tint--red { -unity-background-image-tint-color: rgb(217, 51, 64); }
+.adm-tint--amber { -unity-background-image-tint-color: rgb(217, 140, 0); }
+.adm-tint--purple { -unity-background-image-tint-color: rgb(115, 64, 204); }
+.adm-tint--blue { -unity-background-image-tint-color: rgb(0, 70, 180); }
+.adm-tint--green { -unity-background-image-tint-color: rgb(30, 138, 76); }
+.adm-tint--gray { -unity-background-image-tint-color: rgb(120, 132, 160); }
+.adm-tint--white { -unity-background-image-tint-color: rgb(255, 255, 255); }
+.adm-tint--light { -unity-background-image-tint-color: rgb(140, 179, 255); }
+
+.adm-glyph-text { font-size: 18px; -unity-text-align: middle-center; -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+.adm-icon-box--small .adm-glyph-text { font-size: 16px; }
+.adm-icon-box--stat .adm-glyph-text { font-size: 22px; }
+.adm-icon-box--content .adm-glyph-text { font-size: 24px; color: rgb(255, 255, 255); }
+.adm-icon-box--sheet .adm-glyph-text { font-size: 26px; }
+
+.adm-icon--flag { background-image: url("project://database/Assets/UI/Images/Icons/adm-flag.png"); }
+.adm-icon--square { background-image: url("project://database/Assets/UI/Images/Icons/adm-square.png"); }
+.adm-icon--pencil { background-image: url("project://database/Assets/UI/Images/Icons/adm-pencil.png"); }
+.adm-icon--diamond { background-image: url("project://database/Assets/UI/Images/Icons/adm-diamond.png"); }
+.adm-icon--lines { background-image: url("project://database/Assets/UI/Images/Icons/adm-lines.png"); }
+.adm-icon--grid { background-image: url("project://database/Assets/UI/Images/Icons/adm-grid.png"); }
+.adm-icon--gear { background-image: url("project://database/Assets/UI/Images/Icons/adm-gear.png"); }
+.adm-icon--tick { background-image: url("project://database/Assets/UI/Images/Icons/adm-check.png"); }
+.adm-icon--filter { background-image: url("project://database/Assets/UI/Images/Icons/adm-filter.png"); }
+.adm-icon--info { background-image: url("project://database/Assets/UI/Images/Icons/adm-info.png"); }
+.adm-icon--trash { background-image: url("project://database/Assets/UI/Images/Icons/adm-trash.png"); }
+.adm-icon--back { background-image: url("project://database/Assets/UI/Images/Icons/adm-arrow-left.png"); }
+.adm-icon--alert { background-image: url("project://database/Assets/UI/Images/Icons/alert.png"); }
+.adm-icon--warning { background-image: url("project://database/Assets/UI/Images/Icons/warning.png"); }
+.adm-icon--check { background-image: url("project://database/Assets/UI/Images/Icons/check.png"); }
+.adm-icon--explain { background-image: url("project://database/Assets/UI/Images/Icons/explain.png"); }
+.adm-icon--delete { background-image: url("project://database/Assets/UI/Images/Icons/delete.png"); }
+.adm-icon--bell { background-image: url("project://database/Assets/UI/Images/Icons/notification.png"); }
+.adm-icon--message { background-image: url("project://database/Assets/UI/Images/Icons/message.png"); }
+.adm-icon--document { background-image: url("project://database/Assets/UI/Images/Icons/document.png"); }
+.adm-icon--cube { background-image: url("project://database/Assets/UI/Images/Icons/cube.png"); }
+.adm-icon--video { background-image: url("project://database/Assets/UI/Images/Icons/video.png"); }
+.adm-icon--home { background-image: url("project://database/Assets/UI/Images/Icons/home.png"); }
+.adm-icon--settings { background-image: url("project://database/Assets/UI/Images/Icons/settings.png"); }
+.adm-icon--logout { background-image: url("project://database/Assets/UI/Images/Icons/logout.png"); }
+.adm-icon--chevron { background-image: url("project://database/Assets/UI/Images/Icons/chevron-right.png"); width: 14px; height: 14px; }
+.adm-icon--globe { background-image: url("project://database/Assets/UI/Images/Icons/globe.png"); }
+.adm-icon--eye { background-image: url("project://database/Assets/UI/Images/Icons/eye.png"); }
+.adm-icon--book { background-image: url("project://database/Assets/UI/Images/Icons/book.png"); }
+.adm-icon--classes { background-image: url("project://database/Assets/UI/Images/Icons/classes.png"); }
+.adm-icon--students { background-image: url("project://database/Assets/UI/Images/Icons/students.png"); }
+.adm-icon--edit { background-image: url("project://database/Assets/UI/Images/Icons/edit.png"); }
+.adm-icon--quiz { background-image: url("project://database/Assets/UI/Images/Icons/objective.png"); }
+.adm-icon--clock { background-image: url("project://database/Assets/UI/Images/Icons/clock.png"); }
+
+/* ---------- filter pills (A2, B1) ---------- */
+.adm-tab-row { flex-direction: row; flex-wrap: wrap; flex-shrink: 0; padding: 18px 18px 0 18px; }
+.adm-tab-row--second { padding-top: 9px; }
+.adm-pill {
+    height: 24px;
+    margin: 0 7px 0 0;
+    padding: 0 11px;
+    border-width: 0;
+    border-radius: 12px;
+    background-color: rgba(0, 0, 0, 0);
+    color: rgb(92, 107, 142);
+    font-size: 12px;
+    -unity-text-align: middle-center;
+}
+.adm-pill--active { background-color: rgb(0, 70, 180); color: rgb(255, 255, 255); -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-pill--blue { background-color: rgb(234, 241, 251); color: rgb(0, 70, 180); -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-pill--purple { background-color: rgb(241, 235, 255); color: rgb(115, 64, 204); -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-pill--selected { border-width: 1px; border-color: rgb(0, 70, 180); }
+.adm-pill--purple.adm-pill--selected { border-color: rgb(115, 64, 204); }
+.adm-pill--soft { background-color: rgb(234, 241, 251); color: rgb(10, 31, 70); margin-bottom: 7px; }
+
+/* legacy chip (notifications) */
+.adm-chip {
+    height: 29px;
+    margin: 0 8px 9px 0;
+    padding: 0 13px;
+    border-width: 1px;
+    border-color: rgb(221, 227, 238);
+    border-radius: 15px;
+    background-color: rgb(255, 255, 255);
+    color: rgb(92, 107, 142);
+    font-size: 13px;
+}
+.adm-chip--active { background-color: rgb(0, 70, 180); border-color: rgb(0, 70, 180); color: rgb(255, 255, 255); -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+
+/* ---------- badges ---------- */
+.adm-badge {
+    padding: 4px 10px;
+    margin: 0;
+    border-radius: 11px;
+    font-size: 12px;
+    align-self: flex-start;
+    -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold");
+}
+.adm-badge-row { flex-direction: row; flex-wrap: wrap; margin-top: 8px; }
+.adm-badge-row .adm-badge { margin-right: 7px; }
+.adm-badge--red { background-color: rgb(253, 235, 237); color: rgb(217, 51, 64); }
+.adm-badge--amber { background-color: rgb(255, 243, 214); color: rgb(212, 136, 0); }
+.adm-badge--purple { background-color: rgb(241, 235, 255); color: rgb(115, 64, 204); }
+.adm-badge--blue { background-color: rgb(234, 241, 251); color: rgb(0, 70, 180); }
+.adm-badge--green { background-color: rgb(230, 247, 237); color: rgb(30, 138, 76); }
+.adm-badge-flag { flex-direction: row; align-items: center; padding: 4px 10px; border-radius: 11px; background-color: rgb(253, 235, 237); }
+.adm-badge-flag .adm-icon { width: 11px; height: 11px; margin-right: 4px; }
+.adm-badge-flag-label { font-size: 12px; color: rgb(217, 51, 64); -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+
+/* ---------- A2 chat report card ---------- */
+.adm-person-name { font-size: 16px; color: rgb(10, 31, 70); -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); white-space: normal; }
+.adm-person-time { font-size: 12px; color: rgb(92, 107, 142); margin-top: 1px; }
+.adm-reason {
+    flex-direction: row;
+    align-items: center;
+    min-height: 33px;
+    margin-top: 15px;
+    padding: 6px 13px;
+    border-radius: 9px;
+    background-color: rgb(253, 235, 237);
+}
+.adm-reason .adm-icon { width: 13px; height: 13px; margin-right: 9px; }
+.adm-reason-label { font-size: 14px; color: rgb(217, 51, 64); white-space: normal; flex-shrink: 1; }
+.adm-reporter-line { font-size: 13px; color: rgb(92, 107, 142); margin-top: 13px; white-space: normal; }
+
+.adm-avatar {
+    width: 44px; height: 44px; min-width: 44px;
+    border-radius: 22px;
+    margin-right: 13px;
+    align-items: center; justify-content: center;
+    background-color: rgb(47, 128, 237);
+}
+.adm-avatar--large { width: 48px; height: 48px; min-width: 48px; border-radius: 24px; }
+.adm-avatar--small { width: 40px; height: 40px; min-width: 40px; border-radius: 20px; margin-right: 11px; }
+.adm-avatar-label { font-size: 15px; color: rgb(255, 255, 255); -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-avatar--c0 { background-color: rgb(224, 88, 78); }
+.adm-avatar--c1 { background-color: rgb(62, 134, 230); }
+.adm-avatar--c2 { background-color: rgb(137, 87, 224); }
+.adm-avatar--c3 { background-color: rgb(46, 158, 107); }
+.adm-avatar--c4 { background-color: rgb(242, 140, 40); }
+
+.adm-dot { width: 8px; height: 8px; border-radius: 4px; background-color: rgb(0, 70, 180); margin-left: 6px; }
+
+/* ---------- A3 detail ---------- */
+.adm-count-col { align-items: center; margin-left: 9px; }
+.adm-count-value { font-size: 22px; color: rgb(217, 140, 0); -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+.adm-count-label { font-size: 11px; color: rgb(92, 107, 142); }
+.adm-reason-title { font-size: 15px; color: rgb(217, 51, 64); white-space: normal; -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+.adm-quote { font-size: 14px; color: rgb(10, 31, 70); white-space: normal; margin-top: 6px; }
+
+.adm-bubble-row { flex-direction: row; margin-bottom: 9px; }
+.adm-bubble-row--right { justify-content: flex-end; }
+.adm-bubble {
+    max-width: 80%;
+    padding: 8px 13px 9px 13px;
+    border-radius: 13px;
+    background-color: rgb(244, 246, 250);
+}
+.adm-bubble--reported { background-color: rgb(253, 235, 237); border-width: 1px; border-color: rgb(224, 69, 79); }
+.adm-bubble--reporter { background-color: rgb(234, 241, 251); }
+.adm-bubble-name { font-size: 11px; color: rgb(92, 107, 142); margin-bottom: 2px; -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-bubble--reported .adm-bubble-name { color: rgb(217, 51, 64); }
+.adm-bubble-text { font-size: 14px; color: rgb(10, 31, 70); white-space: normal; }
+
+.adm-note {
+    flex-direction: row;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 13px 15px;
+    border-radius: 13px;
+    background-color: rgb(234, 241, 251);
+}
+.adm-note .adm-icon { width: 14px; height: 14px; margin: 2px 9px 0 0; }
+.adm-note-text { font-size: 13px; color: rgb(19, 74, 160); white-space: normal; flex-shrink: 1; flex-grow: 1; }
+
+/* ---------- B1 content card ---------- */
+.adm-content-type { font-size: 11px; color: rgb(92, 107, 142); letter-spacing: 0.5px; -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-content-title { font-size: 17px; color: rgb(10, 31, 70); margin-top: 3px; white-space: normal; -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-content-sub { font-size: 13px; color: rgb(92, 107, 142); margin-top: 2px; white-space: normal; }
+
+/* ---------- B2 preview + info ---------- */
+.adm-preview {
+    height: 187px;
+    margin-bottom: 15px;
+    border-radius: 15px;
+    background-color: rgb(20, 31, 56);
+    align-items: center; justify-content: center;
+}
+.adm-preview .adm-icon { width: 44px; height: 44px; }
+.adm-preview-label { font-size: 13px; color: rgb(150, 164, 196); margin-top: 13px; }
+.adm-info-row { flex-direction: row; justify-content: space-between; align-items: flex-start; margin-bottom: 9px; }
+.adm-info-label { font-size: 14px; color: rgb(92, 107, 142); }
+.adm-info-value { font-size: 14px; color: rgb(10, 31, 70); margin-left: 13px; flex-shrink: 1; -unity-text-align: upper-right; white-space: normal; -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+
+/* ---------- B3 progress ---------- */
+.adm-step { flex-direction: row; align-items: flex-start; margin-top: 9px; }
+.adm-step-mark { width: 15px; height: 15px; margin: 3px 11px 0 0; align-items: center; justify-content: center; }
+.adm-step-mark .adm-icon { width: 13px; height: 13px; }
+.adm-step-dot { width: 9px; height: 9px; border-radius: 5px; background-color: rgb(115, 64, 204); }
+.adm-step-dot--pending { background-color: rgb(205, 213, 228); }
+.adm-step-title { font-size: 14px; color: rgb(10, 31, 70); white-space: normal; }
+.adm-step-title--pending { color: rgb(140, 152, 178); }
+.adm-step-time { font-size: 12px; color: rgb(92, 107, 142); margin-top: 1px; }
+.adm-teacher-name { font-size: 15px; color: rgb(10, 31, 70); -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+.adm-teacher-sub { font-size: 12px; color: rgb(92, 107, 142); margin-top: 1px; white-space: normal; }
+.adm-explanation { font-size: 14px; color: rgb(10, 31, 70); white-space: normal; margin-top: 13px; }
+
+/* ---------- inputs ---------- */
+.adm-field { margin: 0 0 13px 0; }
+.adm-field .unity-text-field__input,
+.adm-field .unity-base-text-field__input {
+    min-height: 48px;
+    padding: 13px 15px;
+    border-width: 1px;
+    border-color: rgb(221, 227, 238);
+    border-radius: 13px;
+    background-color: rgb(245, 247, 251);
+    font-size: 14px;
+    color: rgb(10, 31, 70);
+    white-space: normal;
+    -unity-text-align: upper-left;
+}
+.adm-field--multiline .unity-text-field__input,
+.adm-field--multiline .unity-base-text-field__input { min-height: 108px; }
+
+/* ---------- buttons ---------- */
+.adm-btn {
+    height: 53px;
+    margin: 0;
+    border-width: 0;
+    border-radius: 27px;
+    font-size: 16px;
+    flex-grow: 1;
+    flex-basis: 0;
+    -unity-font-definition: resource("Fonts/Inter_24pt-Bold");
+}
+.adm-btn--gap { margin-left: 11px; }
+.adm-btn--primary { background-color: rgb(0, 70, 180); color: rgb(255, 255, 255); }
+.adm-btn--secondary { background-color: rgb(255, 255, 255); color: rgb(0, 70, 180); border-width: 1px; border-color: rgb(213, 221, 235); }
+.adm-btn--danger { background-color: rgb(220, 53, 69); color: rgb(255, 255, 255); }
+.adm-btn--danger-soft { background-color: rgb(253, 235, 237); color: rgb(217, 51, 64); }
+.adm-btn--success { background-color: rgb(30, 138, 76); color: rgb(255, 255, 255); }
+.adm-btn--warn { background-color: rgb(217, 140, 0); color: rgb(255, 255, 255); }
+.adm-btn--purple { background-color: rgb(115, 64, 204); color: rgb(255, 255, 255); }
+.adm-btn:disabled { opacity: 0.55; }
+
+.adm-btn-small {
+    height: 35px;
+    margin: 9px 0 0 0;
+    padding: 0 15px;
+    border-width: 0;
+    border-radius: 18px;
+    font-size: 13px;
+    align-self: flex-start;
+    background-color: rgb(234, 241, 251);
+    color: rgb(0, 70, 180);
+    -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold");
+}
+.adm-btn-small--purple { background-color: rgb(115, 64, 204); color: rgb(255, 255, 255); }
+
+.adm-footer {
+    flex-shrink: 0;
+    flex-direction: row;
+    padding: 15px 18px 29px 18px;
+    background-color: rgb(255, 255, 255);
+    border-top-width: 1px;
+    border-top-color: rgb(236, 240, 247);
+}
+.adm-footer--column { flex-direction: column; }
+.adm-footer--column .adm-btn { flex-grow: 0; flex-basis: auto; }
+.adm-footer--column .adm-btn--gap { margin-left: 0; margin-top: 11px; }
+
+/* ---------- bottom sheet (A4, B2, B4) ---------- */
+.adm-sheet-overlay {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background-color: rgba(10, 20, 40, 0.45);
+    justify-content: flex-end;
+}
+.adm-sheet {
+    max-height: 88%;
+    padding: 11px 22px 31px 22px;
+    border-top-left-radius: 26px;
+    border-top-right-radius: 26px;
+    background-color: rgb(255, 255, 255);
+}
+.adm-sheet .unity-scroll-view__content-container { padding: 0; }
+.adm-sheet .unity-scroller { display: none; }
+.adm-sheet-handle { width: 44px; height: 4px; border-radius: 2px; background-color: rgb(213, 221, 235); align-self: center; margin-bottom: 15px; }
+.adm-sheet-title { font-size: 20px; color: rgb(10, 31, 70); margin: 0 0 11px 0; white-space: normal; -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+.adm-sheet-title--center { -unity-text-align: middle-center; margin-top: 15px; }
+.adm-sheet-desc { font-size: 14px; color: rgb(92, 107, 142); white-space: normal; margin-bottom: 13px; }
+.adm-sheet-label { font-size: 13px; color: rgb(92, 107, 142); margin: 2px 0 9px 0; -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-sheet-help { font-size: 13px; color: rgb(92, 107, 142); white-space: normal; margin: 0 0 15px 0; }
+.adm-sheet-buttons { flex-direction: row; margin-top: 4px; }
+.adm-pill-row { flex-direction: row; flex-wrap: wrap; margin-bottom: 9px; }
+.adm-status { font-size: 13px; color: rgb(92, 107, 142); margin-bottom: 9px; white-space: normal; }
+.adm-status--error { color: rgb(217, 51, 64); }
+
+.adm-bullets { padding: 13px 15px 5px 15px; margin-bottom: 15px; border-radius: 13px; background-color: rgb(253, 235, 237); }
+.adm-bullet { flex-direction: row; align-items: flex-start; margin-bottom: 9px; }
+.adm-bullet-dot { width: 6px; height: 6px; border-radius: 3px; background-color: rgb(217, 51, 64); margin: 7px 11px 0 0; }
+.adm-bullet-text { font-size: 14px; color: rgb(10, 31, 70); white-space: normal; flex-shrink: 1; flex-grow: 1; }
+
+/* ---------- bottom navigation (A1, A2, B1) ---------- */
+.adm-nav {
+    flex-shrink: 0;
+    flex-direction: row;
+    padding: 12px 0 20px 0;
+    background-color: rgb(255, 255, 255);
+    border-top-width: 1px;
+    border-top-color: rgb(228, 233, 242);
+}
+.adm-nav-item { flex-grow: 1; flex-basis: 0; align-items: center; }
+.adm-nav-item .adm-icon { width: 26px; height: 26px; -unity-background-image-tint-color: rgb(107, 122, 153); }
+.adm-nav-label { font-size: 12px; color: rgb(107, 122, 153); margin-top: 5px; }
+.adm-nav-item--active .adm-icon { -unity-background-image-tint-color: rgb(0, 70, 180); }
+.adm-nav-item--active .adm-nav-label { color: rgb(0, 70, 180); -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+
+/* ---------- misc ---------- */
+.adm-page-overlay {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background-color: rgb(245, 247, 251);
+    flex-direction: column;
+}
+.adm-empty { align-items: center; padding: 44px 22px; }
+.adm-empty-title { font-size: 16px; color: rgb(10, 31, 70); margin-top: 13px; -unity-text-align: middle-center; white-space: normal; -unity-font-definition: resource("Fonts/Inter_24pt-Bold"); }
+.adm-empty-text { font-size: 14px; color: rgb(92, 107, 142); margin-top: 4px; white-space: normal; -unity-text-align: middle-center; }
+.adm-link { font-size: 14px; color: rgb(0, 70, 180); -unity-font-definition: resource("Fonts/Inter_24pt-SemiBold"); }
+.adm-link-row { flex-direction: row; align-items: center; justify-content: center; padding: 9px 0 15px 0; }
+.adm-divider { height: 1px; background-color: rgb(228, 233, 242); margin: 11px 0; }

@@ -114,8 +114,10 @@ public static class SupabaseClassService
 
         string teacherId = Uri.EscapeDataString(SupabaseSession.UserId);
 
+        // teacher_class_overview = classes + real statistics
+        // (enrolled students, chapters, average quiz score, pending requests).
         string query =
-            "classes" +
+            "teacher_class_overview" +
             $"?teacher_id=eq.{teacherId}" +
             "&select=*" +
             "&order=created_at.desc";
@@ -296,6 +298,73 @@ public static class SupabaseClassService
                 onSuccess?.Invoke(students);
             },
             onError);
+    }
+
+    /// <summary>Students waiting for the teacher to approve their join request.</summary>
+    public static IEnumerator GetClassPendingRequests(
+        string classId,
+        Action<ClassMemberStudent[]> onSuccess,
+        Action<string> onError)
+    {
+        if (!Guid.TryParse(classId, out _))
+        {
+            onError?.Invoke("classId không đúng định dạng UUID.");
+            yield break;
+        }
+
+        string query =
+            "class_members" +
+            $"?class_id=eq.{Uri.EscapeDataString(classId.Trim())}" +
+            "&member_role=eq.student" +
+            "&status=eq.pending" +
+            "&select=id,class_id,user_id,member_role,status,joined_at," +
+            "profiles(full_name,avatar_url,role)" +
+            "&order=joined_at.asc";
+
+        yield return SupabaseRestService.Get(
+            query,
+            json =>
+            {
+                if (!TryParseClassMembers(
+                        json,
+                        out ClassMemberStudent[] students,
+                        out string parseError))
+                {
+                    onError?.Invoke(parseError);
+                    return;
+                }
+
+                onSuccess?.Invoke(students);
+            },
+            onError);
+    }
+
+    /// <summary>
+    /// Teacher approves (status -> enrolled) or rejects (status -> rejected)
+    /// a pending join request. Checked on the server by respond_join_request().
+    /// </summary>
+    public static IEnumerator RespondJoinRequest(
+        string memberId,
+        bool approve,
+        Action onSuccess,
+        Action<string> onError)
+    {
+        if (!Guid.TryParse(memberId, out _))
+        {
+            onError?.Invoke("memberId không đúng định dạng UUID.");
+            yield break;
+        }
+
+        string body =
+            "{\"p_member_id\":\"" + memberId.Trim() + "\"," +
+            "\"p_approve\":" + (approve ? "true" : "false") + "}";
+
+        yield return SupabaseRestService.Post(
+            "rpc/respond_join_request",
+            body,
+            _ => onSuccess?.Invoke(),
+            onError,
+            false);
     }
 
     public static IEnumerator GetUserPresence(

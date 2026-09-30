@@ -205,6 +205,30 @@ public class GoogleOAuthCallbackHandler : MonoBehaviour
             existingRole = selectedRole;
         }
 
+        // Save the session, then read the authoritative role from profiles.
+        // For a first-time Google account this also stores the selected role once.
+        SupabaseSession.SaveAuthResponse(
+            authResponse,
+            existingRole);
+
+        string profileRole = null;
+        string profileRoleError = null;
+
+        yield return SupabaseProfileService.SyncRoleFromProfile(
+            selectedRole,
+            role => profileRole = role,
+            error => profileRoleError = error);
+
+        if (string.IsNullOrWhiteSpace(profileRole))
+        {
+            SupabaseSession.Clear();
+            FinishWithError(
+                "Không đọc được hồ sơ tài khoản Google: " + profileRoleError);
+            yield break;
+        }
+
+        existingRole = profileRole;
+
         // Same behavior as email/password login: the selected role must match
         // an existing account's stored role.
         if (!string.Equals(
@@ -212,16 +236,13 @@ public class GoogleOAuthCallbackHandler : MonoBehaviour
                 selectedRole,
                 StringComparison.OrdinalIgnoreCase))
         {
+            SupabaseSession.Clear();
             FinishWithError(
                 $"Tài khoản Google này có role '{existingRole}', " +
                 $"không phải '{selectedRole}'.");
 
             yield break;
         }
-
-        SupabaseSession.SaveAuthResponse(
-            authResponse,
-            existingRole);
 
         SaveLegacySessionKeys();
 

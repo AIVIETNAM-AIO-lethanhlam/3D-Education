@@ -66,6 +66,10 @@ public static class SupabaseRestService
             onError);
     }
 
+    /// <summary>
+    /// Sends a PostgREST request. Refreshes the access token before the request
+    /// when it is about to expire, and retries once after an HTTP 401.
+    /// </summary>
     private static IEnumerator Send(
         string method,
         string tableAndQuery,
@@ -73,6 +77,48 @@ public static class SupabaseRestService
         bool returnRepresentation,
         Action<string> onSuccess,
         Action<string> onError)
+    {
+        yield return SupabaseTokenRefresher.EnsureFreshToken();
+
+        bool succeeded = false;
+        string result = null;
+        string error = null;
+        long statusCode = 0;
+
+        yield return SendOnce(method, tableAndQuery, json, returnRepresentation,
+            value => { succeeded = true; result = value; },
+            value => error = value,
+            code => statusCode = code);
+
+        if (!succeeded && statusCode == 401 && SupabaseSession.HasStoredSession)
+        {
+            bool refreshed = false;
+            yield return SupabaseTokenRefresher.RefreshSession(value => refreshed = value);
+
+            if (refreshed)
+            {
+                error = null;
+                yield return SendOnce(method, tableAndQuery, json, returnRepresentation,
+                    value => { succeeded = true; result = value; },
+                    value => error = value,
+                    code => statusCode = code);
+            }
+        }
+
+        if (succeeded)
+            onSuccess?.Invoke(result);
+        else
+            onError?.Invoke(error);
+    }
+
+    private static IEnumerator SendOnce(
+        string method,
+        string tableAndQuery,
+        string json,
+        bool returnRepresentation,
+        Action<string> onSuccess,
+        Action<string> onError,
+        Action<long> onStatus)
     {
         if (!SupabaseConfig.TryValidate(out string configError))
         {
@@ -138,6 +184,8 @@ public static class SupabaseRestService
         }
 
         yield return request.SendWebRequest();
+
+        onStatus?.Invoke(request.responseCode);
 
         string responseText =
             request.downloadHandler?.text ?? string.Empty;

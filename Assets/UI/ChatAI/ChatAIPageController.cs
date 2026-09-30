@@ -79,6 +79,13 @@ public class ChatAIPageController : MonoBehaviour
 
     private string currentUserId;
     private string historyKey;
+
+    // BUG-016: only one AI request at a time (the send button used to be
+    // re-enabled by picking an image while a request was still running).
+    private bool isAwaitingAI;
+
+    // BUG-012: popup opened by the header "more" (hamburger) button.
+    private VisualElement moreMenuOverlay;
     private bool initialized;
     private Coroutine keyboardMonitor;
     private float lastKeyboardHeight = -1f;
@@ -102,6 +109,30 @@ public class ChatAIPageController : MonoBehaviour
 #endif
 
     private readonly List<AIChatMessage> messages = new List<AIChatMessage>();
+
+    private List<AIService.AIHistoryItem> BuildHistoryForAI(AIChatMessage currentMessage)
+    {
+        List<AIService.AIHistoryItem> history = new List<AIService.AIHistoryItem>();
+
+        foreach (AIChatMessage message in messages)
+        {
+            if (message == null || ReferenceEquals(message, currentMessage))
+                continue;
+
+            if (string.IsNullOrWhiteSpace(message.content))
+                continue;
+
+            history.Add(new AIService.AIHistoryItem
+            {
+                role = string.Equals(message.role, "user", StringComparison.OrdinalIgnoreCase)
+                    ? "user"
+                    : "model",
+                text = message.content
+            });
+        }
+
+        return history;
+    }
 
     [Serializable]
     private class AIChatMessage
@@ -192,6 +223,8 @@ public class ChatAIPageController : MonoBehaviour
 
     private void OnDisable()
     {
+        isAwaitingAI = false;
+        CloseMoreMenu();
         AppLanguageManager.LanguageChanged -= OnLanguageChanged;
         UnregisterCallbacks();
 
@@ -342,7 +375,7 @@ public class ChatAIPageController : MonoBehaviour
 
     private void SendCurrentMessage()
     {
-        if (!initialized || messageInput == null)
+        if (!initialized || messageInput == null || isAwaitingAI)
             return;
 
         string text = messageInput.value?.Trim();
@@ -377,10 +410,14 @@ public class ChatAIPageController : MonoBehaviour
         if (messageInput == null)
             yield break;
 
-        messageInput.SetEnabled(false);
+        // BUG-009: keep the input editable while the AI answers, so the next
+        // question can be drafted; only sending is blocked until the answer arrives.
+        isAwaitingAI = true;
 
         if (sendButton != null)
             sendButton.SetEnabled(false);
+
+        attachmentButton?.SetEnabled(false);
 
         bool hasImage = attachedImages != null && attachedImages.Count > 0;
         List<Texture2D> messageTextures = hasImage
@@ -422,6 +459,9 @@ public class ChatAIPageController : MonoBehaviour
         bool requestFinished = false;
         string aiResponse = string.Empty;
         string requestError = string.Empty;
+
+        // Send the previous turns so the AI understands follow-up questions.
+        AIService.SetConversationHistory(BuildHistoryForAI(userMessage));
 
         IEnumerator aiRequest = hasImage
             ? AIService.SendMessageWithImages(
@@ -484,11 +524,17 @@ public class ChatAIPageController : MonoBehaviour
                 requestError
             );
 
+            bool rateLimited = AIService.IsRateLimitError(requestError);
+
             AIChatMessage assistantMessage = new AIChatMessage
             {
                 id = Guid.NewGuid().ToString(),
                 role = "assistant",
-                content = T(
+                content = rateLimited
+                    ? T(
+                        "The AI assistant is receiving too many requests. Please try again in about 30 seconds.",
+                        "Trợ lý AI đang tiếp nhận nhiều yêu cầu, vui lòng thử lại sau khoảng 30 giây.")
+                    : T(
                     "Sorry, I couldn't get an AI response right now. Please try again.",
                     "Xin lỗi, hiện tại tôi chưa thể nhận được phản hồi từ AI. Vui lòng thử lại."
                 ),
@@ -502,6 +548,8 @@ public class ChatAIPageController : MonoBehaviour
         SaveLocalHistory();
         RenderMessages();
 
+        isAwaitingAI = false;
+        attachmentButton?.SetEnabled(true);
         messageInput.SetEnabled(true);
         messageInput.Focus();
         UpdateInputState();
@@ -1232,7 +1280,7 @@ public class ChatAIPageController : MonoBehaviour
             );
 
             sendButton.SetEnabled(
-                canSend && initialized
+                canSend && initialized && !isAwaitingAI
             );
         }
 
@@ -1289,11 +1337,180 @@ public class ChatAIPageController : MonoBehaviour
         SceneManager.LoadScene(scene);
     }
 
+    // =========================================================
+    // BUG-012: header "more" (hamburger) menu
+    // =========================================================
+
     private void HandleMoreClicked()
     {
-        Debug.Log(
-            "[ChatAIPageController] More button clicked."
-        );
+        if (moreMenuOverlay != null)
+        {
+            CloseMoreMenu();
+            return;
+        }
+
+        OpenMoreMenu();
+    }
+
+    private void OpenMoreMenu()
+    {
+        if (root == null)
+            return;
+
+        // Full-screen transparent layer: a tap outside the card closes the menu.
+        moreMenuOverlay = new VisualElement { name = "ai-more-menu-overlay" };
+        moreMenuOverlay.style.position = Position.Absolute;
+        moreMenuOverlay.style.left = 0;
+        moreMenuOverlay.style.right = 0;
+        moreMenuOverlay.style.top = 0;
+        moreMenuOverlay.style.bottom = 0;
+        moreMenuOverlay.style.backgroundColor = new Color(0f, 0f, 0f, 0.18f);
+        moreMenuOverlay.RegisterCallback<PointerDownEvent>(evt =>
+        {
+            if (evt.target == moreMenuOverlay)
+                CloseMoreMenu();
+        });
+
+        VisualElement card = new VisualElement { name = "ai-more-menu" };
+        card.style.position = Position.Absolute;
+        card.style.right = 16;
+        card.style.top = GetMoreMenuTop();
+        card.style.minWidth = 220;
+        card.style.paddingTop = 6;
+        card.style.paddingBottom = 6;
+        card.style.backgroundColor = Color.white;
+        card.style.borderTopLeftRadius = 14;
+        card.style.borderTopRightRadius = 14;
+        card.style.borderBottomLeftRadius = 14;
+        card.style.borderBottomRightRadius = 14;
+        card.style.borderLeftWidth = 1;
+        card.style.borderRightWidth = 1;
+        card.style.borderTopWidth = 1;
+        card.style.borderBottomWidth = 1;
+        Color border = new Color32(220, 228, 242, 255);
+        card.style.borderLeftColor = border;
+        card.style.borderRightColor = border;
+        card.style.borderTopColor = border;
+        card.style.borderBottomColor = border;
+
+        card.Add(CreateMoreMenuItem(
+            T("New conversation", "Cuộc trò chuyện mới"),
+            () =>
+            {
+                CloseMoreMenu();
+                StartCoroutine(StartNewConversationRoutine());
+            }));
+
+        card.Add(CreateMoreMenuItem(
+            T("Scroll to latest message", "Đến tin nhắn mới nhất"),
+            () =>
+            {
+                CloseMoreMenu();
+                ScrollToBottom();
+            }));
+
+        card.Add(CreateMoreMenuItem(T("Close", "Đóng"), CloseMoreMenu));
+
+        moreMenuOverlay.Add(card);
+        root.Add(moreMenuOverlay);
+        moreMenuOverlay.BringToFront();
+    }
+
+    private float GetMoreMenuTop()
+    {
+        if (moreButton != null && root != null)
+        {
+            Rect bounds = moreButton.worldBound;
+            Rect rootBounds = root.worldBound;
+            if (bounds.height > 0f)
+                return bounds.yMax - rootBounds.yMin + 6f;
+        }
+
+        return 96f;
+    }
+
+    private static Button CreateMoreMenuItem(string text, Action onClick)
+    {
+        Button item = new Button(onClick) { text = text };
+        item.style.marginLeft = 0;
+        item.style.marginRight = 0;
+        item.style.marginTop = 0;
+        item.style.marginBottom = 0;
+        item.style.paddingLeft = 16;
+        item.style.paddingRight = 16;
+        item.style.height = 44;
+        item.style.unityTextAlign = TextAnchor.MiddleLeft;
+        item.style.fontSize = 15;
+        item.style.color = (Color)new Color32(14, 35, 73, 255);
+        item.style.backgroundColor = Color.clear;
+        item.style.borderLeftWidth = 0;
+        item.style.borderRightWidth = 0;
+        item.style.borderTopWidth = 0;
+        item.style.borderBottomWidth = 0;
+        return item;
+    }
+
+    private void CloseMoreMenu()
+    {
+        if (moreMenuOverlay == null)
+            return;
+
+        moreMenuOverlay.RemoveFromHierarchy();
+        moreMenuOverlay = null;
+    }
+
+    private IEnumerator StartNewConversationRoutine()
+    {
+        if (isAwaitingAI)
+            yield break;
+
+        if (SupabaseSession.IsLoggedIn &&
+            !string.IsNullOrWhiteSpace(currentUserId) &&
+            currentUserId != "guest")
+        {
+            string deleteError = null;
+            yield return SupabaseAIChatHistoryService.DeleteAllMessages(
+                currentUserId,
+                message => deleteError = message);
+
+            if (!string.IsNullOrWhiteSpace(deleteError))
+            {
+                Debug.LogWarning(
+                    "[ChatAIPageController] Could not clear AI chat history: " + deleteError);
+
+                messages.Add(new AIChatMessage
+                {
+                    id = Guid.NewGuid().ToString(),
+                    role = "assistant",
+                    content = T(
+                        "Could not start a new conversation right now. Please try again.",
+                        "Chưa thể bắt đầu cuộc trò chuyện mới lúc này. Vui lòng thử lại."),
+                    created_at = DateTime.UtcNow.ToString("o")
+                });
+                RenderMessages();
+                ScrollToBottom();
+                yield break;
+            }
+        }
+
+        messages.Clear();
+
+        AIChatMessage greeting = new AIChatMessage
+        {
+            id = Guid.NewGuid().ToString(),
+            role = "assistant",
+            content = GetDefaultGreeting(),
+            created_at = DateTime.UtcNow.ToString("o")
+        };
+        messages.Add(greeting);
+
+        SaveLocalHistory();
+        if (SupabaseSession.IsLoggedIn)
+            StartCoroutine(PersistMessage(greeting, null));
+
+        RenderMessages();
+        UpdateInputState();
+        ScrollToBottom();
     }
 
     private void HandleAttachmentClicked()
