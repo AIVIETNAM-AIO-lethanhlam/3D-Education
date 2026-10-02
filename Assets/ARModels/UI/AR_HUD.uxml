@@ -26,6 +26,11 @@
             <engine:Button name="model-list-btn" class="sub-menu-btn">
                 <engine:VisualElement name="model-list-icon" class="btn-icon" />
             </engine:Button>
+
+            <!-- Model structure: show/hide part labels and their details -->
+            <engine:Button name="structure-btn" class="sub-menu-btn">
+                <engine:VisualElement name="structure-icon" class="btn-icon icon-structure" />
+            </engine:Button>
         </engine:VisualElement>
 
         <!-- Loading / Error -->

@@ -62,8 +62,30 @@ public class DoQuizPageController : MonoBehaviour
     private Label quizDrawerTitle;
     private Label submitConfirmMessage;
 
+    // Essay (tự luận) UI
+    private VisualElement answersContainer;
+    private VisualElement essayContainer;
+    private TextField essayAnswerField;
+    private VisualElement essayReviewPanel;
+    private Label essayHintLabel;
+    private Label essayResultLabel;
+    private Label essayStudentAnswerLabel;
+    private Label essayReferenceLabel;
+    private Label essayFeedbackLabel;
+    private bool isUpdatingEssayField;
+
+    private const string QuestionTypeEssay = "essay";
+    private const string GradeFunctionPath = "functions/v1/grade-quiz-attempt";
+    private const int GradeRequestTimeoutSeconds = 120;
+
     private readonly List<Button> answerButtons = new();
     private readonly List<QuizQuestionData> questions = new();
+
+    // question_id -> essay answer typed by the student
+    private readonly Dictionary<string, string> essayAnswers = new();
+
+    // question_id -> full review row (multiple choice + essay)
+    private readonly Dictionary<string, ReviewAttemptRow> reviewRowsByQuestion = new();
 
     // question_id -> selected option_id
     private readonly Dictionary<string, string> selectedOptionIds = new();
@@ -125,8 +147,10 @@ public class DoQuizPageController : MonoBehaviour
         selectedAnswerIndex = -1;
         selectedOptionIds.Clear();
         selectedAnswerIndexes.Clear();
+        essayAnswers.Clear();
         reviewSelectedOptionByQuestion.Clear();
         reviewCorrectOptionByQuestion.Clear();
+        reviewRowsByQuestion.Clear();
 
         isReviewMode =
             string.Equals(
@@ -205,6 +229,17 @@ public class DoQuizPageController : MonoBehaviour
             root.Q<Label>("submit-confirm-message");
 
         answerButtons.Clear();
+        answersContainer = root.Q<VisualElement>("answers-container");
+        essayContainer = root.Q<VisualElement>("essay-container");
+        essayAnswerField = root.Q<TextField>("essay-answer-field");
+        essayReviewPanel = root.Q<VisualElement>("essay-review-panel");
+        essayHintLabel = root.Q<Label>("essay-hint-label");
+        essayResultLabel = root.Q<Label>("essay-result-label");
+        essayStudentAnswerLabel = root.Q<Label>("essay-student-answer-label");
+        essayReferenceLabel = root.Q<Label>("essay-reference-label");
+        essayFeedbackLabel = root.Q<Label>("essay-feedback-label");
+
+        answerButtons.Clear();
         answerButtons.Add(root.Q<Button>("answer-a-button"));
         answerButtons.Add(root.Q<Button>("answer-b-button"));
         answerButtons.Add(root.Q<Button>("answer-c-button"));
@@ -265,6 +300,8 @@ public class DoQuizPageController : MonoBehaviour
                 TrickleDown.TrickleDown
             );
         }
+
+        essayAnswerField?.RegisterValueChangedCallback(HandleEssayAnswerChanged);
 
         for (int index = 0; index < answerButtons.Count; index++)
         {
@@ -334,6 +371,8 @@ public class DoQuizPageController : MonoBehaviour
             );
         }
 
+        essayAnswerField?.UnregisterValueChangedCallback(HandleEssayAnswerChanged);
+
         isSwipeTracking = false;
     }
 
@@ -375,7 +414,7 @@ public class DoQuizPageController : MonoBehaviour
 
         string questionsPath =
             "rest/v1/quiz_questions" +
-            "?select=id,quiz_id,question_text,question_order,explanation" +
+            "?select=id,quiz_id,question_text,question_order,explanation,question_type" +
             "&quiz_id=eq." + UnityWebRequest.EscapeURL(quizId) +
             "&order=question_order.asc";
 
@@ -472,30 +511,19 @@ public class DoQuizPageController : MonoBehaviour
                         OptionKeyToIndex(option.option_key))
                     .ToArray();
 
-            if (options.Length != 4)
-            {
-                Debug.LogWarning(
-                    $"[DoQuizPageController] Question {row.id} has " +
-                    $"{options.Length} visible options; expected 4."
-                );
-                continue;
-            }
+            QuizQuestionData questionData =
+                BuildQuestionData(row, quizTitle, category, options);
 
-            questions.Add(
-                new QuizQuestionData(
-                    row.id,
-                    quizTitle,
-                    category,
-                    row.question_text,
-                    options
-                )
-            );
+            if (questionData == null)
+                continue;
+
+            questions.Add(questionData);
         }
 
         if (questions.Count == 0)
         {
             FailLoading(
-                "No complete A/B/C/D question could be loaded."
+                "No question could be loaded for this quiz."
             );
             yield break;
         }
@@ -555,7 +583,7 @@ public class DoQuizPageController : MonoBehaviour
 
         string questionsPath =
             "rest/v1/quiz_questions" +
-            "?select=id,quiz_id,question_text,question_order,explanation" +
+            "?select=id,quiz_id,question_text,question_order,explanation,question_type" +
             "&quiz_id=eq." + UnityWebRequest.EscapeURL(quizId) +
             "&order=question_order.asc";
 
@@ -645,18 +673,13 @@ public class DoQuizPageController : MonoBehaviour
                         OptionKeyToIndex(option.option_key))
                     .ToArray();
 
-            if (options.Length != 4)
+            QuizQuestionData questionData =
+                BuildQuestionData(row, quizTitle, category, options);
+
+            if (questionData == null)
                 continue;
 
-            questions.Add(
-                new QuizQuestionData(
-                    row.id,
-                    quizTitle,
-                    category,
-                    row.question_text,
-                    options
-                )
-            );
+            questions.Add(questionData);
         }
 
         if (questions.Count == 0)
@@ -678,7 +701,7 @@ public class DoQuizPageController : MonoBehaviour
 
         yield return restService.SendJson(
             UnityWebRequest.kHttpVerbPOST,
-            "rest/v1/rpc/get_quiz_attempt_review",
+            "rest/v1/rpc/get_quiz_attempt_review_v2",
             JsonUtility.ToJson(reviewPayload),
             null,
             value => reviewJson = value,
@@ -720,6 +743,8 @@ public class DoQuizPageController : MonoBehaviour
             reviewCorrectOptionByQuestion[
                 row.question_id
             ] = row.correct_option_id;
+
+            reviewRowsByQuestion[row.question_id] = row;
         }
 
         isLoading = false;
@@ -862,19 +887,13 @@ public class DoQuizPageController : MonoBehaviour
 
             if (isReviewMode)
             {
-                reviewSelectedOptionByQuestion.TryGetValue(
+                reviewRowsByQuestion.TryGetValue(
                     question.QuestionId,
-                    out string selectedOptionId
-                );
-
-                reviewCorrectOptionByQuestion.TryGetValue(
-                    question.QuestionId,
-                    out string correctOptionId
+                    out ReviewAttemptRow reviewRow
                 );
 
                 bool isCorrect =
-                    !string.IsNullOrWhiteSpace(selectedOptionId) &&
-                    selectedOptionId == correctOptionId;
+                    reviewRow != null && reviewRow.is_correct;
 
                 questionButton.AddToClassList(
                     isCorrect
@@ -884,10 +903,7 @@ public class DoQuizPageController : MonoBehaviour
             }
             else
             {
-                bool hasAnswer =
-                    selectedOptionIds.ContainsKey(
-                        question.QuestionId
-                    );
+                bool hasAnswer = IsQuestionAnswered(question);
 
                 questionButton.AddToClassList(
                     hasAnswer
@@ -924,10 +940,7 @@ public class DoQuizPageController : MonoBehaviour
     private void ShowSubmitConfirmation()
     {
         int unanswered =
-            Mathf.Max(
-                questions.Count - selectedOptionIds.Count,
-                0
-            );
+            questions.Count(question => !IsQuestionAnswered(question));
 
         if (submitConfirmMessage != null)
         {
@@ -1122,10 +1135,16 @@ public class DoQuizPageController : MonoBehaviour
         SetAnswerText(answerCLabel, question.Options, 2);
         SetAnswerText(answerDLabel, question.Options, 3);
 
+        ApplyQuestionTypeLayout(question);
+
         if (isReviewMode)
         {
             SetAnswerButtonsEnabled(false);
-            ApplyReviewAnswerStyles(question);
+
+            if (question.IsEssay)
+                ShowEssayReview(question);
+            else
+                ApplyReviewAnswerStyles(question);
 
             reviewNavigation?.RemoveFromClassList("hidden");
 
@@ -1173,7 +1192,7 @@ public class DoQuizPageController : MonoBehaviour
                         : "Next Question →";
 
                 nextQuestionButton.SetEnabled(
-                    selectedAnswerIndex >= 0
+                    !isSubmitting && IsQuestionAnswered(question)
                 );
             }
         }
@@ -1265,7 +1284,9 @@ public class DoQuizPageController : MonoBehaviour
         }
 
         if (isSubmitting ||
-            selectedAnswerIndex < 0)
+            currentQuestionIndex < 0 ||
+            currentQuestionIndex >= questions.Count ||
+            !IsQuestionAnswered(questions[currentQuestionIndex]))
         {
             return;
         }
@@ -1294,7 +1315,10 @@ public class DoQuizPageController : MonoBehaviour
             yield break;
         }
 
-        if (selectedOptionIds.Count != questions.Count)
+        int unanswered =
+            questions.Count(question => !IsQuestionAnswered(question));
+
+        if (unanswered > 0)
         {
             SetMessage(
                 "Please answer every question before submitting."
@@ -1306,7 +1330,14 @@ public class DoQuizPageController : MonoBehaviour
 
         nextQuestionButton?.SetEnabled(false);
         SetAnswerButtonsEnabled(false);
-        SetMessage("Submitting quiz...");
+        essayAnswerField?.SetEnabled(false);
+
+        bool hasEssay = questions.Any(question => question.IsEssay);
+        SetMessage(
+            hasEssay
+                ? "Đang nộp bài và AI đang chấm câu tự luận..."
+                : "Submitting quiz..."
+        );
 
         string quizId = PlayerPrefs.GetString(
             "selected_quiz_id",
@@ -1343,30 +1374,37 @@ public class DoQuizPageController : MonoBehaviour
                     {
                         question_id = question.QuestionId,
                         selected_option_id =
-                            selectedOptionIds[question.QuestionId]
+                            question.IsEssay
+                                ? string.Empty
+                                : selectedOptionIds[question.QuestionId],
+                        answer_text =
+                            question.IsEssay &&
+                            essayAnswers.TryGetValue(question.QuestionId, out string text)
+                                ? text.Trim()
+                                : string.Empty
                     })
                 .ToArray();
 
-        SubmitQuizRpcPayload payload =
-            new SubmitQuizRpcPayload
+        GradeQuizSubmitPayload payload =
+            new GradeQuizSubmitPayload
             {
-                p_quiz_id = quizId,
-                p_started_at = startedAt,
-                p_responses = selections
+                action = "submit",
+                quiz_id = quizId,
+                started_at = startedAt,
+                responses = selections
             };
 
-        string submitJson = null;
+        // IMPORTANT:
+        // Grading happens on the server. Multiple choice is compared with the
+        // stored correct option inside submit_quiz_attempt; essay answers are
+        // graded by AI (meaning, not exact wording) in grade-quiz-attempt.
+        // The Unity client never reads correct answers before submitting.
+        GradeQuizResponse result = null;
         string error = null;
 
-        // IMPORTANT:
-        // Grading now happens entirely inside Supabase.
-        // The Unity client never reads quiz_options.is_correct.
-        yield return restService.SendJson(
-            UnityWebRequest.kHttpVerbPOST,
-            "rest/v1/rpc/submit_quiz_attempt",
+        yield return SendGradeRequest(
             JsonUtility.ToJson(payload),
-            null,
-            value => submitJson = value,
+            value => result = value,
             message => error = message
         );
 
@@ -1378,15 +1416,6 @@ public class DoQuizPageController : MonoBehaviour
             yield break;
         }
 
-        SubmitQuizRpcResultList resultWrapper =
-            ParseList<SubmitQuizRpcResultList>(submitJson);
-
-        SubmitQuizRpcResult result =
-            resultWrapper?.items != null &&
-            resultWrapper.items.Length > 0
-                ? resultWrapper.items[0]
-                : null;
-
         if (result == null ||
             !Guid.TryParse(result.attempt_id, out _))
         {
@@ -1394,6 +1423,29 @@ public class DoQuizPageController : MonoBehaviour
                 "Supabase did not return a valid quiz result."
             );
             yield break;
+        }
+
+        // AI grading of essays failed or timed out: the attempt is saved,
+        // retry grading once before showing the result.
+        if (string.Equals(result.grading_status, "pending_ai", StringComparison.OrdinalIgnoreCase))
+        {
+            SetMessage("AI đang chấm lại câu tự luận...");
+
+            GradeQuizResponse retry = null;
+            string retryError = null;
+
+            yield return SendGradeRequest(
+                JsonUtility.ToJson(new GradeQuizRetryPayload
+                {
+                    action = "grade",
+                    attempt_id = result.attempt_id
+                }),
+                value => retry = value,
+                message => retryError = message
+            );
+
+            if (retry != null && string.IsNullOrWhiteSpace(retryError))
+                result = retry;
         }
 
         float roundedScore = (float)Math.Round(
@@ -1425,7 +1477,18 @@ public class DoQuizPageController : MonoBehaviour
         PlayerPrefs.Save();
 
         isSubmitting = false;
-        SetMessage(string.Empty);
+
+        bool stillPending = string.Equals(
+            result.grading_status,
+            "pending_ai",
+            StringComparison.OrdinalIgnoreCase
+        );
+
+        SetMessage(
+            stillPending
+                ? "Bài đã được nộp. AI chưa chấm xong câu tự luận, điểm sẽ được cập nhật khi chấm xong."
+                : string.Empty
+        );
 
         ShowResult(
             result.correct_count,
@@ -1437,8 +1500,84 @@ public class DoQuizPageController : MonoBehaviour
             "[DoQuizPageController] Quiz submitted successfully. " +
             $"Attempt: {result.attempt_id}. " +
             $"Correct: {result.correct_count}/{result.total_questions}. " +
-            $"Score: {roundedScore:0.##}/{maximumGrade:0.##}"
+            $"Score: {roundedScore:0.##}/{maximumGrade:0.##}. " +
+            $"Grading: {result.grading_status}"
         );
+    }
+
+    /// <summary>
+    /// Calls the grade-quiz-attempt Edge Function. A longer timeout than the
+    /// normal REST helper is used because AI grading of essays can take a while.
+    /// </summary>
+    private IEnumerator SendGradeRequest(
+        string jsonBody,
+        Action<GradeQuizResponse> onSuccess,
+        Action<string> onError)
+    {
+        yield return SupabaseTokenRefresher.EnsureFreshToken();
+
+        string url =
+            SupabaseConfig.ProjectUrl.TrimEnd('/') + "/" + GradeFunctionPath;
+
+        using UnityWebRequest request =
+            new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
+
+        request.timeout = GradeRequestTimeoutSeconds;
+        request.uploadHandler = new UploadHandlerRaw(
+            System.Text.Encoding.UTF8.GetBytes(jsonBody)
+        );
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+        request.SetRequestHeader("Accept", "application/json");
+        restService.ApplyAuthHeaders(request);
+
+        yield return request.SendWebRequest();
+
+        string responseText = request.downloadHandler?.text ?? string.Empty;
+        GradeQuizResponse response = null;
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(responseText))
+                response = JsonUtility.FromJson<GradeQuizResponse>(responseText);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                "[DoQuizPageController] Cannot parse grade response: " +
+                exception.Message
+            );
+        }
+
+        if (request.result != UnityWebRequest.Result.Success ||
+            response == null ||
+            !response.success)
+        {
+            string message =
+                !string.IsNullOrWhiteSpace(response?.error)
+                    ? response.error
+                    : !string.IsNullOrWhiteSpace(request.error)
+                        ? request.error
+                        : $"HTTP {request.responseCode}";
+
+            Debug.LogError(
+                "[DoQuizPageController] grade-quiz-attempt failed.\n" +
+                $"HTTP: {request.responseCode}\nResponse: {responseText}"
+            );
+
+            onError?.Invoke(message);
+            yield break;
+        }
+
+        if (!string.IsNullOrWhiteSpace(response.grading_error))
+        {
+            Debug.LogWarning(
+                "[DoQuizPageController] Essay grading warning: " +
+                response.grading_error
+            );
+        }
+
+        onSuccess?.Invoke(response);
     }
 
     private static DateTimeOffset? ParseDeadline(string iso)
@@ -1579,8 +1718,227 @@ public class DoQuizPageController : MonoBehaviour
             quizMessageLabel.RemoveFromClassList("hidden");
     }
 
+    // ---------------------------------------------------------------------
+    // Multiple choice (2–4 options) + essay (tự luận) helpers
+    // ---------------------------------------------------------------------
+
+    private QuizQuestionData BuildQuestionData(
+        QuizQuestionRow row,
+        string quizTitle,
+        string category,
+        QuizOptionStudentRow[] options)
+    {
+        bool isEssay = string.Equals(
+            row.question_type,
+            QuestionTypeEssay,
+            StringComparison.OrdinalIgnoreCase
+        );
+
+        if (isEssay)
+        {
+            return new QuizQuestionData(
+                row.id,
+                quizTitle,
+                category,
+                row.question_text,
+                Array.Empty<QuizOptionStudentRow>(),
+                true
+            );
+        }
+
+        // Multiple choice: PDFs do not always have A/B/C/D, so 2–4 options are valid.
+        if (options.Length < 2 || options.Length > answerButtons.Count)
+        {
+            Debug.LogWarning(
+                $"[DoQuizPageController] Question {row.id} has " +
+                $"{options.Length} visible options; expected 2-{answerButtons.Count}."
+            );
+            return null;
+        }
+
+        return new QuizQuestionData(
+            row.id,
+            quizTitle,
+            category,
+            row.question_text,
+            options,
+            false
+        );
+    }
+
+    private bool IsQuestionAnswered(QuizQuestionData question)
+    {
+        if (question == null)
+            return false;
+
+        if (question.IsEssay)
+        {
+            return essayAnswers.TryGetValue(question.QuestionId, out string text) &&
+                   !string.IsNullOrWhiteSpace(text);
+        }
+
+        return selectedOptionIds.ContainsKey(question.QuestionId);
+    }
+
+    private void HandleEssayAnswerChanged(ChangeEvent<string> evt)
+    {
+        if (isUpdatingEssayField ||
+            isReviewMode ||
+            isSubmitting ||
+            currentQuestionIndex < 0 ||
+            currentQuestionIndex >= questions.Count)
+        {
+            return;
+        }
+
+        QuizQuestionData question = questions[currentQuestionIndex];
+
+        if (!question.IsEssay)
+            return;
+
+        if (HasDeadlinePassed())
+        {
+            LockExpiredQuiz();
+            return;
+        }
+
+        essayAnswers[question.QuestionId] = evt.newValue ?? string.Empty;
+
+        nextQuestionButton?.SetEnabled(IsQuestionAnswered(question));
+
+        if (quizDrawerOverlay != null &&
+            !quizDrawerOverlay.ClassListContains("hidden"))
+        {
+            BuildDrawerQuestionGrid();
+        }
+    }
+
+    /// <summary>
+    /// Shows answer buttons for multiple choice (only as many as the question has)
+    /// or the text box for an essay question.
+    /// </summary>
+    private void ApplyQuestionTypeLayout(QuizQuestionData question)
+    {
+        if (question.IsEssay)
+        {
+            answersContainer?.AddToClassList("hidden");
+            essayContainer?.RemoveFromClassList("hidden");
+
+            if (essayAnswerField != null)
+            {
+                essayAnswers.TryGetValue(question.QuestionId, out string savedText);
+
+                isUpdatingEssayField = true;
+                essayAnswerField.SetValueWithoutNotify(savedText ?? string.Empty);
+                isUpdatingEssayField = false;
+
+                if (isReviewMode)
+                {
+                    essayAnswerField.AddToClassList("hidden");
+                }
+                else
+                {
+                    essayAnswerField.RemoveFromClassList("hidden");
+                    essayAnswerField.SetEnabled(!isSubmitting);
+                }
+            }
+
+            if (essayHintLabel != null)
+            {
+                essayHintLabel.text = isReviewMode
+                    ? "Câu tự luận"
+                    : "Câu tự luận – nhập câu trả lời của bạn:";
+            }
+
+            essayReviewPanel?.AddToClassList("hidden");
+            return;
+        }
+
+        essayContainer?.AddToClassList("hidden");
+        answersContainer?.RemoveFromClassList("hidden");
+
+        for (int i = 0; i < answerButtons.Count; i++)
+        {
+            Button button = answerButtons[i];
+            if (button == null)
+                continue;
+
+            if (i < question.Options.Length)
+                button.RemoveFromClassList("hidden");
+            else
+                button.AddToClassList("hidden");
+        }
+    }
+
+    private void ShowEssayReview(QuizQuestionData question)
+    {
+        if (essayReviewPanel == null)
+            return;
+
+        reviewRowsByQuestion.TryGetValue(
+            question.QuestionId,
+            out ReviewAttemptRow row
+        );
+
+        essayReviewPanel.RemoveFromClassList("hidden");
+
+        bool isPending =
+            row == null ||
+            string.Equals(row.graded_by, "pending", StringComparison.OrdinalIgnoreCase);
+
+        if (essayResultLabel != null)
+        {
+            essayResultLabel.RemoveFromClassList("essay-result-correct");
+            essayResultLabel.RemoveFromClassList("essay-result-wrong");
+            essayResultLabel.RemoveFromClassList("essay-result-pending");
+
+            if (isPending)
+            {
+                essayResultLabel.text = "Đang chờ AI chấm";
+                essayResultLabel.AddToClassList("essay-result-pending");
+            }
+            else if (row.is_correct)
+            {
+                essayResultLabel.text = "Đúng";
+                essayResultLabel.AddToClassList("essay-result-correct");
+            }
+            else
+            {
+                essayResultLabel.text = "Chưa đúng";
+                essayResultLabel.AddToClassList("essay-result-wrong");
+            }
+        }
+
+        if (essayStudentAnswerLabel != null)
+        {
+            essayStudentAnswerLabel.text =
+                string.IsNullOrWhiteSpace(row?.answer_text)
+                    ? "(Không trả lời)"
+                    : row.answer_text;
+        }
+
+        if (essayReferenceLabel != null)
+        {
+            essayReferenceLabel.text =
+                string.IsNullOrWhiteSpace(row?.reference_answer)
+                    ? "—"
+                    : row.reference_answer;
+        }
+
+        if (essayFeedbackLabel != null)
+        {
+            essayFeedbackLabel.text =
+                string.IsNullOrWhiteSpace(row?.ai_feedback)
+                    ? "—"
+                    : row.ai_feedback;
+        }
+    }
+
     private void ClearQuestionUI()
     {
+        essayContainer?.AddToClassList("hidden");
+        answersContainer?.RemoveFromClassList("hidden");
+
         if (quizNameLabel != null)
             quizNameLabel.text = "Quiz";
 
@@ -1636,12 +1994,16 @@ public class DoQuizPageController : MonoBehaviour
         SetMessage(message);
 
         SetAnswerButtonsEnabled(true);
+        essayAnswerField?.SetEnabled(true);
 
         if (nextQuestionButton != null)
         {
-            nextQuestionButton.SetEnabled(
-                selectedAnswerIndex >= 0
-            );
+            bool answered =
+                currentQuestionIndex >= 0 &&
+                currentQuestionIndex < questions.Count &&
+                IsQuestionAnswered(questions[currentQuestionIndex]);
+
+            nextQuestionButton.SetEnabled(answered);
         }
 
         Debug.LogError(
@@ -1739,19 +2101,22 @@ public class DoQuizPageController : MonoBehaviour
         public string Category { get; }
         public string QuestionText { get; }
         public QuizOptionStudentRow[] Options { get; }
+        public bool IsEssay { get; }
 
         public QuizQuestionData(
             string questionId,
             string quizName,
             string category,
             string questionText,
-            QuizOptionStudentRow[] options)
+            QuizOptionStudentRow[] options,
+            bool isEssay)
         {
             QuestionId = questionId;
             QuizName = quizName;
             Category = category;
             QuestionText = questionText;
-            Options = options;
+            Options = options ?? Array.Empty<QuizOptionStudentRow>();
+            IsEssay = isEssay;
         }
     }
 }
@@ -1770,6 +2135,7 @@ public class QuizQuestionRow
     public string question_text;
     public int question_order;
     public string explanation;
+    public string question_type; // "multiple_choice" | "essay"
 }
 
 [Serializable]
@@ -1804,9 +2170,14 @@ public class ReviewAttemptRpcPayload
 public class ReviewAttemptRow
 {
     public string question_id;
+    public string question_type;
     public string selected_option_id;
     public string correct_option_id;
     public bool is_correct;
+    public string answer_text;
+    public string reference_answer;
+    public string ai_feedback;
+    public string graded_by;
 }
 
 [Serializable]
@@ -1819,7 +2190,38 @@ public class ReviewAttemptRowList
 public class QuizSubmitSelection
 {
     public string question_id;
-    public string selected_option_id;
+    public string selected_option_id; // empty for essay questions
+    public string answer_text;        // essay answer, empty for multiple choice
+}
+
+[Serializable]
+public class GradeQuizSubmitPayload
+{
+    public string action;
+    public string quiz_id;
+    public string started_at;
+    public QuizSubmitSelection[] responses;
+}
+
+[Serializable]
+public class GradeQuizRetryPayload
+{
+    public string action;
+    public string attempt_id;
+}
+
+[Serializable]
+public class GradeQuizResponse
+{
+    public bool success;
+    public string error;
+    public string attempt_id;
+    public int correct_count;
+    public int total_questions;
+    public float score;
+    public string grading_status; // "graded" | "pending_ai"
+    public int essays_graded;
+    public string grading_error;
 }
 
 [Serializable]

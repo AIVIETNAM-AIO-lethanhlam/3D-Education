@@ -29,8 +29,9 @@
 
             <!-- Large outer frame; icon size remains independent -->
             <ui:VisualElement class="header-button-frame">
+                <!-- Menu: list of 3D models in this class -->
                 <ui:Button name="info-button"
-                           class="header-icon-button info-button" />
+                           class="header-icon-button menu-button" />
             </ui:VisualElement>
         </ui:VisualElement>
 
@@ -74,15 +75,9 @@
         <!-- Larger bottom toolbar -->
         <ui:VisualElement class="bottom-toolbar">
             <ui:VisualElement name="reset-frame"
-                              class="tool-button-frame selected-tool-frame">
+                              class="tool-button-frame">
                 <ui:Button name="reset-button"
                            class="tool-button reset-button" />
-            </ui:VisualElement>
-
-            <ui:VisualElement name="zoom-frame"
-                              class="tool-button-frame">
-                <ui:Button name="zoom-button"
-                           class="tool-button zoom-button" />
             </ui:VisualElement>
 
             <ui:VisualElement name="focus-frame"
@@ -102,6 +97,13 @@
                 <ui:Button name="auto-rotate-button"
                            class="tool-button auto-rotate-button" />
             </ui:VisualElement>
+
+            <!-- Model structure: show/hide part labels and their details -->
+            <ui:VisualElement name="structure-frame"
+                              class="tool-button-frame">
+                <ui:Button name="structure-button"
+                           class="tool-button structure-button" />
+            </ui:VisualElement>
         </ui:VisualElement>
 
         <!-- Information popup -->
@@ -118,6 +120,29 @@
                 <ui:Label
                     text="Drag the model to rotate it. Use Zoom to enlarge it and Reset to return to the original view."
                     class="info-text" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Model list (menu) -->
+        <ui:VisualElement name="model-list-overlay" class="overlay hidden">
+            <ui:VisualElement name="model-list-card" class="model-list-card">
+                <ui:VisualElement class="model-list-header">
+                    <ui:Label name="model-list-title"
+                              text="Mô hình 3D trong lớp"
+                              class="model-list-title" />
+                    <ui:Button name="close-model-list-button"
+                               text="×"
+                               class="model-list-close" />
+                </ui:VisualElement>
+                <ui:Label name="model-list-hint"
+                          text="Kéo để xoay, dùng hai ngón tay để phóng to / thu nhỏ."
+                          class="model-list-hint" />
+                <ui:ScrollView name="model-list-scroll"
+                               class="model-list-scroll"
+                               vertical-scroller-visibility="Hidden"
+                               horizontal-scroller-visibility="Hidden">
+                    <ui:VisualElement name="model-list-container" />
+                </ui:ScrollView>
             </ui:VisualElement>
         </ui:VisualElement>
 

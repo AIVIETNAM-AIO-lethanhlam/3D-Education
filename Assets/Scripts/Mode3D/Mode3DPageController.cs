@@ -135,6 +135,10 @@ public class Mode3DPageController : MonoBehaviour
     [Tooltip("Horizontal one-finger drag rotates the model left/right.")]
     [SerializeField] private float touchRotationSensitivity = 0.22f;
 
+    [Tooltip("Off: the model stays in place and users can only zoom (pinch / mouse wheel). " +
+             "Rotation is done by the Auto-rotate button around the model's own center.")]
+    [SerializeField] private bool allowDragRotation = false;
+
     [Tooltip("Two-finger pinch controls model zoom.")]
     [SerializeField] private float pinchZoomSensitivity = 1.0f;
 
@@ -150,7 +154,15 @@ public class Mode3DPageController : MonoBehaviour
 
     [Header("Navigation")]
     [SerializeField] private string previousSceneName = "ShowLessonScene";
-    [SerializeField] private string vrSceneName = "VRModeScene";
+    [SerializeField] private string vrSceneName = "VRClassroomScene";
+
+    // Headset version of the VR classroom (same rule as ShowLessonScene).
+    private const string HeadsetVrSceneName = "VRClassroomXRScene";
+
+    // Folder inside the phone's Pictures (Gallery) where screenshots are saved.
+    private const string GalleryFolder = "Pictures/Virtual Education";
+
+    private bool isCapturing;
 
     private VisualElement root;
     private VisualElement interactionArea;
@@ -168,6 +180,22 @@ public class Mode3DPageController : MonoBehaviour
     private Button focusButton;
     private Button layersButton;
     private Button autoRotateButton;
+    private VisualElement modelListOverlay;
+    private VisualElement modelListContainer;
+    private Button closeModelListButton;
+
+    // Pose of ModelRoot before any lesson model was fitted (used when switching models).
+    private Vector3 initialRootPosition;
+    private Quaternion initialRootRotation = Quaternion.identity;
+    private Vector3 initialRootScale = Vector3.one;
+    private bool initialRootPoseSaved;
+
+    private Coroutine resetFlashRoutine;
+    private Coroutine focusFlashRoutine;
+
+    private Button structureButton;
+    private VisualElement structureFrame;
+    private ModelStructureOverlay structureOverlay;
 
     private VisualElement resetFrame;
     private VisualElement zoomFrame;
@@ -228,6 +256,8 @@ public class Mode3DPageController : MonoBehaviour
 
     private async void Start()
     {
+        SaveInitialRootPose();
+
         Debug.Log(
             "[Mode3D] Controller started." +
             $"\nselected_model_name: {PlayerPrefs.GetString("selected_model_name", string.Empty)}" +
@@ -243,6 +273,9 @@ public class Mode3DPageController : MonoBehaviour
 
             if (loaded)
             {
+                // The lesson GLB replaced the placeholder: rebind structure labels.
+                structureOverlay?.NotifyModelChanged();
+
                 // Let Unity finish creating renderer bounds before fitting.
                 StartCoroutine(FitRuntimeModelAfterAsyncLoad());
             }
@@ -273,7 +306,7 @@ public class Mode3DPageController : MonoBehaviour
 
         string assetId = PlayerPrefs.GetString("selected_model_asset_id", string.Empty);
         string lessonId = PlayerPrefs.GetString("selected_model_lesson_id", string.Empty);
-        VisualElement infoCard = infoOverlay?.Q<VisualElement>(className: "info-card");
+        VisualElement infoCard = root?.Q<VisualElement>("model-list-card");
 
         if (isTeacher || SupabaseSession.IsAdmin || modelReportButton != null || infoCard == null ||
             !Guid.TryParse(assetId, out _) || !Guid.TryParse(lessonId, out _))
@@ -284,7 +317,7 @@ public class Mode3DPageController : MonoBehaviour
             AppLanguageManager.T("Report inappropriate model", "Báo cáo model không phù hợp"),
             () =>
             {
-                infoOverlay?.AddToClassList("hidden");
+                HideModelList();
                 ModerationReportSheet.Show(root, this, new[]
                 {
                     new ModerationReportSheet.Target
@@ -313,6 +346,9 @@ public class Mode3DPageController : MonoBehaviour
 
         interactionArea = root.Q<VisualElement>("model-interaction-area");
         infoOverlay = root.Q<VisualElement>("info-overlay");
+        modelListOverlay = root.Q<VisualElement>("model-list-overlay");
+        modelListContainer = root.Q<VisualElement>("model-list-container");
+        closeModelListButton = root.Q<Button>("close-model-list-button");
         titleLabel = root.Q<Label>("model-title-label");
         toastLabel = root.Q<Label>("toast-label");
 
@@ -329,6 +365,8 @@ public class Mode3DPageController : MonoBehaviour
         focusButton = root.Q<Button>("focus-button");
         layersButton = root.Q<Button>("layers-button");
         autoRotateButton = root.Q<Button>("auto-rotate-button");
+        structureButton = root.Q<Button>("structure-button");
+        structureFrame = root.Q<VisualElement>("structure-frame");
 
         resetFrame = root.Q<VisualElement>("reset-frame");
         zoomFrame = root.Q<VisualElement>("zoom-frame");
@@ -353,6 +391,68 @@ public class Mode3DPageController : MonoBehaviour
         }
 
         RegisterCallbacks();
+        SetupStructureOverlay();
+    }
+
+    // ---------------------------------------------------------------
+    // Model structure (model_parts): labels + detail sheet, toggled by
+    // the "structure" button in the bottom toolbar.
+    // ---------------------------------------------------------------
+    private void SetupStructureOverlay()
+    {
+        if (root == null)
+            return;
+
+        // Add the overlay inside "screen" so the info popup / toast (same parent)
+        // can be kept above it.
+        structureOverlay = ModelStructureOverlay.Attach(
+            this,
+            root.Q<VisualElement>("screen") ?? root,
+            () => modelRoot,
+            () => modelCamera != null ? modelCamera : Camera.main);
+
+        if (structureOverlay == null)
+            return;
+
+        // Keep labels between the header and the bottom toolbar.
+        structureOverlay.TopInset = 150f;
+        structureOverlay.BottomInset = 230f;
+
+        structureOverlay.SetModel(
+            PlayerPrefs.GetString("selected_model_asset_id", string.Empty),
+            PlayerPrefs.GetString("selected_model_lesson_id",
+                PlayerPrefs.GetString("selected_lesson_id", string.Empty)),
+            PlayerPrefs.GetString("selected_model_file_name", string.Empty));
+
+        // Popups must stay above the structure labels.
+        infoOverlay?.BringToFront();
+        modelListOverlay?.BringToFront();
+        toastLabel?.BringToFront();
+
+        structureOverlay.EnabledChanged -= OnStructureOverlayChanged;
+        structureOverlay.EnabledChanged += OnStructureOverlayChanged;
+        OnStructureOverlayChanged(structureOverlay.IsEnabled);
+    }
+
+    private void ToggleStructureOverlay()
+    {
+        if (structureOverlay == null)
+            SetupStructureOverlay();
+
+        structureOverlay?.Toggle();
+
+        if (structureOverlay != null)
+        {
+            ShowToast(structureOverlay.IsEnabled
+                ? AppLanguageManager.T("Structure labels on", "Đã bật cấu trúc mô hình")
+                : AppLanguageManager.T("Structure labels off", "Đã tắt cấu trúc mô hình"));
+        }
+    }
+
+    private void OnStructureOverlayChanged(bool enabled)
+    {
+        structureFrame?.EnableInClassList("selected-tool-frame", enabled);
+        SetButtonActive(structureButton, enabled);
     }
 
     private void OnDisable()
@@ -884,6 +984,11 @@ public class Mode3DPageController : MonoBehaviour
             modelRoot.position += targetWorldCenter - bounds.center;
         }
 
+        // GLB files often have their origin far from the mesh, so rotating
+        // ModelRoot made the model orbit around an invisible point. Move the
+        // pivot to the visual center so rotation and zoom happen in place.
+        CenterPivotOnModelBounds();
+
         SaveCurrentPoseAsDefault();
 
         Debug.Log(
@@ -948,6 +1053,30 @@ public class Mode3DPageController : MonoBehaviour
         return foundRenderer;
     }
 
+    /// <summary>
+    /// Moves ModelRoot to the center of the model's bounds and shifts its
+    /// children back by the same amount, so nothing moves on screen but
+    /// Rotate()/localScale now act around the model's own center.
+    /// </summary>
+    private void CenterPivotOnModelBounds()
+    {
+        if (modelRoot == null || !TryGetCombinedBounds(out Bounds bounds))
+            return;
+
+        Vector3 offset = bounds.center - modelRoot.position;
+        if (offset.sqrMagnitude < 1e-10f)
+            return;
+
+        for (int i = 0; i < modelRoot.childCount; i++)
+        {
+            Transform child = modelRoot.GetChild(i);
+            if (child != null)
+                child.position -= offset;
+        }
+
+        modelRoot.position += offset;
+    }
+
     private void SaveCurrentPoseAsDefault()
     {
         if (modelRoot == null)
@@ -962,7 +1091,9 @@ public class Mode3DPageController : MonoBehaviour
     private void RegisterCallbacks()
     {
         if (backButton != null) backButton.clicked += GoBack;
-        if (infoButton != null) infoButton.clicked += ShowInfo;
+        if (infoButton != null) infoButton.clicked += ShowModelList;
+        if (closeModelListButton != null) closeModelListButton.clicked += HideModelList;
+        modelListOverlay?.RegisterCallback<PointerUpEvent>(OnModelListOverlayPointerUp);
         if (closeInfoButton != null) closeInfoButton.clicked += HideInfo;
         if (captureButton != null) captureButton.clicked += CaptureScreenshot;
         if (vrButton != null) vrButton.clicked += OpenVRScene;
@@ -971,6 +1102,7 @@ public class Mode3DPageController : MonoBehaviour
         if (focusButton != null) focusButton.clicked += FocusModel;
         if (layersButton != null) layersButton.clicked += ToggleExplodedView;
         if (autoRotateButton != null) autoRotateButton.clicked += ToggleAutoRotate;
+        if (structureButton != null) structureButton.clicked += ToggleStructureOverlay;
 
         if (colorBlue != null)
             colorBlue.clicked += OnBlueSelected;
@@ -997,7 +1129,9 @@ public class Mode3DPageController : MonoBehaviour
     private void UnregisterCallbacks()
     {
         if (backButton != null) backButton.clicked -= GoBack;
-        if (infoButton != null) infoButton.clicked -= ShowInfo;
+        if (infoButton != null) infoButton.clicked -= ShowModelList;
+        if (closeModelListButton != null) closeModelListButton.clicked -= HideModelList;
+        modelListOverlay?.UnregisterCallback<PointerUpEvent>(OnModelListOverlayPointerUp);
         if (closeInfoButton != null) closeInfoButton.clicked -= HideInfo;
         if (captureButton != null) captureButton.clicked -= CaptureScreenshot;
         if (vrButton != null) vrButton.clicked -= OpenVRScene;
@@ -1006,6 +1140,7 @@ public class Mode3DPageController : MonoBehaviour
         if (focusButton != null) focusButton.clicked -= FocusModel;
         if (layersButton != null) layersButton.clicked -= ToggleExplodedView;
         if (autoRotateButton != null) autoRotateButton.clicked -= ToggleAutoRotate;
+        if (structureButton != null) structureButton.clicked -= ToggleStructureOverlay;
 
         if (colorBlue != null)
             colorBlue.clicked -= OnBlueSelected;
@@ -1054,9 +1189,24 @@ public class Mode3DPageController : MonoBehaviour
         if (modelRoot == null || !hasFittedPose)
             return;
 
+        // Do not rotate/zoom while the user taps a structure label or reads
+        // the structure detail sheet.
+        if (ModelStructureOverlay.ShouldBlockWorldTouch())
+        {
+            dragging = false;
+            return;
+        }
+
         if (Input.touchCount == 1)
         {
             Touch touch = Input.GetTouch(0);
+
+            if (!allowDragRotation)
+            {
+                // Model stays in place: one finger does nothing (pinch still zooms).
+                dragging = false;
+                return;
+            }
 
             if (touch.phase == TouchPhase.Moved)
             {
@@ -1171,7 +1321,7 @@ public class Mode3DPageController : MonoBehaviour
 
         // Mouse/editor drag: rotate only left/right around the camera's up axis.
         // Vertical drag no longer tilts the model.
-        if (Input.touchCount == 0)
+        if (Input.touchCount == 0 && allowDragRotation)
         {
             modelRoot.Rotate(
                 modelCamera != null ? modelCamera.transform.up : Vector3.up,
@@ -1257,31 +1407,34 @@ public class Mode3DPageController : MonoBehaviour
 
         SetButtonActive(autoRotateButton, false);
         SetButtonActive(layersButton, false);
-        SetButtonActive(resetButton, true);
-        SelectBottomTool(resetFrame);
+        SetToolFrameActive(autoRotateFrame, false);
+        SetToolFrameActive(layersFrame, false);
+
+        // Reset is an action, not a mode: highlight it briefly.
+        FlashToolFrame(resetFrame, ref resetFlashRoutine);
 
         ShowToast("Model reset");
     }
 
     private void FocusModel()
     {
-        SelectBottomTool(focusFrame);
         FitModelToPresentationBoard();
-        SetButtonActive(focusButton, true);
+
+        // Centering is an action, not a mode: highlight it briefly.
+        FlashToolFrame(focusFrame, ref focusFlashRoutine);
         ShowToast("Model centered");
     }
 
     private void ToggleAutoRotate()
     {
-        SelectBottomTool(autoRotateFrame);
         autoRotate = !autoRotate;
         SetButtonActive(autoRotateButton, autoRotate);
+        SetToolFrameActive(autoRotateFrame, autoRotate);
         ShowToast(autoRotate ? "Auto rotation on" : "Auto rotation off");
     }
 
     private void ToggleExplodedView()
     {
-        SelectBottomTool(layersFrame);
 
         // BUG-015: nothing implemented ShowExplodedView/HideExplodedView, so the
         // button only toggled its highlight. Move the model's parts directly.
@@ -1292,12 +1445,14 @@ public class Mode3DPageController : MonoBehaviour
         {
             explodedView = false;
             SetButtonActive(layersButton, false);
+            SetToolFrameActive(layersFrame, false);
             ShowToast("This model has no separate parts");
             return;
         }
 
         explodedView = !explodedView;
         SetButtonActive(layersButton, explodedView);
+        SetToolFrameActive(layersFrame, explodedView);
 
         if (explodeRoutine != null)
             StopCoroutine(explodeRoutine);
@@ -1320,6 +1475,7 @@ public class Mode3DPageController : MonoBehaviour
         explodeTargetPositions.Clear();
         explodedView = false;
         SetButtonActive(layersButton, false);
+        SetToolFrameActive(layersFrame, false);
     }
 
     private void CollectExplodeParts()
@@ -1545,6 +1701,322 @@ public class Mode3DPageController : MonoBehaviour
         }
     }
 
+    // ---------------------------------------------------------------
+    // Bottom toolbar: each toggle shows its own blue circle while ON, so
+    // several tools can be active at the same time.
+    // ---------------------------------------------------------------
+    private static void SetToolFrameActive(VisualElement frame, bool active)
+    {
+        frame?.EnableInClassList("selected-tool-frame", active);
+    }
+
+    private void FlashToolFrame(VisualElement frame, ref Coroutine routine)
+    {
+        if (frame == null)
+            return;
+
+        if (routine != null)
+            StopCoroutine(routine);
+
+        routine = StartCoroutine(FlashToolFrameRoutine(frame));
+    }
+
+    private IEnumerator FlashToolFrameRoutine(VisualElement frame)
+    {
+        SetToolFrameActive(frame, true);
+        yield return new WaitForSecondsRealtime(0.35f);
+        SetToolFrameActive(frame, false);
+    }
+
+    // ---------------------------------------------------------------
+    // Menu: list of all 3D models in the class (manifest written by
+    // ShowLessonScene). Selecting one loads it and closes the list.
+    // ---------------------------------------------------------------
+    [Serializable]
+    private class Mode3DModelManifest
+    {
+        public string class_id;
+        public string lesson_id;
+        public Mode3DModelEntry[] models;
+    }
+
+    [Serializable]
+    private class Mode3DModelEntry
+    {
+        public string asset_id;
+        public string lesson_id;
+        public string lesson_title;
+        public int chapter_order;
+        public string name;
+        public string file_name;
+        public string bucket;
+        public string storage_path;
+        public string url;
+        public string fallback_url;
+        public int display_order;
+    }
+
+    private List<Mode3DModelEntry> ReadClassModels()
+    {
+        List<Mode3DModelEntry> result = new List<Mode3DModelEntry>();
+
+        string json = PlayerPrefs.GetString("selected_class_models_json", string.Empty);
+        if (string.IsNullOrWhiteSpace(json))
+            json = PlayerPrefs.GetString("selected_lesson_models_json", string.Empty);
+
+        if (!string.IsNullOrWhiteSpace(json))
+        {
+            try
+            {
+                Mode3DModelManifest manifest = JsonUtility.FromJson<Mode3DModelManifest>(json);
+                if (manifest?.models != null)
+                {
+                    foreach (Mode3DModelEntry entry in manifest.models)
+                    {
+                        if (entry != null &&
+                            (!string.IsNullOrWhiteSpace(entry.url) ||
+                             !string.IsNullOrWhiteSpace(entry.fallback_url) ||
+                             IsHttpUrl(entry.storage_path)))
+                        {
+                            result.Add(entry);
+                        }
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning("[Mode3D] Cannot read class model list: " + exception.Message);
+            }
+        }
+
+        if (result.Count == 0)
+        {
+            // Opened without a manifest: show at least the current model.
+            result.Add(new Mode3DModelEntry
+            {
+                asset_id = PlayerPrefs.GetString("selected_model_asset_id", string.Empty),
+                lesson_id = PlayerPrefs.GetString("selected_model_lesson_id", string.Empty),
+                lesson_title = PlayerPrefs.GetString("selected_model_lesson_title", string.Empty),
+                name = PlayerPrefs.GetString("selected_model_name", "3D Model"),
+                file_name = PlayerPrefs.GetString("selected_model_file_name", string.Empty),
+                storage_path = PlayerPrefs.GetString("selected_model_storage_path", string.Empty),
+                url = PlayerPrefs.GetString("selected_model_url", string.Empty)
+            });
+        }
+
+        return result;
+    }
+
+    private void ShowModelList()
+    {
+        BuildModelList();
+        modelListOverlay?.RemoveFromClassList("hidden");
+        modelListOverlay?.BringToFront();
+    }
+
+    private void HideModelList()
+    {
+        modelListOverlay?.AddToClassList("hidden");
+    }
+
+    private void OnModelListOverlayPointerUp(PointerUpEvent evt)
+    {
+        // Tap on the dark area outside the card closes the list.
+        if (evt.target == modelListOverlay)
+            HideModelList();
+    }
+
+    private void BuildModelList()
+    {
+        if (modelListContainer == null)
+            return;
+
+        modelListContainer.Clear();
+
+        Label title = root?.Q<Label>("model-list-title");
+        if (title != null)
+            title.text = AppLanguageManager.T("3D models in this class", "Mô hình 3D trong lớp");
+
+        Label hint = root?.Q<Label>("model-list-hint");
+        if (hint != null)
+            hint.text = AppLanguageManager.T(
+                "Tap a model to view it. Drag to rotate, pinch with two fingers to zoom.",
+                "Chọn một mô hình để xem. Kéo để xoay, dùng hai ngón tay để phóng to / thu nhỏ.");
+
+        List<Mode3DModelEntry> models = ReadClassModels();
+        models.Sort((a, b) =>
+        {
+            int chapter = a.chapter_order.CompareTo(b.chapter_order);
+            if (chapter != 0) return chapter;
+            int lesson = string.Compare(a.lesson_title, b.lesson_title, StringComparison.CurrentCultureIgnoreCase);
+            if (lesson != 0) return lesson;
+            return a.display_order.CompareTo(b.display_order);
+        });
+
+        string currentAssetId = PlayerPrefs.GetString("selected_model_asset_id", string.Empty);
+        string currentUrl = PlayerPrefs.GetString("selected_model_url", string.Empty);
+        string lastLesson = null;
+
+        foreach (Mode3DModelEntry entry in models)
+        {
+            string lessonTitle = string.IsNullOrWhiteSpace(entry.lesson_title)
+                ? AppLanguageManager.T("Lesson", "Bài học")
+                : entry.lesson_title.Trim();
+
+            if (!string.Equals(lessonTitle, lastLesson, StringComparison.Ordinal))
+            {
+                Label section = new Label(lessonTitle);
+                section.AddToClassList("model-list-section");
+                modelListContainer.Add(section);
+                lastLesson = lessonTitle;
+            }
+
+            Mode3DModelEntry captured = entry;
+            Button item = new Button(() => SelectModelFromList(captured));
+            item.AddToClassList("model-list-item");
+
+            string displayName = !string.IsNullOrWhiteSpace(entry.name)
+                ? entry.name
+                : (!string.IsNullOrWhiteSpace(entry.file_name)
+                    ? Path.GetFileNameWithoutExtension(entry.file_name)
+                    : "3D Model");
+
+            Label name = new Label(displayName);
+            name.AddToClassList("model-list-item-name");
+            item.Add(name);
+
+            if (!string.IsNullOrWhiteSpace(entry.file_name))
+            {
+                Label sub = new Label(entry.file_name);
+                sub.AddToClassList("model-list-item-sub");
+                item.Add(sub);
+            }
+
+            bool isCurrent =
+                (!string.IsNullOrWhiteSpace(entry.asset_id) &&
+                 string.Equals(entry.asset_id, currentAssetId, StringComparison.OrdinalIgnoreCase)) ||
+                (string.IsNullOrWhiteSpace(entry.asset_id) &&
+                 string.Equals(entry.url, currentUrl, StringComparison.Ordinal));
+
+            if (isCurrent)
+                item.AddToClassList("model-list-item-current");
+
+            modelListContainer.Add(item);
+        }
+
+        if (models.Count == 0)
+        {
+            Label empty = new Label(AppLanguageManager.T(
+                "This class has no 3D models yet.",
+                "Lớp học này chưa có mô hình 3D."));
+            empty.AddToClassList("model-list-empty");
+            modelListContainer.Add(empty);
+        }
+    }
+
+    private async void SelectModelFromList(Mode3DModelEntry entry)
+    {
+        if (entry == null)
+            return;
+
+        HideModelList();
+
+        string currentAssetId = PlayerPrefs.GetString("selected_model_asset_id", string.Empty);
+        if (runtimeModelLoaded &&
+            !string.IsNullOrWhiteSpace(entry.asset_id) &&
+            string.Equals(entry.asset_id, currentAssetId, StringComparison.OrdinalIgnoreCase))
+        {
+            return; // already showing this model
+        }
+
+        if (runtimeModelLoading)
+        {
+            ShowToast(AppLanguageManager.T("A model is still loading...", "Mô hình đang được tải..."));
+            return;
+        }
+
+        string primaryUrl = !string.IsNullOrWhiteSpace(entry.url)
+            ? entry.url
+            : (!string.IsNullOrWhiteSpace(entry.fallback_url) ? entry.fallback_url : entry.storage_path);
+
+        string displayName = !string.IsNullOrWhiteSpace(entry.name)
+            ? entry.name
+            : Path.GetFileNameWithoutExtension(entry.file_name ?? "3D Model");
+
+        PlayerPrefs.SetString("selected_model_asset_id", entry.asset_id ?? string.Empty);
+        PlayerPrefs.SetString("selected_model_lesson_id", entry.lesson_id ?? string.Empty);
+        PlayerPrefs.SetString("selected_model_lesson_title", entry.lesson_title ?? string.Empty);
+        PlayerPrefs.SetInt("selected_model_chapter_order", entry.chapter_order);
+        PlayerPrefs.SetString("selected_model_name", displayName);
+        PlayerPrefs.SetString("selected_model_file_name", entry.file_name ?? string.Empty);
+        PlayerPrefs.SetString("selected_model_bucket", entry.bucket ?? string.Empty);
+        PlayerPrefs.SetString("selected_model_storage_path", entry.storage_path ?? string.Empty);
+        PlayerPrefs.SetString("selected_model_url", primaryUrl ?? string.Empty);
+        PlayerPrefs.Save();
+
+        // Stop modes tied to the old model and return the root to its original pose.
+        autoRotate = false;
+        SetButtonActive(autoRotateButton, false);
+        SetToolFrameActive(autoRotateFrame, false);
+        ClearExplodeState();
+        structureOverlay?.CloseDetail();
+        RestoreInitialRootPose();
+
+        if (titleLabel != null)
+            titleLabel.text = displayName;
+
+        ShowToast(AppLanguageManager.T("Loading model...", "Đang tải mô hình..."));
+
+        bool loaded = await LoadCurrentLessonModelAsync();
+        if (!this)
+            return;
+
+        // Signed URLs expire after a while: retry with the public URL.
+        if (!loaded &&
+            !string.IsNullOrWhiteSpace(entry.fallback_url) &&
+            !string.Equals(entry.fallback_url, primaryUrl, StringComparison.Ordinal))
+        {
+            PlayerPrefs.SetString("selected_model_url", entry.fallback_url);
+            PlayerPrefs.Save();
+            loaded = await LoadCurrentLessonModelAsync();
+            if (!this)
+                return;
+        }
+
+        if (!loaded)
+        {
+            ShowToast(AppLanguageManager.T("Could not load this model", "Không tải được mô hình này"));
+            return;
+        }
+
+        structureOverlay?.SetModel(entry.asset_id, entry.lesson_id, entry.file_name);
+        structureOverlay?.NotifyModelChanged();
+
+        StartCoroutine(FitRuntimeModelAfterAsyncLoad());
+    }
+
+    private void SaveInitialRootPose()
+    {
+        if (initialRootPoseSaved || modelRoot == null)
+            return;
+
+        initialRootPosition = modelRoot.localPosition;
+        initialRootRotation = modelRoot.localRotation;
+        initialRootScale = modelRoot.localScale;
+        initialRootPoseSaved = true;
+    }
+
+    private void RestoreInitialRootPose()
+    {
+        if (!initialRootPoseSaved || modelRoot == null)
+            return;
+
+        modelRoot.localPosition = initialRootPosition;
+        modelRoot.localRotation = initialRootRotation;
+        modelRoot.localScale = initialRootScale;
+        hasFittedPose = false;
+    }
+
     private void ShowInfo()
     {
         infoOverlay?.RemoveFromClassList("hidden");
@@ -1603,30 +2075,221 @@ public class Mode3DPageController : MonoBehaviour
         }
     }
 
+    // ---------------------------------------------------------------
+    // VR: open the VR classroom with the model currently shown here.
+    // ---------------------------------------------------------------
     private void OpenVRScene()
     {
-        if (string.IsNullOrWhiteSpace(vrSceneName))
+        string targetScene = ResolveVrSceneName();
+
+        if (string.IsNullOrWhiteSpace(targetScene) ||
+            !Application.CanStreamedLevelBeLoaded(targetScene))
         {
-            ShowToast("VR scene is not configured");
+            ShowToast(AppLanguageManager.T(
+                "VR scene is not in Build Profiles",
+                "Chưa thêm scene VR vào Build Profiles"));
+            Debug.LogError("[Mode3D] VR scene '" + targetScene + "' cannot be loaded.");
             return;
         }
 
-        if (Application.CanStreamedLevelBeLoaded(vrSceneName))
-            SceneManager.LoadScene(vrSceneName);
-        else
-            ShowToast("Add VR scene to Build Profiles");
+        // VRClassroomScene reads the class model list written by ShowLessonScene
+        // (selected_class_models_json). Ask it to start with the model that is
+        // on screen now instead of the first model of the lesson.
+        string currentAssetId = PlayerPrefs.GetString("selected_model_asset_id", string.Empty);
+        PlayerPrefs.SetString("vr_initial_asset_id", currentAssetId);
+
+        List<Mode3DModelEntry> models = ReadClassModels();
+        for (int i = 0; i < models.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(currentAssetId) &&
+                string.Equals(models[i].asset_id, currentAssetId, StringComparison.OrdinalIgnoreCase))
+            {
+                PlayerPrefs.SetInt("selected_lesson_model_index", i);
+                break;
+            }
+        }
+
+        // If the scene was opened without a manifest, give VR a one-model manifest.
+        if (string.IsNullOrWhiteSpace(PlayerPrefs.GetString("selected_class_models_json", string.Empty)) &&
+            string.IsNullOrWhiteSpace(PlayerPrefs.GetString("selected_lesson_models_json", string.Empty)) &&
+            models.Count > 0)
+        {
+            Mode3DModelManifest manifest = new Mode3DModelManifest
+            {
+                class_id = PlayerPrefs.GetString("selected_class_id", string.Empty),
+                lesson_id = models[0].lesson_id,
+                models = models.ToArray()
+            };
+            string json = JsonUtility.ToJson(manifest);
+            PlayerPrefs.SetString("selected_class_models_json", json);
+            PlayerPrefs.SetString("selected_lesson_models_json", json);
+        }
+
+        PlayerPrefs.SetString("interactive_mode", "vr");
+
+        // Back from VR returns here (Mode3D's own Back still goes to ShowLessonScene).
+        PlayerPrefs.SetString("previous_scene", "Mode3DScene");
+        PlayerPrefs.Save();
+
+        SceneManager.LoadScene(targetScene);
     }
 
+    private string ResolveVrSceneName()
+    {
+        bool useHeadsetScene = UnityEngine.XR.XRSettings.isDeviceActive;
+
+#if UNITY_EDITOR
+        useHeadsetScene |= UnityEditor.EditorPrefs.GetBool("3DEducation.UseXRSceneInEditor", false);
+#endif
+
+        if (useHeadsetScene && Application.CanStreamedLevelBeLoaded(HeadsetVrSceneName))
+            return HeadsetVrSceneName;
+
+        return vrSceneName;
+    }
+
+    // ---------------------------------------------------------------
+    // Screenshot -> phone Gallery (Pictures/Virtual Education).
+    // ---------------------------------------------------------------
     private void CaptureScreenshot()
     {
-        string fileName =
-            $"Mode3D_{System.DateTime.Now:yyyyMMdd_HHmmss}.png";
+        if (isCapturing)
+            return;
 
-        ScreenCapture.CaptureScreenshot(fileName);
-        ShowToast("Screenshot saved");
-
-        Debug.Log($"[Mode3D] Screenshot saved as {fileName}");
+        StartCoroutine(CaptureScreenshotRoutine());
     }
+
+    private IEnumerator CaptureScreenshotRoutine()
+    {
+        isCapturing = true;
+
+        // Hide the toast so it is not part of the picture.
+        toastLabel?.AddToClassList("hidden");
+
+        yield return new WaitForEndOfFrame();
+
+        Texture2D texture = null;
+        byte[] png = null;
+
+        try
+        {
+            texture = ScreenCapture.CaptureScreenshotAsTexture();
+            png = texture != null ? texture.EncodeToPNG() : null;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("[Mode3D] Screenshot capture failed: " + exception);
+        }
+        finally
+        {
+            if (texture != null)
+                Destroy(texture);
+        }
+
+        if (png == null || png.Length == 0)
+        {
+            isCapturing = false;
+            ShowToast(AppLanguageManager.T("Could not take a screenshot", "Không chụp được màn hình"));
+            yield break;
+        }
+
+        string modelName = PlayerPrefs.GetString("selected_model_name", "Model");
+        string safeName = MakeScreenshotNamePart(string.IsNullOrWhiteSpace(modelName) ? "Model" : modelName);
+        string fileName = $"VirtualEducation_{safeName}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+
+        bool saved = false;
+        string savedLocation = null;
+
+        try
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            saved = SaveImageToAndroidGallery(png, fileName);
+            savedLocation = GalleryFolder;
+#else
+            string folder = Application.isEditor
+                ? Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Screenshots")
+                : Path.Combine(Application.persistentDataPath, "Screenshots");
+
+            Directory.CreateDirectory(folder);
+            string fullPath = Path.Combine(folder, fileName);
+            File.WriteAllBytes(fullPath, png);
+            saved = true;
+            savedLocation = fullPath;
+#endif
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("[Mode3D] Saving screenshot failed: " + exception);
+        }
+
+        isCapturing = false;
+
+        if (saved)
+        {
+            Debug.Log("[Mode3D] Screenshot saved: " + savedLocation + "/" + fileName);
+            ShowToast(AppLanguageManager.T(
+                "Saved to Gallery (Virtual Education)",
+                "Đã lưu ảnh vào Thư viện (Virtual Education)"));
+        }
+        else
+        {
+            ShowToast(AppLanguageManager.T("Could not save the screenshot", "Không lưu được ảnh chụp"));
+        }
+    }
+
+    private static string MakeScreenshotNamePart(string value)
+    {
+        char[] invalid = Path.GetInvalidFileNameChars();
+        System.Text.StringBuilder builder = new System.Text.StringBuilder(value.Length);
+
+        foreach (char c in value.Trim())
+        {
+            if (Array.IndexOf(invalid, c) >= 0 || char.IsWhiteSpace(c))
+                builder.Append('_');
+            else
+                builder.Append(c);
+        }
+
+        string result = builder.ToString();
+        return result.Length > 40 ? result.Substring(0, 40) : result;
+    }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+    /// <summary>
+    /// Inserts the PNG into MediaStore so it appears in the phone's Gallery /
+    /// Photos app. Uses scoped storage (Android 10+, minSdk 29), so no storage
+    /// permission is required.
+    /// </summary>
+    private static bool SaveImageToAndroidGallery(byte[] png, string fileName)
+    {
+        using AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+        using AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+        using AndroidJavaObject resolver = activity.Call<AndroidJavaObject>("getContentResolver");
+        using AndroidJavaObject values = new AndroidJavaObject("android.content.ContentValues");
+
+        values.Call("put", "_display_name", fileName);
+        values.Call("put", "mime_type", "image/png");
+        values.Call("put", "relative_path", GalleryFolder);
+
+        using AndroidJavaClass media = new AndroidJavaClass("android.provider.MediaStore$Images$Media");
+        using AndroidJavaObject collection = media.GetStatic<AndroidJavaObject>("EXTERNAL_CONTENT_URI");
+        using AndroidJavaObject itemUri = resolver.Call<AndroidJavaObject>("insert", collection, values);
+
+        if (itemUri == null)
+            return false;
+
+        using AndroidJavaObject stream = resolver.Call<AndroidJavaObject>("openOutputStream", itemUri);
+        if (stream == null)
+            return false;
+
+        // Java byte[] is signed: reinterpret the managed byte[] without copying.
+        sbyte[] data = (sbyte[])(object)png;
+        stream.Call("write", data);
+        stream.Call("flush");
+        stream.Call("close");
+        return true;
+    }
+#endif
 
     private static bool IsHttpUrl(string value)
     {

@@ -29,6 +29,11 @@ namespace ARHeartTest
 
         private void Update()
         {
+            // Do not move the model while the user taps a structure label or
+            // reads the structure detail sheet.
+            if (ModelStructureOverlay.ShouldBlockWorldTouch())
+                return;
+
             if (Input.touchCount == 1)
             {
                 HandleRotation(Input.GetTouch(0));

@@ -1,0 +1,12 @@
+-- Applied to project nfribubvehdzjyguxejq on 2026-10-02 as two migrations:
+--   quiz_essay_schema, quiz_essay_submit_and_review
+-- Summary:
+--   quiz_questions.question_type  ('multiple_choice' | 'essay')
+--   quiz_questions.answer_source  ('from_pdf' | 'ai_generated')
+--   quiz_question_keys            essay reference answers (teacher/admin read only, RLS)
+--   quiz_responses.answer_text / ai_feedback / graded_by ('auto' | 'ai' | 'pending')
+--   quiz_attempts.grading_status  ('graded' | 'pending_ai')
+--   submit_quiz_attempt           now accepts essay answers (graded later by AI)
+--   finalize_quiz_attempt_grading service_role only; recomputes score after AI grading
+--   get_quiz_attempt_review_v2    review rows for both question types
+-- See Supabase dashboard > Database > Migrations for the exact SQL.

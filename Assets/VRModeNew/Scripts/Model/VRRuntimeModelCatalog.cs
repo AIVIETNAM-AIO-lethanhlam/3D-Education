@@ -245,6 +245,22 @@ public class VRRuntimeModelCatalog : MonoBehaviour
         if (models.Count == 0)
             return -1;
 
+        // Mode3DScene asks VR to open the exact model the user was looking at.
+        string requestedAssetId = PlayerPrefs.GetString("vr_initial_asset_id", string.Empty);
+        if (!string.IsNullOrWhiteSpace(requestedAssetId))
+        {
+            PlayerPrefs.DeleteKey("vr_initial_asset_id");
+
+            for (int i = 0; i < models.Count; i++)
+            {
+                if (models[i] != null &&
+                    string.Equals(models[i].asset_id, requestedAssetId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+        }
+
         string currentLessonId =
             manifest != null && !string.IsNullOrWhiteSpace(manifest.lesson_id)
                 ? manifest.lesson_id

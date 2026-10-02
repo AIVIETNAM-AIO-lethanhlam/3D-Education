@@ -876,3 +876,53 @@
 .chapter-section { width: 100%; margin-bottom: 24px; }
 .lesson-name-section { width: 100%; margin-top: 0; margin-bottom: 24px; }
 .section-title-row { min-height: 26px; }
+
+/* Document PDF rows: same full-width bordered row as the Exercise PDF row,
+   so long file names stay inside the card and the × button never overflows. */
+.document-chip-container {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+}
+
+.document-chip-row {
+    width: 100%;
+    max-width: 100%;
+    min-height: 38px;
+    height: auto;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 8px;
+    padding-left: 10px;
+    padding-right: 5px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-shrink: 0;
+    background-color: white;
+    border-width: 1px;
+    border-color: rgb(85, 204, 219);
+    border-radius: 11px;
+    overflow: hidden;
+}
+
+.document-chip-icon {
+    flex-shrink: 0;
+    margin-right: 6px;
+}
+
+.document-chip-text {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin-right: 4px;
+    font-size: 11px;
+    color: rgb(30, 52, 92);
+    white-space: normal;
+    overflow: hidden;
+}
+
+.document-chip-row .remove-file-button {
+    flex-grow: 0;
+    flex-shrink: 0;
+}

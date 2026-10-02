@@ -114,3 +114,16 @@ Backend/model_analysis_worker/cloudrun-env.yaml
 _claude_backup_*/
 _backup_*/
 /Screenshots/
+
+# Old Mode3D screenshots saved at the project root (now saved to /Screenshots/)
+/Mode3D_*.png
+/VirtualEducation_*.png
+
+# Unity-generated UI Toolkit schema (recreated by the Editor)
+/UIElementsSchema/
+
+# =========================================================
+# Supabase CLI local state (keep functions/ and migrations/)
+# =========================================================
+supabase/.temp/
+supabase/.branches/

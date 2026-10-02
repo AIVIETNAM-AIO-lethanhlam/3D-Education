@@ -102,6 +102,15 @@
 .sub-menu-btn:hover { background-color: rgba(255, 255, 255, 0.15); }
 .sub-menu-btn:active { background-color: rgba(0, 0, 0, 0.2); }
 
+/* Model structure toggle */
+.icon-structure {
+    background-image: url("project://database/Assets/ARModels/UI/Icons/atom-white.png");
+}
+
+.sub-menu-btn-active {
+    background-color: rgb(5, 87, 210);
+}
+
 /* --- LOADING / ERROR STATUS --- */
 .loading-panel {
     position: absolute;

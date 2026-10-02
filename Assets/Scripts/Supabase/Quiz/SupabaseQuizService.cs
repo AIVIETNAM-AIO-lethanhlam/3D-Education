@@ -272,9 +272,11 @@ public class SupabaseQuizService : MonoBehaviour
         using UnityWebRequest request =
             UnityWebRequest.Post(ParseQuizPdfFunctionUrl, form);
 
+        // parser_version 3 makes two Gemini calls (read PDF + solve missing
+        // answers / essay model answers), so allow more time.
         request.timeout = Math.Max(
             SupabaseConfig.RequestTimeoutSeconds,
-            120
+            180
         );
 
         request.downloadHandler = new DownloadHandlerBuffer();
@@ -669,10 +671,20 @@ public class SupabaseQuizService : MonoBehaviour
                 continue;
             }
 
+            bool isEssay = string.Equals(
+                question.question_type,
+                "essay",
+                StringComparison.OrdinalIgnoreCase
+            );
+
+            string answer = isEssay
+                ? $"[Essay | Reference: {question.reference_answer}]"
+                : $"[{question.option_count} options | Correct: {question.correct_answer}]";
+
             builder.AppendLine(
                 $"Q{question.question_order}: " +
                 $"{question.question_text} " +
-                $"[Correct: {question.correct_answer}]"
+                $"{answer} ({question.answer_source})"
             );
         }
 
@@ -873,6 +885,8 @@ public class ParseQuizResult
 {
     public string title;
     public int total_questions;
+    public int multiple_choice_count;
+    public int essay_count;
     public ParsedQuizQuestion[] questions;
 }
 
@@ -885,6 +899,10 @@ public class ParsedQuizQuestion
     public string option_b;
     public string option_c;
     public string option_d;
-    public string correct_answer;
+    public string correct_answer;     // multiple choice: A/B/C/D
     public string explanation;
+    public string question_type;      // "multiple_choice" | "essay" (parser_version 3)
+    public int option_count;          // 2..4 for multiple choice
+    public string reference_answer;   // essay model answer (from PDF or AI)
+    public string answer_source;      // "from_pdf" | "ai_generated"
 }

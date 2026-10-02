@@ -46,6 +46,8 @@ namespace ARHeartTest
         private Button toggleVisibilityBtn;
         private Button toggleRotateBtn;
         private Button modelListBtn;
+        private Button structureBtn;
+        private ModelStructureOverlay structureOverlay;
 
         private VisualElement visibilityIcon;
         private VisualElement rotateIcon;
@@ -180,6 +182,88 @@ namespace ARHeartTest
 
             if (isTeacher)
                 StartCoroutine(LoadClassLessonsRoutine());
+
+            SetupStructureOverlay(root);
+        }
+
+        // ---------------------------------------------------------------
+        // Model structure (model_parts): labels + detail sheet, toggled by
+        // the atom button in the menu panel.
+        // ---------------------------------------------------------------
+        private void SetupStructureOverlay(VisualElement root)
+        {
+            // Same parent as the menu/popups so they can be kept above the labels.
+            structureOverlay = ModelStructureOverlay.Attach(
+                this,
+                root.Q<VisualElement>("root") ?? root,
+                () => arController != null && arController.CurrentModelObject != null
+                    ? arController.CurrentModelObject.transform
+                    : null,
+                () => arController != null ? arController.ARCamera : Camera.main);
+
+            if (structureOverlay == null)
+                return;
+
+            structureOverlay.TopInset = 120f;
+            structureOverlay.BottomInset = 110f;
+            structureOverlay.SideMargin = 8f;
+            // Menu, popups and loading panel must stay above the structure labels.
+            menuPanel?.BringToFront();
+            loadingPanel?.BringToFront();
+            modelPopup?.BringToFront();
+            addModelPopup?.BringToFront();
+
+            structureOverlay.EnabledChanged -= UpdateStructureUI;
+            structureOverlay.EnabledChanged += UpdateStructureUI;
+
+            UpdateStructureModel();
+            UpdateStructureUI(structureOverlay.IsEnabled);
+        }
+
+        private void UpdateStructureModel()
+        {
+            if (structureOverlay == null)
+                return;
+
+            if (arController == null)
+            {
+                structureOverlay.SetModel(
+                    PlayerPrefs.GetString("selected_model_asset_id", string.Empty),
+                    PlayerPrefs.GetString("selected_model_lesson_id", string.Empty),
+                    PlayerPrefs.GetString("selected_model_file_name", string.Empty));
+                return;
+            }
+
+            int index = arController.CurrentModelIndex;
+            string lessonId = arController.GetModelLessonId(index);
+
+            structureOverlay.SetModel(
+                arController.GetModelAssetId(index),
+                Guid.TryParse(lessonId, out _) ? lessonId : string.Empty,
+                arController.GetModelFileName(index));
+
+            structureOverlay.NotifyModelChanged();
+        }
+
+        private void OnStructureClicked()
+        {
+            if (structureOverlay == null)
+                return;
+
+            UpdateStructureModel();
+            structureOverlay.Toggle();
+
+            // Close the side menu so the labels are not hidden behind it.
+            if (structureOverlay.IsEnabled && isMenuOpen)
+                ToggleMenuPanel();
+        }
+
+        private void UpdateStructureUI(bool enabled)
+        {
+            if (structureBtn == null)
+                return;
+
+            structureBtn.EnableInClassList("sub-menu-btn-active", enabled);
         }
 
         private void Start()
@@ -236,6 +320,7 @@ namespace ARHeartTest
             toggleVisibilityBtn = root.Q<Button>("toggle-visibility-btn");
             toggleRotateBtn = root.Q<Button>("toggle-rotate-btn");
             modelListBtn = root.Q<Button>("model-list-btn");
+            structureBtn = root.Q<Button>("structure-btn");
 
             visibilityIcon = root.Q<VisualElement>("visibility-icon");
             rotateIcon = root.Q<VisualElement>("rotate-icon");
@@ -271,6 +356,7 @@ namespace ARHeartTest
             if (toggleVisibilityBtn != null) toggleVisibilityBtn.clicked += OnToggleVisibilityClicked;
             if (toggleRotateBtn != null) toggleRotateBtn.clicked += OnToggleRotateClicked;
             if (modelListBtn != null) modelListBtn.clicked += OpenModelPopup;
+            if (structureBtn != null) structureBtn.clicked += OnStructureClicked;
             if (closePopupBtn != null) closePopupBtn.clicked += CloseModelPopup;
 
             if (teacherEditModelsBtn != null) teacherEditModelsBtn.clicked += OnTeacherEditClicked;
@@ -288,6 +374,7 @@ namespace ARHeartTest
             if (toggleVisibilityBtn != null) toggleVisibilityBtn.clicked -= OnToggleVisibilityClicked;
             if (toggleRotateBtn != null) toggleRotateBtn.clicked -= OnToggleRotateClicked;
             if (modelListBtn != null) modelListBtn.clicked -= OpenModelPopup;
+            if (structureBtn != null) structureBtn.clicked -= OnStructureClicked;
             if (closePopupBtn != null) closePopupBtn.clicked -= CloseModelPopup;
 
             if (teacherEditModelsBtn != null) teacherEditModelsBtn.clicked -= OnTeacherEditClicked;
@@ -1362,6 +1449,7 @@ namespace ARHeartTest
         private void OnModelChanged(int index)
         {
             PopulateModelList();
+            UpdateStructureModel();
         }
 
         private void OnLoadingStateChanged(

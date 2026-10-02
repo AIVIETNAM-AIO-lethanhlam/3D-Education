@@ -180,6 +180,60 @@
 
                 </ui:VisualElement>
 
+                <!-- Essay (tự luận) question: the student types the answer here -->
+                <ui:VisualElement
+                    name="essay-container"
+                    class="essay-container hidden">
+
+                    <ui:Label
+                        name="essay-hint-label"
+                        text="Câu tự luận – nhập câu trả lời của bạn:"
+                        class="essay-hint-label"/>
+
+                    <ui:TextField
+                        name="essay-answer-field"
+                        multiline="true"
+                        max-length="4000"
+                        class="essay-answer-field"/>
+
+                    <!-- Review mode only -->
+                    <ui:VisualElement
+                        name="essay-review-panel"
+                        class="essay-review-panel hidden">
+
+                        <ui:Label
+                            name="essay-result-label"
+                            text=""
+                            class="essay-result-label"/>
+
+                        <ui:Label
+                            text="Câu trả lời của bạn"
+                            class="essay-review-title"/>
+                        <ui:Label
+                            name="essay-student-answer-label"
+                            text=""
+                            class="essay-review-text"/>
+
+                        <ui:Label
+                            text="Đáp án gợi ý"
+                            class="essay-review-title"/>
+                        <ui:Label
+                            name="essay-reference-label"
+                            text=""
+                            class="essay-review-text"/>
+
+                        <ui:Label
+                            text="Nhận xét của AI"
+                            class="essay-review-title"/>
+                        <ui:Label
+                            name="essay-feedback-label"
+                            text=""
+                            class="essay-review-text"/>
+
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
                 <!-- Review navigation: below answer D, review mode only -->
                 <ui:VisualElement
                     name="review-navigation"
@@ -320,4 +374,4 @@
 
     </ui:VisualElement>
 
-</ui:UXML>
+</ui:UXML>

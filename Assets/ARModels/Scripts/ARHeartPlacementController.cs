@@ -271,6 +271,29 @@ namespace ARHeartTest
             return CleanModelName(modelPrefabs[index].name);
         }
 
+        /// <summary>lesson_assets.id of a runtime model (empty for Inspector prefabs).</summary>
+        public string GetModelAssetId(int index)
+        {
+            if (!usesRuntimeManifest || index < 0 || index >= runtimeModels.Count)
+                return string.Empty;
+
+            return runtimeModels[index].assetId ?? string.Empty;
+        }
+
+        public string GetModelFileName(int index)
+        {
+            if (!usesRuntimeManifest || index < 0 || index >= runtimeModels.Count)
+                return string.Empty;
+
+            return runtimeModels[index].fileName ?? string.Empty;
+        }
+
+        /// <summary>The model GameObject currently shown (null while nothing is spawned).</summary>
+        public GameObject CurrentModelObject => spawnedHeart;
+
+        /// <summary>Camera used to render the AR model.</summary>
+        public Camera ARCamera => arCamera != null ? arCamera : Camera.main;
+
         public string GetModelLessonId(int index)
         {
             if (!usesRuntimeManifest || index < 0 || index >= runtimeModels.Count)
@@ -693,6 +716,10 @@ namespace ARHeartTest
         private void HandleTouchInput()
         {
             if (!isModelVisible || isLoadingModel)
+                return;
+
+            // Taps on structure labels / the structure detail sheet must not move the model.
+            if (ModelStructureOverlay.ShouldBlockWorldTouch())
                 return;
 
             if (Input.touchCount == 1)

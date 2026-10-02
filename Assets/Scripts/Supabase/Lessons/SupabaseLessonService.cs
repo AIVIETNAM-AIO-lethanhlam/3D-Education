@@ -345,7 +345,16 @@ public class SupabaseLessonService : MonoBehaviour
         }
     }
 
-    /// <summary>Runs GLB structure analysis immediately after the R2 upload.</summary>
+    // Gemini can take 20–60 s (and longer when it falls back to another model
+    // during "high demand"), so this call must not use the default 30 s timeout.
+    private const int ModelDetailsTimeoutSeconds = 150;
+
+    /// <summary>
+    /// Manually (re)runs GLB structure analysis for one model asset.
+    /// New uploads are analysed automatically by the database trigger
+    /// (lesson_assets -> process-model-detail -> generate-model-details),
+    /// so this is only used for the "retry analysis" button.
+    /// </summary>
     public IEnumerator GenerateModelDetails(
         string assetId,
         Action onSuccess,
@@ -363,38 +372,87 @@ public class SupabaseLessonService : MonoBehaviour
             yield break;
         }
 
-        string error = null;
-        yield return rest.SendJson(
-            UnityWebRequest.kHttpVerbPOST,
-            "functions/v1/generate-model-details",
-            // `action` makes this request self-describing in Edge Function logs.
-            // The generate-model-details function accepts it, while asset_id
-            // remains the authoritative input.
-            "{\"action\":\"generate_model_details\",\"asset_id\":\"" +
-                EscapeJson(assetId.Trim()) + "\"}",
-            null,
-            _ => { },
-            value => error = value
-        );
+        yield return SupabaseTokenRefresher.EnsureFreshToken();
 
-        if (!string.IsNullOrWhiteSpace(error))
+        string url = SupabaseConfig.ProjectUrl.TrimEnd('/') +
+                     "/functions/v1/generate-model-details";
+
+        string body =
+            "{\"action\":\"generate_model_details\",\"asset_id\":\"" +
+            EscapeJson(assetId.Trim()) + "\"}";
+
+        using UnityWebRequest request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
+        request.timeout = ModelDetailsTimeoutSeconds;
+        request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(body));
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+        request.SetRequestHeader("Accept", "application/json");
+        rest.ApplyAuthHeaders(request);
+
+        yield return request.SendWebRequest();
+
+        string responseText = request.downloadHandler?.text ?? string.Empty;
+
+        if (request.result == UnityWebRequest.Result.Success)
         {
-            if (error.IndexOf("Unsupported action", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                onError?.Invoke(
-                    "Edge Function 'generate-model-details' đang chạy nhầm mã nguồn " +
-                    "(mã quiz/update_deadline). Hãy deploy file index.ts của pipeline " +
-                    "phân tích GLB vào đúng function 'generate-model-details', sau đó thử lại."
-                );
-            }
-            else
-            {
-                onError?.Invoke(error);
-            }
+            onSuccess?.Invoke();
             yield break;
         }
 
-        onSuccess?.Invoke();
+        string error = ExtractFunctionError(responseText, request.error, request.responseCode);
+
+        if (error.IndexOf("Unsupported action", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            onError?.Invoke(
+                "Edge Function 'generate-model-details' đang chạy nhầm mã nguồn " +
+                "(mã quiz/update_deadline). Hãy deploy file index.ts của pipeline " +
+                "phân tích GLB vào đúng function 'generate-model-details', sau đó thử lại."
+            );
+            yield break;
+        }
+
+        if (AIService.IsRateLimitError(error) ||
+            error.IndexOf("high demand", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            error.IndexOf("temporarily unavailable", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            onError?.Invoke(
+                "AI đang quá tải hoặc hết lượt sử dụng (Gemini). " +
+                "Vui lòng thử phân tích lại sau ít phút.\n" + error
+            );
+            yield break;
+        }
+
+        onError?.Invoke(error);
+    }
+
+    [Serializable]
+    private class FunctionErrorResponse
+    {
+        public bool success;
+        public string error;
+        public string message;
+    }
+
+    private static string ExtractFunctionError(string responseText, string unityError, long code)
+    {
+        if (!string.IsNullOrWhiteSpace(responseText))
+        {
+            try
+            {
+                FunctionErrorResponse parsed = JsonUtility.FromJson<FunctionErrorResponse>(responseText);
+                if (!string.IsNullOrWhiteSpace(parsed?.error)) return parsed.error;
+                if (!string.IsNullOrWhiteSpace(parsed?.message)) return parsed.message;
+            }
+            catch
+            {
+                // fall back to raw text
+            }
+            return responseText;
+        }
+
+        return string.IsNullOrWhiteSpace(unityError)
+            ? $"generate-model-details thất bại (HTTP {code})."
+            : $"{unityError} (HTTP {code})";
     }
 
     private static string EscapeJson(string value)

@@ -509,6 +509,85 @@
     color: #c4cfdd;
 }
 
+/* =========================
+   ESSAY (TỰ LUẬN)
+   ========================= */
+
+.essay-container {
+    width: 100%;
+    margin-bottom: 14px;
+}
+
+.essay-hint-label {
+    margin-bottom: 8px;
+    color: #6c7f99;
+    font-size: 13px;
+    white-space: normal;
+}
+
+.essay-answer-field {
+    width: 100%;
+    margin: 0;
+}
+
+.essay-answer-field > .unity-base-text-field__input,
+.essay-answer-field .unity-text-field__input {
+    min-height: 160px;
+    padding: 12px 14px;
+
+    background-color: #ffffff;
+    color: #1c2940;
+    font-size: 14px;
+
+    border-width: 2px;
+    border-color: #dde5ee;
+    border-radius: 14px;
+
+    white-space: normal;
+    -unity-text-align: upper-left;
+}
+
+.essay-answer-field:focus > .unity-base-text-field__input,
+.essay-answer-field:focus .unity-text-field__input {
+    border-color: #1d5fd1;
+}
+
+.essay-review-panel {
+    width: 100%;
+    margin-top: 12px;
+    padding: 14px 16px;
+
+    background-color: #f7faff;
+    border-width: 1px;
+    border-color: #dde5ee;
+    border-radius: 14px;
+}
+
+.essay-result-label {
+    margin-bottom: 8px;
+    font-size: 15px;
+    white-space: normal;
+    -unity-font-style: bold;
+}
+
+.essay-result-correct { color: #14743f; }
+.essay-result-wrong { color: #b42332; }
+.essay-result-pending { color: #b26a00; }
+
+.essay-review-title {
+    margin-top: 8px;
+    color: #6c7f99;
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.essay-review-text {
+    margin-top: 2px;
+    color: #1c2940;
+    font-size: 14px;
+    white-space: normal;
+}
+
 .hidden { display: none; }
 
 .quiz-message-label {

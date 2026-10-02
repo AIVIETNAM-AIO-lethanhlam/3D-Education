@@ -2410,47 +2410,21 @@ public class CreateLessonPageController : MonoBehaviour
             yield break;
         }
 
-        // Do not rely only on a database webhook. Mobile uploads explicitly
-        // queue analysis using the exact row id returned by Supabase.
-        string analysisError = null;
-        yield return lessonService.GenerateModelDetails(
-            createdModelAsset.id,
-            () => { },
-            error => analysisError = error
-        );
-
-        if (!string.IsNullOrWhiteSpace(analysisError))
-        {
-            // Uploading the GLB and generating AI metadata are two separate
-            // operations. A temporary Gemini/worker outage must not discard
-            // an otherwise valid lesson or force the user to upload the model
-            // again. The asset remains in lesson_assets and can be processed
-            // again by the webhook/manual retry pipeline.
-            Debug.LogWarning(
-                "[CreateLessonPageController] Model upload succeeded, but " +
-                "automatic detail generation is pending/failed temporarily. " +
-                $"Asset ID: {createdModelAsset.id}. Error: {analysisError}"
-            );
-
-            SetSaveProgress(
-                Mathf.Min(progressValue + 4f, 96f),
-                T(
-                    "Model uploaded. Detail analysis can be retried later.",
-                    "Mô hình đã tải lên. Có thể thử phân tích chi tiết lại sau."
-                )
-            );
-
-            yield break;
-        }
-
+        // The AFTER INSERT trigger on lesson_assets already starts the analysis
+        // (process-model-detail -> generate-model-details). Calling
+        // generate-model-details again from the app ran Gemini twice for the
+        // same model (double quota use) and made the app wait for the AI, which
+        // caused "Request timeout". The app now only queues the work; the
+        // ClassDetail screen shows the status and has a "retry" button.
         SetSaveProgress(
             Mathf.Min(progressValue + 4f, 96f),
-            T("Model uploaded and analyzed successfully.", "Model đã tải lên và phân tích cấu trúc thành công.")
+            T("Model uploaded. AI is analysing its structure in the background.",
+              "Mô hình đã tải lên. AI đang phân tích cấu trúc ở nền.")
         );
 
         Debug.Log(
             "[CreateLessonPageController] Model asset inserted successfully. " +
-            "GLB structure analysis completed. " +
+            "GLB structure analysis queued (database trigger). " +
             $"Asset ID: {createdModelAsset.id}, " +
             $"Lesson ID: {lessonId}, File: {Path.GetFileName(localModelPath)}, " +
             $"R2: lesson-models/{uploadedPath}"

@@ -483,6 +483,143 @@
     -unity-background-scale-mode: scale-to-fit;
 }
 
+/* Model structure toggle (atom icon) */
+.structure-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/atom-white.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* Five tools (zoom removed: pinch with two fingers instead) */
+.bottom-toolbar {
+    width: 560px;
+    padding-left: 26px;
+    padding-right: 26px;
+}
+
+.menu-button {
+    background-image: url("project://database/Assets/UI/Mode3D/Icons/menu.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* ---------- Model list (menu) ---------- */
+
+.model-list-card {
+    width: 86%;
+    max-height: 70%;
+    padding: 34px 30px 30px 30px;
+    border-radius: 36px;
+    background-color: rgb(23, 37, 67);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255,255,255,0.16);
+    border-right-color: rgba(255,255,255,0.16);
+    border-top-color: rgba(255,255,255,0.16);
+    border-bottom-color: rgba(255,255,255,0.16);
+}
+
+.model-list-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.model-list-title {
+    flex-shrink: 1;
+    color: white;
+    font-size: 36px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.model-list-close {
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    padding: 0 0 4px 0;
+    margin-left: 16px;
+    border-radius: 32px;
+    color: white;
+    font-size: 40px;
+    background-color: rgba(255,255,255,0.10);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.model-list-hint {
+    margin-bottom: 18px;
+    color: rgb(170, 184, 212);
+    font-size: 24px;
+    white-space: normal;
+}
+
+.model-list-scroll {
+    flex-shrink: 1;
+}
+
+.model-list-section {
+    margin-top: 14px;
+    margin-bottom: 8px;
+    color: rgb(126, 170, 255);
+    font-size: 24px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.model-list-item {
+    min-height: 96px;
+    margin: 0 0 14px 0;
+    padding: 18px 26px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    border-radius: 24px;
+    background-color: rgba(255,255,255,0.06);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgba(255,255,255,0.10);
+    border-right-color: rgba(255,255,255,0.10);
+    border-top-color: rgba(255,255,255,0.10);
+    border-bottom-color: rgba(255,255,255,0.10);
+}
+
+.model-list-item-current {
+    background-color: rgba(5, 87, 210, 0.45);
+    border-left-color: rgb(64, 140, 255);
+    border-right-color: rgb(64, 140, 255);
+    border-top-color: rgb(64, 140, 255);
+    border-bottom-color: rgb(64, 140, 255);
+}
+
+.model-list-item-name {
+    color: white;
+    font-size: 30px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.model-list-item-sub {
+    margin-top: 4px;
+    color: rgb(170, 184, 212);
+    font-size: 22px;
+    white-space: normal;
+}
+
+.model-list-empty {
+    color: rgb(199, 209, 230);
+    font-size: 26px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
 /* ---------- Popup and toast ---------- */
 
 .overlay {
