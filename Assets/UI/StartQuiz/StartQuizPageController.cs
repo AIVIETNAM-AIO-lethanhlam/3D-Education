@@ -82,6 +82,11 @@ public class StartQuizPageController : MonoBehaviour
     private QuizAttemptView[] loadedAttempts = Array.Empty<QuizAttemptView>();
     private Coroutine availabilityMonitor;
 
+    // Teacher mode (2026-10): the teacher sees the answer key and can edit the questions
+    // instead of starting an attempt.
+    private bool isTeacherMode;
+    private TeacherQuizEditor teacherEditor;
+
     private void Awake()
     {
         if (uiDocument == null)
@@ -140,11 +145,52 @@ public class StartQuizPageController : MonoBehaviour
         RegisterEvents();
         AppLanguageManager.LanguageChanged += OnLanguageChanged;
         LoadQuizData();
+
+        isTeacherMode = IsTeacherAccount();
+        if (isTeacherMode)
+            SetupTeacherMode();
+
         ApplyCurrentLanguage();
         RefreshAvailability();
         availabilityMonitor = StartCoroutine(MonitorQuizAvailability());
         StartCoroutine(RefreshQuizMetadataRoutine());
-        StartCoroutine(LoadAttemptHistoryRoutine());
+
+        // Teachers do not take the quiz, so they have no attempt history here.
+        if (!isTeacherMode)
+            StartCoroutine(LoadAttemptHistoryRoutine());
+    }
+
+    private static bool IsTeacherAccount()
+    {
+        return string.Equals(
+            PlayerPrefs.GetString("current_role", "student"),
+            "teacher",
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Teacher view: hide the Start button and the notice, and show every question with its
+    /// answer key in an editable list (TeacherQuizEditor). The RPCs used by the editor only
+    /// accept the teacher who owns the quiz.
+    /// </summary>
+    private void SetupTeacherMode()
+    {
+        root.Q<VisualElement>(className: "bottom-area")?.AddToClassList("hidden");
+        noticeCard?.AddToClassList("hidden");
+        HideConfirmation();
+        HideAttemptHistory();
+
+        if (teacherEditor != null)
+            return;
+
+        VisualElement quizCard = root.Q<VisualElement>(className: "quiz-card");
+        VisualElement container = quizCard?.parent ?? root.Q<VisualElement>(className: "content-container");
+        if (container == null)
+            return;
+
+        string quizId = PlayerPrefs.GetString("selected_quiz_id", string.Empty);
+        teacherEditor = new TeacherQuizEditor(this, restService, container, quizCard, quizId);
+        teacherEditor.Load();
     }
 
     private void OnDisable()
@@ -357,6 +403,12 @@ public class StartQuizPageController : MonoBehaviour
         RenderAttemptHistory();
         RefreshAvailability();
         ApplyAttemptedQuizState();
+
+        if (isTeacherMode)
+        {
+            SetText(quizTypeLabel, "QUIZ · TEACHER VIEW", "BÀI KIỂM TRA · CHẾ ĐỘ GIÁO VIÊN");
+            teacherEditor?.Refresh();
+        }
     }
 
     private static void ApplyStaticTranslationsRecursive(VisualElement element)
@@ -1157,6 +1209,12 @@ public class StartQuizPageController : MonoBehaviour
         string status,
         string statusClass)
     {
+        if (isTeacherMode)
+        {
+            status = T("ANSWER KEY", "ĐÁP ÁN");
+            statusClass = "status-completed";
+        }
+
         if (statusLabel != null)
         {
             statusLabel.text = status;
@@ -1316,7 +1374,7 @@ public class StartQuizPageController : MonoBehaviour
 
     private void HandleStartQuizClicked()
     {
-        if (isStartingQuiz)
+        if (isStartingQuiz || isTeacherMode)
         {
             return;
         }
@@ -1351,7 +1409,7 @@ public class StartQuizPageController : MonoBehaviour
 
     private void ConfirmStartQuiz()
     {
-        if (isStartingQuiz)
+        if (isStartingQuiz || isTeacherMode)
         {
             return;
         }

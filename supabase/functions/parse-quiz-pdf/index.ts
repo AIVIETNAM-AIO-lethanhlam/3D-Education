@@ -20,6 +20,7 @@ import {
 //  - essay (tự luận) questions are supported: the reference answer comes
 //    from the PDF when printed, otherwise AI writes one. Reference answers
 //    are stored in quiz_question_keys, which students cannot read.
+// 2026-10-03: Gemini model fallback when a model is out of quota / overloaded.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,27 +72,55 @@ async function delay(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// 2026-10-03: model fallback. Free-tier Gemini quotas are counted per model, so when a
+// model returns 429 (quota / rate limit), 404 (model not available) or keeps returning
+// 5xx (overloaded), the same request is sent to the next model of the chain.
+// The chain can be changed with the GEMINI_FALLBACK_MODELS secret (comma separated).
+const GEMINI_FALLBACK_MODELS = (Deno.env.get("GEMINI_FALLBACK_MODELS") ??
+  "gemini-3.5-flash,gemini-2.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash-lite")
+  .split(",")
+  .map((model) => model.trim())
+  .filter(Boolean);
+
 async function fetchGeminiWithRetry(
   url: string,
   init: RequestInit,
 ): Promise<Response> {
-  let lastResponse: Response | null = null;
+  const match = url.match(/\/models\/([^:/]+):/);
+  const primary = match ? decodeURIComponent(match[1]) : "";
+  const models = primary
+    ? [primary, ...GEMINI_FALLBACK_MODELS.filter((model) => model !== primary)]
+    : [""];
+  const attemptsPerModel = Math.min(GEMINI_MAX_ATTEMPTS, 2);
+  let last: Response | null = null;
 
-  for (let attempt = 1; attempt <= GEMINI_MAX_ATTEMPTS; attempt++) {
-    const response = await fetch(url, init);
-    lastResponse = response;
+  for (const model of models) {
+    const modelUrl = model && match
+      ? url.replace(match[0], `/models/${encodeURIComponent(model)}:`)
+      : url;
 
-    if (response.ok || ![429, 500, 502, 503, 504].includes(response.status)) {
-      return response;
-    }
+    for (let attempt = 1; attempt <= attemptsPerModel; attempt++) {
+      const response = await fetch(modelUrl, init);
 
-    if (attempt < GEMINI_MAX_ATTEMPTS) {
-      await response.text();
-      await delay(750 * 2 ** (attempt - 1));
+      if (response.ok) {
+        if (model !== primary) console.log(`[gemini] fallback model used: ${model}`);
+        return response;
+      }
+
+      const tryNextModel = [404, 429, 500, 502, 503, 504].includes(response.status);
+      if (!tryNextModel) return response;
+
+      const text = await response.text();
+      last = new Response(text, { status: response.status, headers: response.headers });
+      console.warn(`[gemini] ${model || "model"} HTTP ${response.status}`);
+
+      // Quota or unknown model: retrying the same model does not help.
+      if (response.status === 429 || response.status === 404) break;
+      if (attempt < attemptsPerModel) await delay(750 * 2 ** (attempt - 1));
     }
   }
 
-  return lastResponse!;
+  return last!;
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -336,7 +365,7 @@ async function extractQuizFromPdf(
 function cleanText(value: unknown): string {
   return String(value ?? "")
     .replace(/\r\n?/g, "\n")
-    .replace(/ /g, " ")
+    .replace(/\u00a0/g, " ")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -889,6 +918,7 @@ Deno.serve(async (req: Request) => {
           error: geminiStatus === 429
             ? "Gemini rate limit."
             : "Không đọc được câu hỏi từ file quiz PDF.",
+          error_code: geminiStatus === 429 ? "ai_quota_exceeded" : "quiz_parse_failed",
           details: parseError instanceof Error
             ? parseError.message
             : String(parseError),

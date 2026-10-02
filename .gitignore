@@ -127,3 +127,19 @@ _backup_*/
 # =========================================================
 supabase/.temp/
 supabase/.branches/
+
+# =========================================================
+# Temporary files created by Unity during an Android build
+# (removed again when the build finishes; never commit them)
+# =========================================================
+# AR Foundation XR Simulation moves its settings here while building
+/[Aa]ssets/XR/Temp/
+/[Aa]ssets/XR/Temp.meta
+# unity-webview copies its plugin here only for the build
+/[Aa]ssets/Plugins/Android/WebViewPlugin.aar
+/[Aa]ssets/Plugins/Android/WebViewPlugin.aar.meta
+# Unity Performance Testing package run info
+/[Aa]ssets/Resources/PerformanceTestRunInfo.json
+/[Aa]ssets/Resources/PerformanceTestRunInfo.json.meta
+/[Aa]ssets/Resources/PerformanceTestRunSettings.json
+/[Aa]ssets/Resources/PerformanceTestRunSettings.json.meta
